@@ -3,1470 +3,1289 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vitalia — Ton Plan Bien-être</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Vitalia — Bienvenue !</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --cream: #FAF7F2;
-    --warm-white: #FFFEF9;
-    --terracotta: #C4714A;
-    --terracotta-light: #E8956D;
-    --sage: #7A9E7E;
-    --sage-light: #A8C5AC;
-    --peach: #F2C4A0;
-    --golden: #E8B84B;
-    --dusty-rose: #D4936A;
-    --deep-brown: #3D2B1F;
-    --mid-brown: #7A5C4A;
-    --text-light: #9E8070;
-    --goji-red: #C0392B;
-    --curcuma-yellow: #F39C12;
-    --ginger-orange: #E67E22;
-    --mirtille-purple: #8E44AD;
-    --avocat-green: #27AE60;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    color: var(--deep-brown);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── BACKGROUND TEXTURE ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse at 20% 10%, rgba(196,113,74,0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, rgba(122,158,126,0.10) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 50%, rgba(232,184,75,0.05) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    position: relative;
-    z-index: 10;
-    padding: 20px 24px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo {
-    font-family: 'Fraunces', serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--terracotta);
-    letter-spacing: -0.5px;
-  }
-
-  .logo span {
-    color: var(--sage);
-  }
-
-  .date-badge {
-    background: var(--warm-white);
-    border: 1.5px solid var(--peach);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: var(--mid-brown);
-    font-weight: 500;
-  }
-
-  /* ── HERO SECTION ── */
-  .hero {
-    position: relative;
-    z-index: 5;
-    padding: 28px 24px 0;
-  }
-
-  .hero-card {
-    background: linear-gradient(135deg, var(--terracotta) 0%, var(--dusty-rose) 60%, var(--golden) 100%);
-    border-radius: 28px;
-    padding: 28px 24px 24px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 12px 40px rgba(196,113,74,0.25);
-  }
-
-  .hero-card::before {
-    content: '';
-    position: absolute;
-    top: -30px; right: -30px;
-    width: 160px; height: 160px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-  }
-
-  .hero-card::after {
-    content: '';
-    position: absolute;
-    bottom: -20px; left: 40px;
-    width: 100px; height: 100px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 50%;
-  }
-
-  .hero-greeting {
-    font-family: 'Fraunces', serif;
-    font-size: 13px;
-    font-weight: 300;
-    color: rgba(255,255,255,0.75);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-  }
-
-  .hero-message {
-    font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 500;
-    color: #fff;
-    line-height: 1.45;
-    max-width: 240px;
-    margin-bottom: 16px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .hero-score {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 8px 16px;
-  }
-
-  .hero-score-label {
-    color: rgba(255,255,255,0.85);
-    font-size: 13px;
-  }
-
-  .hero-score-value {
-    color: #fff;
-    font-weight: 700;
-    font-size: 16px;
-  }
-
-  .stars {
-    display: flex; gap: 2px;
-  }
-
-  .star { font-size: 11px; }
-
-  /* MASCOTS FLOATING */
-  .mascots-row {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    display: flex;
-    gap: -4px;
-    z-index: 3;
-  }
-
-  .mascot {
-    width: 52px;
-    height: 52px;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .mascot:nth-child(2) { animation-delay: 0.5s; margin-left: -8px; margin-top: -6px; }
-  .mascot:nth-child(3) { animation-delay: 1s; margin-left: -6px; margin-top: 4px; }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-6px) rotate(3deg); }
-  }
-
-  /* ── COMPANIONS BAR ── */
-  .companions-section {
-    position: relative;
-    z-index: 5;
-    padding: 24px 24px 0;
-  }
-
-  .section-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--text-light);
-    margin-bottom: 12px;
-    font-weight: 500;
-  }
-
-  .companions-scroll {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-  }
-
-  .companion-chip {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-
-  .companion-chip:hover { transform: translateY(-3px); }
-
-  .companion-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-    position: relative;
-  }
-
-  .companion-avatar.active {
-    border-color: var(--terracotta);
-    box-shadow: 0 0 0 3px rgba(196,113,74,0.15);
-  }
-
-  .companion-avatar svg {
-    width: 40px; height: 40px;
-  }
-
-  .companion-name {
-    font-size: 11px;
-    color: var(--mid-brown);
-    text-align: center;
-    font-weight: 500;
-  }
-
-  /* ── PLAN TIMELINE ── */
-  .plan-section {
-    position: relative;
-    z-index: 5;
-    padding: 28px 24px;
-  }
-
-  .timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .moment-card {
-    background: var(--warm-white);
-    border-radius: 24px;
-    padding: 20px;
-    border: 1.5px solid rgba(196,113,74,0.1);
-    box-shadow: 0 4px 20px rgba(61,43,31,0.06);
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
-  }
-
-  .moment-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(61,43,31,0.12);
-  }
-
-  .moment-card::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-    border-radius: 4px 0 0 4px;
-  }
-
-  .moment-card.matin::before { background: var(--golden); }
-  .moment-card.midi::before { background: var(--terracotta); }
-  .moment-card.apres-midi::before { background: var(--sage); }
-  .moment-card.soir::before { background: var(--mirtille-purple); }
-
-  .moment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-  }
-
-  .moment-time-block {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .moment-emoji {
-    font-size: 24px;
-    line-height: 1;
-  }
-
-  .moment-time {
-    font-size: 11px;
-    color: var(--text-light);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .moment-label {
-    font-family: 'Fraunces', serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--mid-brown);
-  }
-
-  .moment-calories {
-    background: var(--cream);
-    border-radius: 10px;
-    padding: 4px 10px;
-    font-size: 12px;
-    color: var(--text-light);
-    font-weight: 500;
-  }
-
-  .moment-title {
-    font-family: 'Fraunces', serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--deep-brown);
-    line-height: 1.3;
-    margin-bottom: 6px;
-  }
-
-  .moment-description {
-    font-size: 14px;
-    color: var(--mid-brown);
-    line-height: 1.5;
-    margin-bottom: 12px;
-  }
-
-  .moment-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .moment-motivant {
-    font-size: 13px;
-    color: var(--terracotta);
-    font-style: italic;
-    font-weight: 500;
-    flex: 1;
-  }
-
-  .expand-btn {
-    width: 32px; height: 32px;
-    background: var(--cream);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--mid-brown);
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-
-  .expand-btn:hover { background: var(--peach); }
-
-  /* Instructions expand */
-  .moment-instructions {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease;
-  }
-
-  .moment-instructions.open {
-    max-height: 300px;
-  }
-
-  .instructions-content {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px dashed rgba(196,113,74,0.2);
-    font-size: 13.5px;
-    color: var(--mid-brown);
-    line-height: 1.6;
-  }
-
-  /* ── ROUTINE DU JOUR ── */
-  .routine-section {
-    position: relative;
-    z-index: 5;
-    padding: 0 24px 20px;
-  }
-
-  .routine-card {
-    background: linear-gradient(135deg, rgba(122,158,126,0.15) 0%, rgba(168,197,172,0.1) 100%);
-    border: 1.5px solid rgba(122,158,126,0.25);
-    border-radius: 24px;
-    padding: 20px;
-  }
-
-  .routine-title {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--deep-brown);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .routine-items {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .routine-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .routine-dot {
-    width: 8px; height: 8px;
-    background: var(--sage);
-    border-radius: 50%;
-    margin-top: 6px;
-    flex-shrink: 0;
-  }
-
-  .routine-text {
-    font-size: 14px;
-    color: var(--mid-brown);
-    line-height: 1.4;
-  }
-
-  .routine-text strong {
-    color: var(--deep-brown);
-    font-weight: 600;
-  }
-
-  /* ── CONSEIL DU JOUR ── */
-  .conseil-section {
-    position: relative;
-    z-index: 5;
-    padding: 0 24px 32px;
-  }
-
-  .conseil-card {
-    background: var(--warm-white);
-    border-radius: 24px;
-    padding: 20px;
-    border: 1.5px solid rgba(232,184,75,0.2);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .conseil-card::before {
-    content: '"';
-    position: absolute;
-    top: -10px; left: 12px;
-    font-family: 'Fraunces', serif;
-    font-size: 100px;
-    color: rgba(232,184,75,0.12);
-    line-height: 1;
-  }
-
-  .conseil-title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--golden);
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-
-  .conseil-text {
-    font-family: 'Fraunces', serif;
-    font-size: 15px;
-    font-style: italic;
-    color: var(--mid-brown);
-    line-height: 1.6;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ── LOADING STATE ── */
-  .loading-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--cream);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    gap: 24px;
-  }
-
-  .loading-mascot {
-    animation: spin-bounce 1.5s ease-in-out infinite;
-  }
-
-  @keyframes spin-bounce {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    25% { transform: scale(1.1) rotate(5deg); }
-    75% { transform: scale(0.9) rotate(-5deg); }
-  }
-
-  .loading-text {
-    font-family: 'Fraunces', serif;
-    font-size: 20px;
-    color: var(--deep-brown);
-    text-align: center;
-  }
-
-  .loading-sub {
-    font-size: 14px;
-    color: var(--text-light);
-    text-align: center;
-    max-width: 260px;
-    line-height: 1.5;
-  }
-
-  .loading-dots {
-    display: flex; gap: 6px;
-  }
-
-  .loading-dot {
-    width: 8px; height: 8px;
-    background: var(--terracotta);
-    border-radius: 50%;
-    animation: dot-bounce 1.2s ease-in-out infinite;
-  }
-
-  .loading-dot:nth-child(2) { animation-delay: 0.2s; background: var(--sage); }
-  .loading-dot:nth-child(3) { animation-delay: 0.4s; background: var(--golden); }
-
-  @keyframes dot-bounce {
-    0%, 100% { transform: translateY(0); opacity: 0.5; }
-    50% { transform: translateY(-8px); opacity: 1; }
-  }
-
-  /* ── GENERATE BUTTON ── */
-  .generate-btn {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
-    color: white;
-    border: none;
-    border-radius: 30px;
-    padding: 16px 40px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 8px 30px rgba(196,113,74,0.35);
-    transition: all 0.3s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .generate-btn:hover {
-    transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 12px 40px rgba(196,113,74,0.45);
-  }
-
-  .generate-btn:active {
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* ── CONFIG PANEL ── */
-  .config-panel {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: var(--warm-white);
-    border-radius: 28px 28px 0 0;
-    padding: 28px 24px 40px;
-    z-index: 50;
-    transform: translateY(100%);
-    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-    box-shadow: 0 -8px 40px rgba(61,43,31,0.12);
-  }
-
-  .config-panel.open {
-    transform: translateY(0);
-  }
-
-  .config-handle {
-    width: 36px; height: 4px;
-    background: var(--peach);
-    border-radius: 2px;
-    margin: 0 auto 20px;
-  }
-
-  .config-title {
-    font-family: 'Fraunces', serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--deep-brown);
-    margin-bottom: 20px;
-  }
-
-  .config-field {
-    margin-bottom: 16px;
-  }
-
-  .config-label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text-light);
-    font-weight: 600;
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .config-input {
-    width: 100%;
-    background: var(--cream);
-    border: 1.5px solid rgba(196,113,74,0.15);
-    border-radius: 14px;
-    padding: 12px 16px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--deep-brown);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .config-input:focus {
-    border-color: var(--terracotta);
-  }
-
-  .config-row {
-    display: flex; gap: 12px;
-  }
-
-  .config-row .config-field { flex: 1; }
-
-  .config-chips {
-    display: flex; flex-wrap: wrap; gap: 8px;
-  }
-
-  .config-chip {
-    background: var(--cream);
-    border: 1.5px solid rgba(196,113,74,0.15);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: var(--mid-brown);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .config-chip.selected {
-    background: var(--terracotta);
-    border-color: var(--terracotta);
-    color: white;
-  }
-
-  .config-submit {
-    width: 100%;
-    margin-top: 20px;
-    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
-    color: white;
-    border: none;
-    border-radius: 16px;
-    padding: 16px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .config-submit:hover { opacity: 0.9; }
-
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(61,43,31,0.3);
-    z-index: 40;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-    backdrop-filter: blur(2px);
-  }
-
-  .overlay.active {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .scroll-pad { height: 100px; }
-
-  /* Fade in animation */
-  @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .moment-card {
-    animation: fadeSlideIn 0.5s ease both;
-  }
-
-  .moment-card:nth-child(1) { animation-delay: 0.1s; }
-  .moment-card:nth-child(2) { animation-delay: 0.2s; }
-  .moment-card:nth-child(3) { animation-delay: 0.3s; }
-  .moment-card:nth-child(4) { animation-delay: 0.4s; }
+:root {
+  --cream: #FAF7F2;
+  --warm-white: #FFFEF9;
+  --terracotta: #C4714A;
+  --dusty-rose: #D4936A;
+  --peach: #F2C4A0;
+  --sage: #7A9E7E;
+  --sage-light: #A8C5AC;
+  --golden: #E8B84B;
+  --deep-brown: #3D2B1F;
+  --mid-brown: #7A5C4A;
+  --text-light: #9E8070;
+  --mirtille: #8E44AD;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--deep-brown);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ── BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(196,113,74,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, rgba(122,158,126,0.09) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── PROGRESS BAR ── */
+.progress-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 4px; background: rgba(196,113,74,0.15);
+  z-index: 100;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--terracotta), var(--golden));
+  border-radius: 0 2px 2px 0;
+  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── STEP COUNTER ── */
+.step-counter {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 100;
+  display: flex; gap: 6px; align-items: center;
+}
+
+.step-dot {
+  width: 6px; height: 6px;
+  background: rgba(196,113,74,0.2);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.step-dot.active {
+  background: var(--terracotta);
+  width: 18px;
+  border-radius: 3px;
+}
+
+.step-dot.done {
+  background: var(--sage);
+}
+
+/* ── SKIP BUTTON ── */
+.skip-btn {
+  position: fixed; top: 16px; right: 20px;
+  z-index: 100;
+  background: none; border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; color: var(--text-light);
+  cursor: pointer; padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.skip-btn:hover { color: var(--mid-brown); }
+.skip-btn.hidden { opacity: 0; pointer-events: none; }
+
+/* ── SCREEN CONTAINER ── */
+.screens-wrapper {
+  position: relative;
+  width: 100%; height: 100vh;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px 28px 100px;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  overflow-y: auto;
+}
+
+.screen.active {
+  opacity: 1; transform: translateX(0);
+  pointer-events: all;
+}
+
+.screen.exit {
+  opacity: 0; transform: translateX(-60px);
+  pointer-events: none;
+}
+
+/* ── MASCOT ── */
+.mascot-container {
+  margin-bottom: 20px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  min-width: 300px;
+}
+
+.mascot-bubble {
+  position: absolute;
+  top: 8px; left: 108px;
+  background: var(--warm-white);
+  border: 1.5px solid rgba(196,113,74,0.2);
+  border-radius: 4px 16px 16px 16px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--mid-brown);
+  box-shadow: 0 4px 16px rgba(61,43,31,0.08);
+  animation: bubble-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  max-width: 175px;
+  white-space: normal;
+  line-height: 1.45;
+  z-index: 10;
+}
+
+@keyframes bubble-pop {
+  from { opacity: 0; transform: scale(0.7) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.mascot-svg {
+  width: 100px; height: 100px;
+  animation: mascot-bounce 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 8px 16px rgba(61,43,31,0.12));
+}
+
+@keyframes mascot-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+/* ── SCREEN CONTENT ── */
+.screen-title {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 700;
+  color: var(--deep-brown);
+  text-align: center;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.screen-subtitle {
+  font-size: 15px; color: var(--text-light);
+  text-align: center; line-height: 1.5;
+  margin-bottom: 32px;
+  max-width: 320px;
+}
+
+/* ── INPUTS ── */
+.input-field {
+  width: 100%; max-width: 360px;
+  background: var(--warm-white);
+  border: 2px solid rgba(196,113,74,0.15);
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px; color: var(--deep-brown);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.input-field:focus {
+  border-color: var(--terracotta);
+  box-shadow: 0 0 0 4px rgba(196,113,74,0.08);
+}
+
+.input-field::placeholder { color: var(--text-light); }
+
+.input-row {
+  display: flex; gap: 10px; width: 100%; max-width: 360px;
+  margin-bottom: 12px;
+}
+
+.input-row .input-field { margin-bottom: 0; }
+
+/* ── CHIPS GRID ── */
+.chips-grid {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: center;
+  max-width: 380px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  background: var(--warm-white);
+  border: 2px solid rgba(196,113,74,0.15);
+  border-radius: 50px;
+  padding: 10px 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 500;
+  color: var(--mid-brown);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+  user-select: none;
+}
+
+.chip:hover {
+  border-color: var(--terracotta);
+  background: rgba(196,113,74,0.05);
+}
+
+.chip.selected {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: white;
+  box-shadow: 0 4px 12px rgba(196,113,74,0.25);
+}
+
+.chip.chip-sage.selected {
+  background: var(--sage);
+  border-color: var(--sage);
+  box-shadow: 0 4px 12px rgba(122,158,126,0.25);
+}
+
+/* ── BLOOD GROUP GRID ── */
+.blood-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; width: 100%; max-width: 360px;
+  margin-bottom: 12px;
+}
+
+.blood-chip {
+  background: var(--warm-white);
+  border: 2px solid rgba(196,113,74,0.15);
+  border-radius: 14px;
+  padding: 16px 8px;
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--mid-brown);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.blood-chip:hover { border-color: var(--terracotta); }
+
+.blood-chip.selected {
+  background: linear-gradient(135deg, #C0392B, #E74C3C);
+  border-color: #C0392B;
+  color: white;
+  box-shadow: 0 4px 14px rgba(192,57,43,0.3);
+}
+
+.blood-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px; font-weight: 400;
+  display: block; margin-top: 2px;
+  opacity: 0.75;
+}
+
+/* ── TOGGLE CARDS ── */
+.toggle-card {
+  width: 100%; max-width: 360px;
+  background: var(--warm-white);
+  border: 2px solid rgba(196,113,74,0.12);
+  border-radius: 18px;
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; margin-bottom: 10px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.toggle-card:hover { border-color: rgba(196,113,74,0.3); }
+
+.toggle-card.active {
+  border-color: var(--terracotta);
+  background: rgba(196,113,74,0.04);
+}
+
+.toggle-card-left {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.toggle-card-emoji { font-size: 24px; }
+
+.toggle-card-text strong {
+  display: block; font-size: 15px; font-weight: 600;
+  color: var(--deep-brown);
+}
+
+.toggle-card-text span {
+  font-size: 12px; color: var(--text-light);
+}
+
+.toggle-switch {
+  width: 44px; height: 26px;
+  background: rgba(196,113,74,0.15);
+  border-radius: 13px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform 0.2s;
+}
+
+.toggle-card.active .toggle-switch {
+  background: var(--terracotta);
+}
+
+.toggle-card.active .toggle-switch::after {
+  transform: translateX(18px);
+}
+
+/* ── SLIDER ── */
+.slider-container {
+  width: 100%; max-width: 360px;
+  margin-bottom: 20px;
+}
+
+.slider-label {
+  display: flex; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.slider-label span {
+  font-size: 13px; color: var(--text-light);
+}
+
+.slider-value {
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 700;
+  color: var(--terracotta);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.slider-unit {
+  font-size: 14px; color: var(--text-light);
+  font-family: 'DM Sans', sans-serif;
+}
+
+input[type="range"] {
+  width: 100%; -webkit-appearance: none;
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--terracotta) var(--pct, 50%), rgba(196,113,74,0.15) var(--pct, 50%));
+  outline: none; cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  box-shadow: 0 2px 8px rgba(196,113,74,0.4);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* ── WARNING CARD ── */
+.warning-card {
+  width: 100%; max-width: 360px;
+  background: rgba(232,184,75,0.08);
+  border: 1.5px solid rgba(232,184,75,0.3);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex; gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px; color: var(--mid-brown);
+  line-height: 1.5;
+}
+
+/* ── NAV BUTTONS ── */
+.nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 16px 28px 32px;
+  display: flex; gap: 12px;
+  background: linear-gradient(transparent, var(--cream) 40%);
+  z-index: 50;
+}
+
+.btn-next {
+  flex: 1;
+  background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
+  color: white; border: none;
+  border-radius: 18px; padding: 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(196,113,74,0.3);
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.btn-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(196,113,74,0.4);
+}
+
+.btn-back {
+  width: 56px; height: 56px;
+  background: var(--warm-white);
+  border: 2px solid rgba(196,113,74,0.15);
+  border-radius: 18px; cursor: pointer;
+  font-size: 20px; color: var(--mid-brown);
+  transition: all 0.2s; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.btn-back:hover { border-color: var(--terracotta); }
+.btn-back.hidden { opacity: 0; pointer-events: none; }
+
+/* ── WELCOME SCREEN SPECIAL ── */
+.welcome-hero {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.app-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 42px; font-weight: 700;
+  color: var(--terracotta);
+  margin-bottom: 4px;
+}
+
+.app-logo span { color: var(--sage); }
+
+.app-tagline {
+  font-size: 14px; color: var(--text-light);
+  letter-spacing: 1px; text-transform: uppercase;
+  margin-bottom: 32px;
+}
+
+.welcome-mascots {
+  display: flex; gap: 12px; margin-bottom: 28px;
+  align-items: flex-end;
+}
+
+.welcome-mascot {
+  animation: mascot-bounce 2.5s ease-in-out infinite;
+}
+
+.welcome-mascot:nth-child(2) {
+  animation-delay: 0.4s;
+  transform: scale(1.1);
+}
+
+.welcome-mascot:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+/* ── SUCCESS SCREEN ── */
+.success-circle {
+  width: 100px; height: 100px;
+  background: linear-gradient(135deg, var(--sage), var(--sage-light));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 30px rgba(122,158,126,0.3);
+  animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes success-pop {
+  from { opacity: 0; transform: scale(0.3); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.profile-summary {
+  width: 100%; max-width: 360px;
+  background: var(--warm-white);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1.5px solid rgba(196,113,74,0.12);
+  margin-bottom: 16px;
+}
+
+.summary-row {
+  display: flex; justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(196,113,74,0.08);
+  font-size: 14px;
+}
+
+.summary-row:last-child { border-bottom: none; }
+.summary-label { color: var(--text-light); }
+.summary-value { color: var(--deep-brown); font-weight: 600; text-align: right; max-width: 200px; }
+
+/* ── LOADING OVERLAY ── */
+.save-overlay {
+  position: fixed; inset: 0;
+  background: var(--cream);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 200; gap: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.save-overlay.active {
+  opacity: 1; pointer-events: all;
+}
+
+.save-spinner {
+  width: 50px; height: 50px;
+  border: 4px solid rgba(196,113,74,0.15);
+  border-top-color: var(--terracotta);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.save-text {
+  font-family: 'Fraunces', serif;
+  font-size: 20px; color: var(--deep-brown);
+}
+
+.save-sub {
+  font-size: 14px; color: var(--text-light);
+}
+
+/* ── MEDICATION INPUT ── */
+.med-input-row {
+  display: flex; gap: 8px;
+  width: 100%; max-width: 360px;
+  margin-bottom: 10px;
+}
+
+.med-input-row .input-field {
+  flex: 1; margin-bottom: 0;
+}
+
+.med-add-btn {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: var(--terracotta); color: white;
+  border: none; border-radius: 14px;
+  font-size: 22px; cursor: pointer;
+  transition: all 0.2s;
+}
+
+.med-add-btn:hover { opacity: 0.85; }
+
+.med-tags {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  width: 100%; max-width: 360px;
+  margin-bottom: 12px;
+  min-height: 10px;
+}
+
+.med-tag {
+  background: rgba(196,113,74,0.1);
+  border: 1.5px solid rgba(196,113,74,0.2);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 13px; color: var(--terracotta);
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.med-tag:hover { background: rgba(196,113,74,0.2); }
+.med-tag .remove { font-size: 15px; opacity: 0.6; }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════ -->
-<!-- SVG MASCOTS DEFINITIONS               -->
-<!-- ══════════════════════════════════════ -->
+<!-- SVG MASCOTS (réutilisés depuis vitalia-app.html) -->
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-
-    <!-- GOJI BERRY - Petit héros rouge -->
-    <symbol id="mascot-goji" viewBox="0 0 80 80">
-      <!-- Corps -->
+    <symbol id="goji" viewBox="0 0 80 80">
       <ellipse cx="40" cy="48" rx="22" ry="24" fill="#C0392B"/>
       <ellipse cx="40" cy="46" rx="20" ry="22" fill="#E74C3C"/>
-      <!-- Reflet -->
       <ellipse cx="33" cy="38" rx="6" ry="4" fill="rgba(255,255,255,0.3)" transform="rotate(-20 33 38)"/>
-      <!-- Feuilles -->
       <ellipse cx="28" cy="27" rx="8" ry="4" fill="#27AE60" transform="rotate(-30 28 27)"/>
       <ellipse cx="52" cy="26" rx="8" ry="4" fill="#2ECC71" transform="rotate(30 52 26)"/>
-      <!-- Tige -->
       <rect x="38" y="22" width="4" height="8" rx="2" fill="#8B6914"/>
-      <!-- Visage -->
       <circle cx="34" cy="47" r="3.5" fill="#000" opacity="0.7"/>
       <circle cx="46" cy="47" r="3.5" fill="#000" opacity="0.7"/>
       <circle cx="35" cy="46" r="1.2" fill="white"/>
       <circle cx="47" cy="46" r="1.2" fill="white"/>
-      <!-- Sourire -->
       <path d="M34 55 Q40 61 46 55" stroke="#8B0000" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <!-- Joues -->
       <circle cx="28" cy="51" r="4" fill="rgba(255,180,180,0.5)"/>
       <circle cx="52" cy="51" r="4" fill="rgba(255,180,180,0.5)"/>
-      <!-- Cape de super-héros -->
       <path d="M20 52 L18 70 L40 64 L62 70 L60 52 Q40 60 20 52Z" fill="#8B0000" opacity="0.8"/>
-      <path d="M20 52 Q40 58 60 52" fill="none" stroke="#C0392B" stroke-width="1"/>
     </symbol>
-
-    <!-- CURCUMA - Sage doyen doré -->
-    <symbol id="mascot-curcuma" viewBox="0 0 80 80">
-      <!-- Racine/corps -->
+    <symbol id="curcuma" viewBox="0 0 80 80">
       <ellipse cx="40" cy="50" rx="18" ry="20" fill="#E67E22"/>
       <ellipse cx="40" cy="48" rx="16" ry="18" fill="#F39C12"/>
-      <!-- Nœuds de racine -->
       <ellipse cx="56" cy="52" rx="10" ry="8" fill="#E67E22"/>
       <ellipse cx="24" cy="55" rx="9" ry="7" fill="#E67E22"/>
       <ellipse cx="55" cy="52" rx="8" ry="6" fill="#F0A500"/>
       <ellipse cx="25" cy="55" rx="7" ry="5" fill="#F0A500"/>
-      <!-- Chapeau de sage -->
       <ellipse cx="40" cy="33" rx="20" ry="6" fill="#8B6914"/>
       <rect x="28" y="20" width="24" height="14" rx="4" fill="#6B4F0A"/>
       <rect x="30" y="22" width="20" height="10" rx="3" fill="#8B6914"/>
-      <!-- Étoiles de sagesse -->
       <text x="34" y="30" font-size="7" fill="#F1C40F">✦</text>
-      <text x="41" y="29" font-size="5" fill="#F1C40F">✦</text>
-      <!-- Visage sage -->
       <circle cx="35" cy="46" r="3" fill="#000" opacity="0.7"/>
       <circle cx="45" cy="46" r="3" fill="#000" opacity="0.7"/>
       <circle cx="36" cy="45" r="1" fill="white"/>
       <circle cx="46" cy="45" r="1" fill="white"/>
-      <!-- Sourcils de sage -->
-      <path d="M31 41 Q35 39 38 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M42 41 Q45 39 49 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <!-- Sourire sage -->
       <path d="M33 53 Q40 58 47 53" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <!-- Barbe -->
-      <path d="M33 57 Q40 65 47 57" stroke="#D4A017" stroke-width="3" fill="none" stroke-linecap="round"/>
     </symbol>
-
-    <!-- GINGEMBRE - Piquant et dynamique -->
-    <symbol id="mascot-gingembre" viewBox="0 0 80 80">
-      <!-- Corps -->
-      <ellipse cx="40" cy="50" rx="16" ry="18" fill="#CA8A04"/>
-      <ellipse cx="40" cy="48" rx="14" ry="16" fill="#D97706"/>
-      <!-- Branches dynamiques -->
-      <ellipse cx="58" cy="44" rx="11" ry="8" fill="#CA8A04" transform="rotate(20 58 44)"/>
-      <ellipse cx="22" cy="42" rx="11" ry="8" fill="#CA8A04" transform="rotate(-20 22 42)"/>
-      <ellipse cx="57" cy="44" rx="9" ry="6" fill="#D97706" transform="rotate(20 57 44)"/>
-      <ellipse cx="23" cy="42" rx="9" ry="6" fill="#D97706" transform="rotate(-20 23 42)"/>
-      <!-- Petite branche en haut -->
-      <ellipse cx="52" cy="30" rx="8" ry="6" fill="#CA8A04" transform="rotate(-30 52 30)"/>
-      <ellipse cx="51" cy="30" rx="6" ry="4" fill="#D97706" transform="rotate(-30 51 30)"/>
-      <!-- Flammes de piquant ! -->
-      <path d="M60 20 Q63 12 58 8 Q65 14 64 20 Q67 13 63 8 Q70 16 66 22Z" fill="#EF4444" opacity="0.8"/>
-      <path d="M60 20 Q62 15 59 12 Q64 17 62 22Z" fill="#FCD34D"/>
-      <!-- Visage dynamique -->
-      <circle cx="35" cy="47" r="3" fill="#000" opacity="0.7"/>
-      <circle cx="45" cy="47" r="3" fill="#000" opacity="0.7"/>
-      <circle cx="36" cy="46" r="1" fill="white"/>
-      <circle cx="46" cy="46" r="1" fill="white"/>
-      <!-- Sourcils en action -->
-      <path d="M31 42 Q35 40 38 42" stroke="#92400E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M42 42 Q45 40 49 42" stroke="#92400E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Bouche ouverte dynamique -->
-      <path d="M33 54 Q40 60 47 54" stroke="#92400E" stroke-width="2" fill="#FCA5A5" stroke-linecap="round"/>
-      <!-- Éclairs d'énergie -->
-      <text x="8" y="35" font-size="12" fill="#F59E0B">⚡</text>
-      <text x="62" y="50" font-size="10" fill="#F59E0B">⚡</text>
-    </symbol>
-
-    <!-- MYRTILLE - Petit génie antioxydant -->
-    <symbol id="mascot-myrtille" viewBox="0 0 80 80">
-      <!-- Corps -->
-      <circle cx="40" cy="50" r="22" fill="#7C3AED"/>
-      <circle cx="40" cy="48" r="20" fill="#8B5CF6"/>
-      <!-- Reflet -->
-      <ellipse cx="33" cy="40" rx="6" ry="4" fill="rgba(255,255,255,0.25)" transform="rotate(-15 33 40)"/>
-      <!-- Petite corolle en haut -->
-      <circle cx="40" cy="28" r="5" fill="#6D28D9"/>
-      <circle cx="33" cy="30" r="4" fill="#7C3AED"/>
-      <circle cx="47" cy="30" r="4" fill="#7C3AED"/>
-      <!-- Lunettes de génie -->
-      <circle cx="34" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
-      <circle cx="46" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
-      <line x1="41" y1="46" x2="39" y2="46" stroke="#C4B5FD" stroke-width="2"/>
-      <line x1="27" y1="46" x2="24" y2="44" stroke="#C4B5FD" stroke-width="2"/>
-      <line x1="53" y1="46" x2="56" y2="44" stroke="#C4B5FD" stroke-width="2"/>
-      <!-- Yeux dans les lunettes -->
-      <circle cx="34" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/>
-      <circle cx="46" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/>
-      <circle cx="35" cy="45" r="1" fill="white"/>
-      <circle cx="47" cy="45" r="1" fill="white"/>
-      <!-- Sourire de génie satisfait -->
-      <path d="M34 56 Q40 62 46 56" stroke="#4C1D95" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Joues -->
-      <circle cx="27" cy="53" r="4" fill="rgba(196,181,253,0.4)"/>
-      <circle cx="53" cy="53" r="4" fill="rgba(196,181,253,0.4)"/>
-      <!-- Molécules antioxydantes -->
-      <circle cx="14" cy="30" r="3" fill="#A78BFA" opacity="0.6"/>
-      <circle cx="18" cy="24" r="2" fill="#C4B5FD" opacity="0.6"/>
-      <line x1="14" y1="30" x2="18" y2="24" stroke="#A78BFA" stroke-width="1" opacity="0.6"/>
-      <circle cx="64" cy="28" r="3" fill="#A78BFA" opacity="0.6"/>
-      <circle cx="60" cy="22" r="2" fill="#C4B5FD" opacity="0.6"/>
-      <line x1="64" y1="28" x2="60" y2="22" stroke="#A78BFA" stroke-width="1" opacity="0.6"/>
-    </symbol>
-
-    <!-- AVOCAT - Cool et décontracté -->
-    <symbol id="mascot-avocat" viewBox="0 0 80 80">
-      <!-- Corps avocat -->
+    <symbol id="avocat" viewBox="0 0 80 80">
       <ellipse cx="40" cy="50" rx="20" ry="26" fill="#166534"/>
       <ellipse cx="40" cy="52" rx="18" ry="24" fill="#16A34A"/>
-      <!-- Chair intérieure -->
       <ellipse cx="40" cy="55" rx="13" ry="17" fill="#BBF7D0"/>
       <ellipse cx="40" cy="57" rx="10" ry="13" fill="#86EFAC"/>
-      <!-- Noyau/ventre -->
       <ellipse cx="40" cy="60" rx="7" ry="9" fill="#92400E"/>
       <ellipse cx="40" cy="59" rx="5" ry="7" fill="#A16207"/>
-      <!-- Lunettes de soleil cool -->
       <rect x="26" y="40" width="12" height="8" rx="4" fill="#0F172A"/>
       <rect x="42" y="40" width="12" height="8" rx="4" fill="#0F172A"/>
       <line x1="38" y1="44" x2="42" y2="44" stroke="#334155" stroke-width="2"/>
-      <line x1="26" y1="44" x2="22" y2="42" stroke="#334155" stroke-width="2"/>
-      <line x1="54" y1="44" x2="58" y2="42" stroke="#334155" stroke-width="2"/>
-      <!-- Reflets lunettes -->
-      <ellipse cx="30" cy="42" rx="2.5" ry="1.5" fill="rgba(255,255,255,0.3)" transform="rotate(-20 30 42)"/>
-      <ellipse cx="46" cy="42" rx="2.5" ry="1.5" fill="rgba(255,255,255,0.3)" transform="rotate(-20 46 42)"/>
-      <!-- Sourire cool -->
       <path d="M33 55 Q40 61 47 55" stroke="#14532D" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Petite tige décontractée -->
       <rect x="38" y="22" width="4" height="10" rx="2" fill="#166534"/>
-      <ellipse cx="40" cy="20" rx="6" ry="4" fill="#16A34A" transform="rotate(-15 40 20)"/>
-      <!-- Emoji cool -->
-      <text x="30" y="75" font-size="9" fill="#14532D">😎</text>
     </symbol>
-
   </defs>
 </svg>
 
-<!-- ══════════════════════════════════════ -->
-<!-- LOADING SCREEN                        -->
-<!-- ══════════════════════════════════════ -->
-<div class="loading-screen" id="loadingScreen">
-  <div class="loading-mascot">
-    <svg width="90" height="90"><use href="#mascot-goji"/></svg>
-  </div>
-  <div class="loading-text">Vitalia prépare ton plan ✨</div>
-  <div class="loading-sub">Nos super-aliments analysent tes besoins...</div>
-  <div class="loading-dots">
-    <div class="loading-dot"></div>
-    <div class="loading-dot"></div>
-    <div class="loading-dot"></div>
-  </div>
+<!-- PROGRESS BAR -->
+<div class="progress-bar">
+  <div class="progress-fill" id="progressFill" style="width: 10%"></div>
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!-- OVERLAY CONFIG PANEL                  -->
-<!-- ══════════════════════════════════════ -->
-<div class="overlay" id="overlay" onclick="fermerConfig()"></div>
+<!-- STEP DOTS -->
+<div class="step-counter" id="stepCounter"></div>
 
-<!-- ══════════════════════════════════════ -->
-<!-- CONFIG PANEL                          -->
-<!-- ══════════════════════════════════════ -->
-<div class="config-panel" id="configPanel">
-  <div class="config-handle"></div>
-  <div class="config-title">🌿 Personnalise ton plan</div>
+<!-- SKIP BUTTON -->
+<button class="skip-btn hidden" id="skipBtn" onclick="skipStep()">Passer →</button>
 
-  <div class="config-field">
-    <label class="config-label">Comment tu te sens ?</label>
-    <div class="config-chips" id="symptomsChips">
-      <div class="config-chip selected" onclick="toggleChip(this, 'fatigue')">😴 Fatigue</div>
-      <div class="config-chip selected" onclick="toggleChip(this, 'stress')">😰 Stress</div>
-      <div class="config-chip" onclick="toggleChip(this, 'digestion')">🌀 Digestion</div>
-      <div class="config-chip" onclick="toggleChip(this, 'sommeil')">🌙 Sommeil</div>
-      <div class="config-chip" onclick="toggleChip(this, 'inflammation')">🔥 Inflammation</div>
-      <div class="config-chip" onclick="toggleChip(this, 'energie')">⚡ Énergie</div>
+<!-- SAVE OVERLAY -->
+<div class="save-overlay" id="saveOverlay">
+  <div class="save-spinner"></div>
+  <div class="save-text">Création de ton profil... 🌿</div>
+  <div class="save-sub">Vitalia apprend à te connaître</div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SCREENS                                    -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screens-wrapper">
+
+  <!-- ── ÉCRAN 0 : BIENVENUE ── -->
+  <div class="screen active" id="screen-0">
+    <div class="welcome-hero">
+      <div class="app-logo">Vita<span>lia</span></div>
+      <div class="app-tagline">Ton compagnon bien-être</div>
+
+      <div class="welcome-mascots">
+        <div class="welcome-mascot">
+          <svg width="70" height="70"><use href="#goji"/></svg>
+        </div>
+        <div class="welcome-mascot">
+          <svg width="86" height="86"><use href="#curcuma"/></svg>
+        </div>
+        <div class="welcome-mascot">
+          <svg width="70" height="70"><use href="#avocat"/></svg>
+        </div>
+      </div>
+
+      <div class="screen-title">Bienvenue ! 👋</div>
+      <div class="screen-subtitle">
+        Nous allons créer ton profil bien-être personnalisé en quelques minutes.<br><br>
+        <strong>Toutes les questions sont optionnelles</strong> — réponds uniquement ce que tu veux partager.
+      </div>
     </div>
   </div>
 
-  <div class="config-row">
-    <div class="config-field">
-      <label class="config-label">Temps de cuisson max</label>
-      <select class="config-input" id="tempsMax">
-        <option value="15">15 min ⚡</option>
-        <option value="30" selected>30 min</option>
-        <option value="45">45 min</option>
-        <option value="60">1 heure</option>
+  <!-- ── ÉCRAN 1 : PRÉNOM ── -->
+  <div class="screen" id="screen-1">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#goji"/></svg>
+      <div class="mascot-bubble">Commençons par faire connaissance ! 😊</div>
+    </div>
+    <div class="screen-title">Comment tu t'appelles ?</div>
+    <div class="screen-subtitle">Pour que Vitalia puisse te parler personnellement</div>
+    <input class="input-field" type="text" id="prenom" placeholder="Ton prénom..." autocomplete="given-name"/>
+  </div>
+
+  <!-- ── ÉCRAN 2 : ÂGE & SEXE ── -->
+  <div class="screen" id="screen-2">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#curcuma"/></svg>
+      <div class="mascot-bubble">Ces infos m'aident à ajuster les recommandations !</div>
+    </div>
+    <div class="screen-title">Ton profil de base</div>
+    <div class="screen-subtitle">Pour des recommandations adaptées à toi</div>
+
+    <div class="input-row">
+      <input class="input-field" type="number" id="age" placeholder="Âge" min="10" max="120"/>
+      <select class="input-field" id="sexe">
+        <option value="">Sexe...</option>
+        <option value="femme">Femme</option>
+        <option value="homme">Homme</option>
+        <option value="autre">Autre</option>
       </select>
     </div>
-    <div class="config-field">
-      <label class="config-label">Budget/jour</label>
-      <select class="config-input" id="budgetMax">
-        <option value="10">10€ 💚</option>
-        <option value="15" selected>15€</option>
-        <option value="25">25€</option>
-      </select>
+  </div>
+
+  <!-- ── ÉCRAN 3 : OBJECTIFS ── -->
+  <div class="screen" id="screen-3">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#avocat"/></svg>
+      <div class="mascot-bubble">Qu'est-ce qui t'a amené vers Vitalia ? 🎯</div>
+    </div>
+    <div class="screen-title">Tes objectifs bien-être</div>
+    <div class="screen-subtitle">Sélectionne tout ce qui te correspond (plusieurs choix possibles)</div>
+
+    <div class="chips-grid" id="objectifsChips">
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'energie')">⚡ Énergie</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'stress')">😌 Anti-stress</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'sommeil')">🌙 Sommeil</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'digestion')">🌀 Digestion</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'immunite')">🛡️ Immunité</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'inflammation')">🔥 Inflammation</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'peau')">✨ Peau & Beauté</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'hormones')">⚖️ Équilibre hormonal</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'poids')">🌿 Gestion du poids</div>
+      <div class="chip" onclick="toggleChip(this, 'objectifs', 'concentration')">🧠 Concentration</div>
     </div>
   </div>
 
-  <div class="config-field">
-    <label class="config-label">Régimes alimentaires</label>
-    <div class="config-chips">
-      <div class="config-chip selected" onclick="toggleChip(this, 'sans_gluten')" data-regime="sans_gluten">🌾 Sans gluten</div>
-      <div class="config-chip" onclick="toggleChip(this, 'vegan')" data-regime="vegan">🌱 Végan</div>
-      <div class="config-chip" onclick="toggleChip(this, 'sans_lactose')" data-regime="sans_lactose">🥛 Sans lactose</div>
-      <div class="config-chip" onclick="toggleChip(this, 'keto')" data-regime="keto">🥑 Kéto</div>
+  <!-- ── ÉCRAN 4 : RÉGIMES ── -->
+  <div class="screen" id="screen-4">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#goji"/></svg>
+      <div class="mascot-bubble">Je m'adapte à 100% à tes habitudes alimentaires !</div>
+    </div>
+    <div class="screen-title">Régimes alimentaires</div>
+    <div class="screen-subtitle">Vitalia respectera ces contraintes dans toutes ses suggestions</div>
+
+    <div class="chips-grid">
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'vegan')">🌱 Végan</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'vegetarien')">🥕 Végétarien</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'sans_gluten')">🌾 Sans gluten</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'sans_lactose')">🥛 Sans lactose</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'keto')">🥑 Kéto</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'paleo')">🍖 Paléo</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'halal')">☪️ Halal</div>
+      <div class="chip chip-sage" onclick="toggleChip(this, 'regimes', 'casher')">✡️ Casher</div>
     </div>
   </div>
 
-  <button class="config-submit" onclick="genererPlan()">
-    ✨ Générer mon plan
+  <!-- ── ÉCRAN 5 : ALLERGIES ── -->
+  <div class="screen" id="screen-5">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#curcuma"/></svg>
+      <div class="mascot-bubble">Ta sécurité est ma priorité absolue ! 🔒</div>
+    </div>
+    <div class="screen-title">Allergies & intolérances</div>
+    <div class="screen-subtitle">Ces éléments seront automatiquement exclus de toutes tes recommandations</div>
+
+    <div class="chips-grid">
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'gluten')">🌾 Gluten</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'lactose')">🥛 Lactose</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'arachides')">🥜 Arachides</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'noix')">🌰 Noix & fruits à coque</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'soja')">🌿 Soja</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'oeufs')">🥚 Œufs</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'poisson')">🐟 Poisson</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'crustaces')">🦐 Crustacés</div>
+      <div class="chip" onclick="toggleChip(this, 'allergies', 'sesame')">🌱 Sésame</div>
+    </div>
+  </div>
+
+  <!-- ── ÉCRAN 6 : GROSSESSE / GROUPE SANGUIN ── -->
+  <div class="screen" id="screen-6">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#avocat"/></svg>
+      <div class="mascot-bubble">Ces infos me permettent d'adapter finement les conseils 🌸</div>
+    </div>
+    <div class="screen-title">Santé & groupe sanguin</div>
+    <div class="screen-subtitle">Optionnel — mais très utile pour personnaliser encore plus</div>
+
+    <div class="toggle-card" id="toggle-enceinte" onclick="toggleCard(this, 'enceinte')">
+      <div class="toggle-card-left">
+        <div class="toggle-card-emoji">🤰</div>
+        <div class="toggle-card-text">
+          <strong>Grossesse</strong>
+          <span>Précautions maximales activées</span>
+        </div>
+      </div>
+      <div class="toggle-switch"></div>
+    </div>
+
+    <div class="toggle-card" id="toggle-allaitement" onclick="toggleCard(this, 'allaitement')">
+      <div class="toggle-card-left">
+        <div class="toggle-card-emoji">🍼</div>
+        <div class="toggle-card-text">
+          <strong>Allaitement</strong>
+          <span>Certains compléments adaptés</span>
+        </div>
+      </div>
+      <div class="toggle-switch"></div>
+    </div>
+
+    <div style="width:100%; max-width:360px; margin-top: 20px; margin-bottom: 10px;">
+      <div class="screen-subtitle" style="margin-bottom: 14px; text-align: left;">🩸 Groupe sanguin (optionnel)</div>
+      <div class="blood-grid">
+        <div class="blood-chip" onclick="selectBlood(this, 'A+')">A+<span class="blood-sub">Rh+</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'A-')">A−<span class="blood-sub">Rh−</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'B+')">B+<span class="blood-sub">Rh+</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'B-')">B−<span class="blood-sub">Rh−</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'AB+')">AB+<span class="blood-sub">Rh+</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'AB-')">AB−<span class="blood-sub">Rh−</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'O+')">O+<span class="blood-sub">Rh+</span></div>
+        <div class="blood-chip" onclick="selectBlood(this, 'O-')">O−<span class="blood-sub">Rh−</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ÉCRAN 7 : MÉDICAMENTS ── -->
+  <div class="screen" id="screen-7">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#goji"/></svg>
+      <div class="mascot-bubble">Je vérifierai les interactions automatiquement 💊</div>
+    </div>
+    <div class="screen-title">Médicaments actuels</div>
+    <div class="screen-subtitle">
+      Vitalia excluera automatiquement les compléments qui peuvent interagir.<br>
+      <em style="font-size: 12px; color: var(--text-light);">Nom commercial ou générique, ex: Levothyrox, Aspirine...</em>
+    </div>
+
+    <div class="warning-card">
+      <span>⚠️</span>
+      <span>Cette information est traitée localement et n'est pas partagée. Consulte toujours ton médecin avant d'ajouter un complément.</span>
+    </div>
+
+    <div class="med-input-row">
+      <input class="input-field" type="text" id="medInput" placeholder="Nom du médicament..." onkeydown="if(event.key==='Enter') ajouterMed()"/>
+      <button class="med-add-btn" onclick="ajouterMed()">+</button>
+    </div>
+
+    <div class="med-tags" id="medTags"></div>
+  </div>
+
+  <!-- ── ÉCRAN 8 : BUDGET & TEMPS ── -->
+  <div class="screen" id="screen-8">
+    <div class="mascot-container">
+      <svg class="mascot-svg"><use href="#curcuma"/></svg>
+      <div class="mascot-bubble">Je m'adapte à ton quotidien réel 🍳</div>
+    </div>
+    <div class="screen-title">Budget & temps de cuisine</div>
+    <div class="screen-subtitle">Pour des recommandations vraiment réalistes</div>
+
+    <div class="slider-container">
+      <div class="slider-value"><span id="budgetVal">15</span> <span class="slider-unit">€ / jour</span></div>
+      <div class="slider-label">
+        <span>5€ économique</span>
+        <span>50€ premium</span>
+      </div>
+      <input type="range" id="budgetSlider" min="5" max="50" value="15"
+        oninput="updateSlider('budget', this.value)"
+        style="--pct: 22%"/>
+    </div>
+
+    <div class="slider-container" style="margin-top: 10px;">
+      <div class="slider-value"><span id="tempsVal">30</span> <span class="slider-unit">min max par repas</span></div>
+      <div class="slider-label">
+        <span>5 min express</span>
+        <span>90 min chef</span>
+      </div>
+      <input type="range" id="tempsSlider" min="5" max="90" step="5" value="30"
+        oninput="updateSlider('temps', this.value)"
+        style="--pct: 29%"/>
+    </div>
+  </div>
+
+  <!-- ── ÉCRAN 9 : SUCCÈS ── -->
+  <div class="screen" id="screen-9">
+    <div class="success-circle">🎉</div>
+    <div class="screen-title">Profil créé ! 🌿</div>
+    <div class="screen-subtitle">Vitalia connaît maintenant tes besoins. Voici un résumé :</div>
+
+    <div class="profile-summary" id="profileSummary"></div>
+
+    <div style="font-size: 13px; color: var(--text-light); text-align: center; max-width: 300px;">
+      Tu pourras modifier ton profil à tout moment depuis les paramètres ⚙️
+    </div>
+  </div>
+
+</div>
+
+<!-- NAV BUTTONS -->
+<div class="nav-bar">
+  <button class="btn-back hidden" id="backBtn" onclick="goBack()">←</button>
+  <button class="btn-next" id="nextBtn" onclick="goNext()">
+    <span id="nextLabel">Commencer ✨</span>
   </button>
 </div>
 
-<!-- ══════════════════════════════════════ -->
-<!-- MAIN APP                              -->
-<!-- ══════════════════════════════════════ -->
-<div id="app" style="opacity:0; transition: opacity 0.5s;">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="logo">Vita<span>lia</span></div>
-    <div class="date-badge" id="dateBadge">Mardi 17 fév.</div>
-  </div>
-
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-card">
-      <div class="hero-greeting">Ton plan du jour</div>
-      <div class="hero-message" id="heroMessage">
-        Bonjour ! Prêt à prendre soin de toi ? 🌿
-      </div>
-      <div class="hero-score">
-        <span class="hero-score-label">Score nutritionnel</span>
-        <span class="hero-score-value" id="scoreValue">8/10</span>
-        <div class="stars" id="starsContainer"></div>
-      </div>
-
-      <!-- Mascots flottants -->
-      <div class="mascots-row">
-        <svg class="mascot"><use href="#mascot-goji"/></svg>
-        <svg class="mascot"><use href="#mascot-curcuma"/></svg>
-        <svg class="mascot"><use href="#mascot-gingembre"/></svg>
-      </div>
-    </div>
-  </div>
-
-  <!-- COMPANIONS BAR -->
-  <div class="companions-section">
-    <div class="section-label">Tes alliés du jour</div>
-    <div class="companions-scroll">
-      <div class="companion-chip">
-        <div class="companion-avatar active" style="background: linear-gradient(135deg, #FEE2E2, #FECACA);">
-          <svg><use href="#mascot-goji"/></svg>
-        </div>
-        <div class="companion-name">Goji</div>
-      </div>
-      <div class="companion-chip">
-        <div class="companion-avatar" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A);">
-          <svg><use href="#mascot-curcuma"/></svg>
-        </div>
-        <div class="companion-name">Curcuma</div>
-      </div>
-      <div class="companion-chip">
-        <div class="companion-avatar" style="background: linear-gradient(135deg, #FFF7ED, #FED7AA);">
-          <svg><use href="#mascot-gingembre"/></svg>
-        </div>
-        <div class="companion-name">Gingembre</div>
-      </div>
-      <div class="companion-chip">
-        <div class="companion-avatar" style="background: linear-gradient(135deg, #EDE9FE, #DDD6FE);">
-          <svg><use href="#mascot-myrtille"/></svg>
-        </div>
-        <div class="companion-name">Myrtille</div>
-      </div>
-      <div class="companion-chip">
-        <div class="companion-avatar" style="background: linear-gradient(135deg, #DCFCE7, #BBF7D0);">
-          <svg><use href="#mascot-avocat"/></svg>
-        </div>
-        <div class="companion-name">Avocat</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PLAN TIMELINE -->
-  <div class="plan-section">
-    <div class="section-label">Ton programme</div>
-    <div class="timeline" id="timeline">
-
-      <!-- MATIN -->
-      <div class="moment-card matin" onclick="toggleInstructions('matin')">
-        <div class="moment-header">
-          <div class="moment-time-block">
-            <div class="moment-emoji">🌅</div>
-            <div>
-              <div class="moment-time" id="matin-time">7h30</div>
-              <div class="moment-label">Petit-déjeuner</div>
-            </div>
-          </div>
-          <div class="moment-calories" id="matin-cal">350 kcal</div>
-        </div>
-        <div class="moment-title" id="matin-titre">Bol Énergie Matinale au Curcuma Doré</div>
-        <div class="moment-description" id="matin-desc">Un porridge crémeux sans gluten au lait d'amande, généreusement parfumé au curcuma pour un réveil tout en douceur.</div>
-        <div class="moment-footer">
-          <div class="moment-motivant" id="matin-motivant">Une cuillère d'or pour bien démarrer ! ✨</div>
-          <button class="expand-btn" id="btn-matin">▼</button>
-        </div>
-        <div class="moment-instructions" id="instructions-matin">
-          <div class="instructions-content" id="matin-instructions">
-            Faire chauffer 200ml de lait d'amande. Ajouter 40g de flocons de sarrasin, 1/2 càc de curcuma et une pincée de cannelle. Laisser gonfler 5 min à feu doux. Servir avec quelques amandes effilées.
-          </div>
-        </div>
-      </div>
-
-      <!-- MIDI -->
-      <div class="moment-card midi" onclick="toggleInstructions('midi')">
-        <div class="moment-header">
-          <div class="moment-time-block">
-            <div class="moment-emoji">☀️</div>
-            <div>
-              <div class="moment-time" id="midi-time">12h30</div>
-              <div class="moment-label">Déjeuner</div>
-            </div>
-          </div>
-          <div class="moment-calories" id="midi-cal">550 kcal</div>
-        </div>
-        <div class="moment-title" id="midi-titre">Bowl Réconfort Lentilles & Potimarron Rôti</div>
-        <div class="moment-description" id="midi-desc">Un mélange gourmand de lentilles corail, de potimarron rôti au romarin et d'épinards frais, le tout arrosé d'une vinaigrette citron-gingembre.</div>
-        <div class="moment-footer">
-          <div class="moment-motivant" id="midi-motivant">Ce bol est une vraie caresse pour tes papilles 💛</div>
-          <button class="expand-btn" id="btn-midi">▼</button>
-        </div>
-        <div class="moment-instructions" id="instructions-midi">
-          <div class="instructions-content" id="midi-instructions">
-            Faire cuire 60g de lentilles corail. Couper 150g de potimarron en cubes, arroser d'huile d'olive et de romarin, enfourner 20 min à 200°C. Assembler avec une poignée d'épinards frais et la vinaigrette.
-          </div>
-        </div>
-      </div>
-
-      <!-- APRÈS-MIDI -->
-      <div class="moment-card apres-midi" onclick="toggleInstructions('apres_midi')">
-        <div class="moment-header">
-          <div class="moment-time-block">
-            <div class="moment-emoji">🍃</div>
-            <div>
-              <div class="moment-time" id="apres_midi-time">15h30</div>
-              <div class="moment-label">Pause</div>
-            </div>
-          </div>
-          <div class="moment-calories" id="apres_midi-cal">150 kcal</div>
-        </div>
-        <div class="moment-title" id="apres_midi-titre">Pause Douceur & Cohérence Cardiaque</div>
-        <div class="moment-description" id="apres_midi-desc">Un carré de chocolat noir à 70% accompagné d'une tisane au thym, suivi de 5 minutes de cohérence cardiaque pour recentrer ton énergie.</div>
-        <div class="moment-footer">
-          <div class="moment-motivant" id="apres_midi-motivant">Prends ce moment rien que pour toi 🙏</div>
-          <button class="expand-btn" id="btn-apres_midi">▼</button>
-        </div>
-        <div class="moment-instructions" id="instructions-apres_midi">
-          <div class="instructions-content" id="apres_midi-instructions">
-            Prépare une tisane au thym (5 min d'infusion). Pratique la cohérence cardiaque : inspire 5s, expire 5s, pendant 5 minutes. Saveure ton carré de chocolat en pleine conscience.
-          </div>
-        </div>
-      </div>
-
-      <!-- SOIR -->
-      <div class="moment-card soir" onclick="toggleInstructions('soir')">
-        <div class="moment-header">
-          <div class="moment-time-block">
-            <div class="moment-emoji">🌙</div>
-            <div>
-              <div class="moment-time" id="soir-time">19h30</div>
-              <div class="moment-label">Dîner</div>
-            </div>
-          </div>
-          <div class="moment-calories" id="soir-cal">450 kcal</div>
-        </div>
-        <div class="moment-title" id="soir-titre">Velouté Cocon de Patate Douce & Pois Chiches Croquants</div>
-        <div class="moment-description" id="soir-desc">Une soupe onctueuse à la patate douce et lait de coco, agrémentée de pois chiches rôtis aux épices pour le croquant.</div>
-        <div class="moment-footer">
-          <div class="moment-motivant" id="soir-motivant">Un dîner léger et nourrissant pour une nuit réparatrice 🌙</div>
-          <button class="expand-btn" id="btn-soir">▼</button>
-        </div>
-        <div class="moment-instructions" id="instructions-soir">
-          <div class="instructions-content" id="soir-instructions">
-            Faire revenir 1 oignon, ajouter 300g de patate douce coupée en cubes, couvrir d'eau et laisser cuire 15 min. Mixer avec 50ml de lait de coco. Servir avec des pois chiches rôtis 10 min au four avec du paprika.
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ROUTINE DU JOUR -->
-  <div class="routine-section">
-    <div class="routine-card">
-      <div class="routine-title">🧘 Routine du jour</div>
-      <div class="routine-items">
-        <div class="routine-item">
-          <div class="routine-dot"></div>
-          <div class="routine-text"><strong>Matin :</strong> <span id="routine-matin">5 minutes de cohérence cardiaque (inspirer 5s, expirer 5s)</span></div>
-        </div>
-        <div class="routine-item">
-          <div class="routine-dot" style="background: var(--terracotta);"></div>
-          <div class="routine-text"><strong>Complément phare :</strong> <span id="routine-complement">Vitamine D — 1 goutte ce midi avec ton repas pour soutenir l'immunité</span></div>
-        </div>
-        <div class="routine-item">
-          <div class="routine-dot" style="background: var(--golden);"></div>
-          <div class="routine-text"><strong>Aromathérapie :</strong> <span id="routine-aroma">Diffusion lavande le soir pour préparer le sommeil</span></div>
-        </div>
-        <div class="routine-item">
-          <div class="routine-dot" style="background: var(--mirtille-purple);"></div>
-          <div class="routine-text"><strong>Soir :</strong> <span id="routine-soir">10 minutes de lecture légère ou d'écoute de musique douce, sans écran</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CONSEIL DU JOUR -->
-  <div class="conseil-section">
-    <div class="conseil-card">
-      <div class="conseil-title">💡 Le saviez-vous ?</div>
-      <div class="conseil-text" id="conseilText">
-        Le curcuma et le magnésium (présent dans les légumineuses) sont de précieux alliés contre la fatigue et le stress. Le curcuma aide à moduler l'inflammation, tandis que le magnésium participe à plus de 300 réactions enzymatiques, dont la production d'énergie.
-      </div>
-    </div>
-  </div>
-
-  <div class="scroll-pad"></div>
-</div>
-
-<!-- BOUTON GÉNÉRER -->
-<button class="generate-btn" id="generateBtn" onclick="ouvrirConfig()">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-  </svg>
-  Nouveau plan
-</button>
-
 <script>
-// ══════════════════════════════════════
+// ══════════════════════════════════════════
 // CONFIGURATION SUPABASE
-// ══════════════════════════════════════
+// ══════════════════════════════════════════
 const SUPABASE_URL = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDY1NjUsImV4cCI6MjA4NTYyMjU2NX0.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4' // ← à remplacer
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDY1NjUsImV4cCI6MjA4NTYyMjU2NX0.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4' // ← même clé que vitalia-app.html
 
-// ══════════════════════════════════════
+// ══════════════════════════════════════════
 // STATE
-// ══════════════════════════════════════
-let selectedSymptoms = ['fatigue', 'stress']
-let selectedRegimes = ['sans_gluten']
-let currentPlan = null
+// ══════════════════════════════════════════
+let currentStep = 0
+const TOTAL_STEPS = 10 // 0 à 9
 
-// ══════════════════════════════════════
+const profil = {
+  prenom: '',
+  age: null,
+  sexe: '',
+  objectifs: [],
+  regimes_alimentaires: [],
+  allergies: [],
+  enceinte: false,
+  allaitement: false,
+  groupe_sanguin: null,
+  medications_actuelles: [],
+  budget_max: 15,
+  temps_max: 30,
+  niveau_activite: 'modere',
+  pathologies_chroniques: []
+}
+
+// Questions skippables (toutes sauf 0 et 9)
+const SKIPPABLE = [1, 2, 3, 4, 5, 6, 7, 8]
+
+// Labels du bouton suivant
+const NEXT_LABELS = {
+  0: 'Commencer ✨',
+  1: 'Continuer →',
+  2: 'Continuer →',
+  3: 'Continuer →',
+  4: 'Continuer →',
+  5: 'Continuer →',
+  6: 'Continuer →',
+  7: 'Continuer →',
+  8: 'Créer mon profil 🌿',
+  9: 'Voir mon plan du jour ! →'
+}
+
+// ══════════════════════════════════════════
 // INIT
-// ══════════════════════════════════════
+// ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  // Date française
-  const maintenant = new Date()
-  const opts = { weekday: 'long', day: 'numeric', month: 'short' }
-  document.getElementById('dateBadge').textContent =
-    maintenant.toLocaleDateString('fr-FR', opts)
-
-  // Étoiles score
-  afficherEtoiles(8)
-
-  // Simuler chargement initial (plan de démo)
-  setTimeout(() => {
-    document.getElementById('loadingScreen').style.opacity = '0'
-    document.getElementById('loadingScreen').style.pointerEvents = 'none'
-    document.getElementById('app').style.opacity = '1'
-  }, 1800)
+  renderDots()
+  updateUI()
 })
 
-// ══════════════════════════════════════
-// GÉNÉRER UN VRAI PLAN VIA SUPABASE
-// ══════════════════════════════════════
-async function genererPlan() {
-  fermerConfig()
+function renderDots() {
+  const container = document.getElementById('stepCounter')
+  container.innerHTML = ''
+  // Afficher seulement les étapes 1-8 (pas welcome ni succès)
+  for (let i = 1; i <= 8; i++) {
+    const dot = document.createElement('div')
+    dot.className = 'step-dot'
+    dot.id = `dot-${i}`
+    container.appendChild(dot)
+  }
+}
 
-  // Afficher loading
-  document.getElementById('loadingScreen').style.opacity = '1'
-  document.getElementById('loadingScreen').style.pointerEvents = 'all'
-  document.getElementById('app').style.opacity = '0'
+function updateUI() {
+  // Progress bar
+  const pct = ((currentStep) / (TOTAL_STEPS - 1)) * 100
+  document.getElementById('progressFill').style.width = pct + '%'
+
+  // Dots
+  for (let i = 1; i <= 8; i++) {
+    const dot = document.getElementById(`dot-${i}`)
+    if (!dot) continue
+    dot.className = 'step-dot'
+    if (i < currentStep) dot.classList.add('done')
+    else if (i === currentStep) dot.classList.add('active')
+  }
+
+  // Boutons
+  const backBtn = document.getElementById('backBtn')
+  const skipBtn = document.getElementById('skipBtn')
+  const nextLabel = document.getElementById('nextLabel')
+
+  backBtn.classList.toggle('hidden', currentStep === 0)
+  skipBtn.classList.toggle('hidden', !SKIPPABLE.includes(currentStep))
+  nextLabel.textContent = NEXT_LABELS[currentStep] || 'Continuer →'
+
+  // Cacher dots sur welcome et succès
+  document.getElementById('stepCounter').style.opacity =
+    (currentStep === 0 || currentStep === 9) ? '0' : '1'
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function goNext() {
+  if (currentStep === 8) {
+    // Dernier step → sauvegarder
+    sauvegarderProfil()
+    return
+  }
+
+  if (currentStep === 9) {
+    // Succès → aller à l'app principale
+    window.location.href = 'index.html?profil_id=' + (window._profilId || 'new')
+    return
+  }
+
+  collecterDonneeStep(currentStep)
+  transitionTo(currentStep + 1)
+}
+
+function goBack() {
+  if (currentStep > 0) transitionTo(currentStep - 1)
+}
+
+function skipStep() {
+  transitionTo(currentStep + 1)
+}
+
+function transitionTo(nextStep) {
+  const current = document.getElementById(`screen-${currentStep}`)
+  const next = document.getElementById(`screen-${nextStep}`)
+
+  if (!next) return
+
+  current.classList.add('exit')
+  current.classList.remove('active')
+
+  setTimeout(() => {
+    current.classList.remove('exit')
+    next.classList.add('active')
+    currentStep = nextStep
+    updateUI()
+  }, 200)
+}
+
+// ══════════════════════════════════════════
+// COLLECTE DES DONNÉES
+// ══════════════════════════════════════════
+function collecterDonneeStep(step) {
+  switch (step) {
+    case 1:
+      profil.prenom = document.getElementById('prenom').value.trim()
+      break
+    case 2:
+      const ageVal = document.getElementById('age').value
+      profil.age = ageVal ? parseInt(ageVal) : null
+      profil.sexe = document.getElementById('sexe').value
+      break
+    case 8:
+      profil.budget_max = parseInt(document.getElementById('budgetSlider').value)
+      profil.temps_max = parseInt(document.getElementById('tempsSlider').value)
+      break
+  }
+}
+
+// ══════════════════════════════════════════
+// INTERACTIONS UI
+// ══════════════════════════════════════════
+function toggleChip(el, field, val) {
+  el.classList.toggle('selected')
+  // Sécurité : initialiser le tableau si undefined
+  if (!Array.isArray(profil[field])) profil[field] = []
+  if (el.classList.contains('selected')) {
+    if (!profil[field].includes(val)) profil[field].push(val)
+  } else {
+    profil[field] = profil[field].filter(v => v !== val)
+  }
+}
+
+function toggleCard(el, field) {
+  el.classList.toggle('active')
+  profil[field] = el.classList.contains('active')
+}
+
+function selectBlood(el, val) {
+  document.querySelectorAll('.blood-chip').forEach(c => c.classList.remove('selected'))
+  el.classList.add('selected')
+  profil.groupe_sanguin = val
+}
+
+function updateSlider(type, val) {
+  if (type === 'budget') {
+    document.getElementById('budgetVal').textContent = val
+    profil.budget_max = parseInt(val)
+    const pct = ((val - 5) / 45 * 100).toFixed(0) + '%'
+    document.getElementById('budgetSlider').style.setProperty('--pct', pct)
+  } else {
+    document.getElementById('tempsVal').textContent = val
+    profil.temps_max = parseInt(val)
+    const pct = ((val - 5) / 85 * 100).toFixed(0) + '%'
+    document.getElementById('tempsSlider').style.setProperty('--pct', pct)
+  }
+}
+
+// ── Médicaments ──
+function ajouterMed() {
+  const input = document.getElementById('medInput')
+  const val = input.value.trim()
+  if (!val) return
+
+  if (!profil.medications_actuelles.includes(val)) {
+    profil.medications_actuelles.push(val)
+    renderMedTags()
+  }
+  input.value = ''
+  input.focus()
+}
+
+function retirerMed(val) {
+  profil.medications_actuelles = profil.medications_actuelles.filter(m => m !== val)
+  renderMedTags()
+}
+
+function renderMedTags() {
+  const container = document.getElementById('medTags')
+  container.innerHTML = profil.medications_actuelles.map(m =>
+    `<div class="med-tag" onclick="retirerMed('${m}')">
+      💊 ${m} <span class="remove">×</span>
+    </div>`
+  ).join('')
+}
+
+// ══════════════════════════════════════════
+// SAUVEGARDE SUPABASE
+// ══════════════════════════════════════════
+async function sauvegarderProfil() {
+  // Collecter les dernières données
+  collecterDonneeStep(8)
+
+  // Afficher overlay
+  document.getElementById('saveOverlay').classList.add('active')
+
+  // Générer un vrai UUID v4 (compatible avec la colonne id UUID de Supabase)
+  const profilId = crypto.randomUUID ? crypto.randomUUID() :
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+    })
+  window._profilId = profilId
+
+  const profilAEnregistrer = {
+    id: profilId,
+    prenom: profil.prenom || null,
+    age: profil.age,
+    sexe: profil.sexe || null,
+    enceinte: profil.enceinte,
+    allaitement: profil.allaitement,
+    groupe_sanguin: profil.groupe_sanguin,
+    pathologies_chroniques: profil.pathologies_chroniques,
+    medications_actuelles: profil.medications_actuelles,
+    allergies: profil.allergies,
+    regimes_alimentaires: profil.regimes_alimentaires,
+    niveau_activite: profil.niveau_activite,
+    objectifs_generaux: profil.objectifs,
+    budget_max: profil.budget_max,
+    temps_max: profil.temps_max,
+    created_at: new Date().toISOString()
+  }
 
   try {
-    // Appel DIRECT à generer-plan-llm (bypass generer-routine pour le prototype)
-    // Les ingrédients sont construits dynamiquement selon les symptômes choisis
-    const reponseN3 = await fetch(
-      `${SUPABASE_URL}/functions/v1/generer-plan-llm`,
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/profils_utilisateurs`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'  // récupérer l'ID généré par Supabase
         },
-        body: JSON.stringify({
-          profil_id: 'prototype-' + Date.now(), // ID unique = jamais de cache
-          ingredients_selectionnes: construireIngredients(selectedSymptoms),
-          profil_securite: {
-            regimes: selectedRegimes,
-            allergies: [],
-            enceinte: false,
-            age: 35,
-            objectifs: selectedSymptoms
-          },
-          symptomes_declares: selectedSymptoms,
-          preferences: {
-            temps_max: parseInt(document.getElementById('tempsMax').value),
-            budget_max: parseInt(document.getElementById('budgetMax').value),
-            saison: getSaison()
-          },
-          force_regeneration: true // Toujours un nouveau plan
-        })
+        body: JSON.stringify(profilAEnregistrer)
       }
     )
 
-    const dataN3 = await reponseN3.json()
-
-    if (dataN3.success && dataN3.plan) {
-      afficherPlan(dataN3.plan)
+    if (!response.ok) {
+      const errText = await response.text()
+      console.warn('Supabase warning:', errText)
+      // On continue avec l'ID local
     } else {
-      console.error('Réponse API:', dataN3)
-      throw new Error(dataN3.error || 'Plan invalide reçu')
+      // Récupérer l'UUID généré par Supabase
+      const inserted = await response.json()
+      if (inserted && inserted[0] && inserted[0].id) {
+        window._profilId = inserted[0].id
+        profilAEnregistrer.id = inserted[0].id
+        console.log('✅ Profil sauvegardé en BDD:', inserted[0].id)
+      }
     }
+
+    // Sauvegarder en localStorage pour la session
+    localStorage.setItem('vitalia_profil_id', window._profilId)
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilAEnregistrer))
+
+    console.log('✅ Profil en localStorage:', window._profilId)
 
   } catch (err) {
-    console.error('Erreur génération:', err)
-    alert('Erreur : ' + err.message + '\n\nVérifie la console (F12) pour plus de détails.')
-  } finally {
-    document.getElementById('loadingScreen').style.opacity = '0'
-    document.getElementById('loadingScreen').style.pointerEvents = 'none'
-    document.getElementById('app').style.opacity = '1'
-  }
-}
-
-// ══════════════════════════════════════
-// AFFICHER LE PLAN
-// ══════════════════════════════════════
-function afficherPlan(plan) {
-  currentPlan = plan
-
-  // Hero
-  document.getElementById('heroMessage').textContent = plan.message_personnalise || 'Ton plan est prêt ! 🌿'
-  const score = plan.score_nutritionnel || 7
-  document.getElementById('scoreValue').textContent = score + '/10'
-  afficherEtoiles(score)
-
-  // Moments
-  const moments = ['matin', 'midi', 'apres_midi', 'soir']
-  const emojis = { matin: '🌅', midi: '☀️', apres_midi: '🍃', soir: '🌙' }
-
-  moments.forEach(moment => {
-    const data = plan[moment]
-    if (!data) return
-    const key = moment.replace('_', '_')
-    setText(moment + '-time', data.heure_suggere || '')
-    setText(moment + '-titre', data.titre || '')
-    setText(moment + '-desc', data.description || '')
-    setText(moment + '-motivant', data.message_motivant || '')
-    setText(moment + '-cal', (data.calories_estimees || '—') + ' kcal')
-    setText(moment + '-instructions', data.instructions || 'Voir les instructions complètes...')
-  })
-
-  // Routine
-  const r = plan.routine_du_jour || {}
-  if (r.matin) setText('routine-matin', r.matin)
-  if (r.complement_phare) setText('routine-complement', r.complement_phare)
-  if (r.aromatherapie) setText('routine-aroma', r.aromatherapie)
-  if (r.soir) setText('routine-soir', r.soir)
-
-  // Conseil
-  if (plan.conseil_du_jour) setText('conseilText', plan.conseil_du_jour)
-}
-
-function setText(id, val) {
-  const el = document.getElementById(id)
-  if (el) el.textContent = val
-}
-
-function afficherEtoiles(score) {
-  const container = document.getElementById('starsContainer')
-  const plein = Math.floor(score / 2)
-  const demi = score % 2 === 1 ? 1 : 0
-  let html = ''
-  for (let i = 0; i < plein; i++) html += '<span class="star">⭐</span>'
-  if (demi) html += '<span class="star">✨</span>'
-  container.innerHTML = html
-}
-
-// ══════════════════════════════════════
-// TOGGLE INSTRUCTIONS
-// ══════════════════════════════════════
-function toggleInstructions(moment) {
-  const el = document.getElementById('instructions-' + moment)
-  const btn = document.getElementById('btn-' + moment)
-  if (!el) return
-  el.classList.toggle('open')
-  if (btn) btn.textContent = el.classList.contains('open') ? '▲' : '▼'
-}
-
-// ══════════════════════════════════════
-// CONFIG PANEL
-// ══════════════════════════════════════
-function ouvrirConfig() {
-  document.getElementById('configPanel').classList.add('open')
-  document.getElementById('overlay').classList.add('active')
-}
-
-function fermerConfig() {
-  document.getElementById('configPanel').classList.remove('open')
-  document.getElementById('overlay').classList.remove('active')
-}
-
-function toggleChip(el, val) {
-  el.classList.toggle('selected')
-  // Gérer les listes
-  if (el.dataset.regime) {
-    if (el.classList.contains('selected')) {
-      if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
-    } else {
-      selectedRegimes = selectedRegimes.filter(r => r !== val)
-    }
-  } else {
-    if (el.classList.contains('selected')) {
-      if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val)
-    } else {
-      selectedSymptoms = selectedSymptoms.filter(s => s !== val)
-    }
-  }
-}
-
-// ══════════════════════════════════════
-// UTILITAIRES
-// ══════════════════════════════════════
-function getSaison() {
-  const m = new Date().getMonth() + 1
-  if (m >= 3 && m <= 5) return 'printemps'
-  if (m >= 6 && m <= 8) return 'été'
-  if (m >= 9 && m <= 11) return 'automne'
-  return 'hiver'
-}
-
-// Construit une sélection d'ingrédients adaptée aux symptômes choisis
-// (simule le travail des Niveaux 1 & 2 pour le prototype)
-function construireIngredients(symptomes) {
-  const base = {
-    proteines: [
-      { id: 'ALI_010', nom: 'Lentilles corail', type_produit: 'ALI', score_final: 8 },
-      { id: 'ALI_011', nom: 'Pois chiches', type_produit: 'ALI', score_final: 7 },
-      { id: 'ALI_012', nom: 'Tofu', type_produit: 'ALI', score_final: 7 }
-    ],
-    legumes: [
-      { id: 'ALI_001', nom: 'Curcuma', type_produit: 'ALI', score_final: 9 },
-      { id: 'ALI_005', nom: 'Épinards', type_produit: 'ALI', score_final: 8 },
-      { id: 'ALI_007', nom: 'Patate douce', type_produit: 'ALI', score_final: 7 },
-      { id: 'ALI_013', nom: 'Brocolis', type_produit: 'ALI', score_final: 7 }
-    ],
-    cereales: [
-      { id: 'ALI_008', nom: 'Quinoa', type_produit: 'ALI', score_final: 8 },
-      { id: 'ALI_009', nom: 'Flocons de sarrasin', type_produit: 'ALI', score_final: 7 }
-    ],
-    epices: [
-      { id: 'ALI_002', nom: 'Gingembre', type_produit: 'ALI', score_final: 8 },
-      { id: 'ALI_003', nom: 'Cannelle', type_produit: 'ALI', score_final: 7 }
-    ],
-    complements: [
-      { id: 'NUT_001', nom: 'Vitamine D', type_produit: 'NUT', score_final: 9 }
-    ],
-    routines: [
-      { id: 'ROU_001', nom: 'Cohérence cardiaque', type_produit: 'ROU', score_final: 8 }
-    ]
+    console.warn('Erreur sauvegarde (continuer quand même):', err)
+    localStorage.setItem('vitalia_profil_id', profilId)
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilAEnregistrer))
   }
 
-  // Ajuster selon symptômes
-  if (symptomes.includes('fatigue') || symptomes.includes('energie')) {
-    base.complements.push({ id: 'NUT_003', nom: 'Magnésium', type_produit: 'NUT', score_final: 9 })
-    base.complements.push({ id: 'NUT_004', nom: 'Vitamine B12', type_produit: 'NUT', score_final: 8 })
-    base.routines.push({ id: 'ROU_003', nom: 'Marche en plein air', type_produit: 'ROU', score_final: 7 })
+  // Masquer overlay et aller à l'écran succès
+  setTimeout(() => {
+    document.getElementById('saveOverlay').classList.remove('active')
+    afficherResume()
+    transitionTo(9)
+  }, 1800)
+}
+
+// ══════════════════════════════════════════
+// RÉSUMÉ PROFIL
+// ══════════════════════════════════════════
+function afficherResume() {
+  const container = document.getElementById('profileSummary')
+
+  const nom = profil.prenom ? `Bonjour ${profil.prenom} !` : 'Profil créé !'
+  document.querySelector('#screen-9 .screen-title').textContent = nom
+
+  const rows = []
+
+  if (profil.age) rows.push({ label: '🎂 Âge', val: profil.age + ' ans' })
+  if (profil.sexe) rows.push({ label: '👤 Profil', val: capitalize(profil.sexe) })
+  if (profil.objectifs.length > 0) rows.push({ label: '🎯 Objectifs', val: profil.objectifs.map(capitalize).join(', ') })
+  if (profil.regimes_alimentaires.length > 0) rows.push({ label: '🌿 Régimes', val: profil.regimes_alimentaires.join(', ') })
+  if (profil.allergies.length > 0) rows.push({ label: '⚠️ Allergies', val: profil.allergies.join(', ') })
+  if (profil.groupe_sanguin) rows.push({ label: '🩸 Groupe sanguin', val: profil.groupe_sanguin })
+  if (profil.enceinte) rows.push({ label: '🤰 Grossesse', val: 'Précautions activées' })
+  if (profil.medications_actuelles.length > 0) rows.push({ label: '💊 Médicaments', val: profil.medications_actuelles.length + ' renseigné(s)' })
+  rows.push({ label: '⏱️ Temps cuisine', val: profil.temps_max + ' min max' })
+  rows.push({ label: '💰 Budget', val: profil.budget_max + '€/jour' })
+
+  if (rows.length === 0) {
+    rows.push({ label: '✨ Profil', val: 'Prêt à démarrer !' })
   }
 
-  if (symptomes.includes('stress')) {
-    base.complements.push({ id: 'NUT_009', nom: 'Rhodiola Rosea', type_produit: 'NUT', score_final: 8 })
-    base.complements.push({ id: 'NUT_010', nom: 'Ashwagandha', type_produit: 'NUT', score_final: 8 })
-    base.routines.push({ id: 'ROU_002', nom: 'Méditation guidée', type_produit: 'ROU', score_final: 8 })
-  }
+  container.innerHTML = rows.map(r =>
+    `<div class="summary-row">
+      <span class="summary-label">${r.label}</span>
+      <span class="summary-value">${r.val}</span>
+    </div>`
+  ).join('')
+}
 
-  if (symptomes.includes('sommeil')) {
-    base.complements.push({ id: 'NUT_013', nom: 'Mélatonine', type_produit: 'NUT', score_final: 7 })
-    base.complements.push({ id: 'NUT_012', nom: 'L-théanine', type_produit: 'NUT', score_final: 8 })
-    base.routines.push({ id: 'ROU_005', nom: 'Routine sommeil', type_produit: 'ROU', score_final: 9 })
-  }
-
-  if (symptomes.includes('digestion')) {
-    base.complements.push({ id: 'NUT_008', nom: 'Probiotiques', type_produit: 'NUT', score_final: 9 })
-    base.legumes.push({ id: 'ALI_020', nom: 'Artichaut', type_produit: 'ALI', score_final: 8 })
-  }
-
-  if (symptomes.includes('inflammation')) {
-    base.legumes.push({ id: 'ALI_004', nom: 'Myrtilles', type_produit: 'ALI', score_final: 9 })
-    base.complements.push({ id: 'NUT_007', nom: 'Oméga-3', type_produit: 'NUT', score_final: 9 })
-  }
-
-  return base
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
 }
 </script>
 </body>
