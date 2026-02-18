@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia — Ton Plan Bien-être</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --terracotta: #C4714A;
+    --terracotta-light: #E8956D;
+    --sage: #7A9E7E;
+    --sage-light: #A8C5AC;
+    --peach: #F2C4A0;
+    --golden: #E8B84B;
+    --dusty-rose: #D4936A;
+    --deep-brown: #3D2B1F;
+    --mid-brown: #7A5C4A;
+    --text-light: #9E8070;
+    --goji-red: #C0392B;
+    --curcuma-yellow: #F39C12;
+    --ginger-orange: #E67E22;
+    --mirtille-purple: #8E44AD;
+    --avocat-green: #27AE60;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--deep-brown);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(196,113,74,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(122,158,126,0.10) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(232,184,75,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 20px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--terracotta);
+    letter-spacing: -0.5px;
+  }
+
+  .logo span {
+    color: var(--sage);
+  }
+
+  .date-badge {
+    background: var(--warm-white);
+    border: 1.5px solid var(--peach);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--mid-brown);
+    font-weight: 500;
+  }
+
+  /* ── HERO SECTION ── */
+  .hero {
+    position: relative;
+    z-index: 5;
+    padding: 28px 24px 0;
+  }
+
+  .hero-card {
+    background: linear-gradient(135deg, var(--terracotta) 0%, var(--dusty-rose) 60%, var(--golden) 100%);
+    border-radius: 28px;
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(196,113,74,0.25);
+  }
+
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 160px; height: 160px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+  }
+
+  .hero-card::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: 40px;
+    width: 100px; height: 100px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+
+  .hero-greeting {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.75);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .hero-message {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.45;
+    max-width: 240px;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 8px 16px;
+  }
+
+  .hero-score-label {
+    color: rgba(255,255,255,0.85);
+    font-size: 13px;
+  }
+
+  .hero-score-value {
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .stars {
+    display: flex; gap: 2px;
+  }
+
+  .star { font-size: 11px; }
+
+  /* MASCOTS FLOATING */
+  .mascots-row {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    gap: -4px;
+    z-index: 3;
+  }
+
+  .mascot {
+    width: 52px;
+    height: 52px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .mascot:nth-child(2) { animation-delay: 0.5s; margin-left: -8px; margin-top: -6px; }
+  .mascot:nth-child(3) { animation-delay: 1s; margin-left: -6px; margin-top: 4px; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-6px) rotate(3deg); }
+  }
+
+  /* ── COMPANIONS BAR ── */
+  .companions-section {
+    position: relative;
+    z-index: 5;
+    padding: 24px 24px 0;
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .companions-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .companion-chip {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .companion-chip:hover { transform: translateY(-3px); }
+
+  .companion-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .companion-avatar.active {
+    border-color: var(--terracotta);
+    box-shadow: 0 0 0 3px rgba(196,113,74,0.15);
+  }
+
+  .companion-avatar svg {
+    width: 40px; height: 40px;
+  }
+
+  .companion-name {
+    font-size: 11px;
+    color: var(--mid-brown);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  /* ── PLAN TIMELINE ── */
+  .plan-section {
+    position: relative;
+    z-index: 5;
+    padding: 28px 24px;
+  }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .moment-card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1.5px solid rgba(196,113,74,0.1);
+    box-shadow: 0 4px 20px rgba(61,43,31,0.06);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .moment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(61,43,31,0.12);
+  }
+
+  .moment-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    border-radius: 4px 0 0 4px;
+  }
+
+  .moment-card.matin::before { background: var(--golden); }
+  .moment-card.midi::before { background: var(--terracotta); }
+  .moment-card.apres-midi::before { background: var(--sage); }
+  .moment-card.soir::before { background: var(--mirtille-purple); }
+
+  .moment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .moment-time-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .moment-emoji {
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .moment-time {
+    font-size: 11px;
+    color: var(--text-light);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .moment-label {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mid-brown);
+  }
+
+  .moment-calories {
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 500;
+  }
+
+  .moment-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--deep-brown);
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+
+  .moment-description {
+    font-size: 14px;
+    color: var(--mid-brown);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .moment-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .moment-motivant {
+    font-size: 13px;
+    color: var(--terracotta);
+    font-style: italic;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .expand-btn {
+    width: 32px; height: 32px;
+    background: var(--cream);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--mid-brown);
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .expand-btn:hover { background: var(--peach); }
+
+  /* Instructions expand */
+  .moment-instructions {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .moment-instructions.open {
+    max-height: 600px;
+  }
+
+  .instructions-content {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(196,113,74,0.2);
+    font-size: 13.5px;
+    color: var(--mid-brown);
+    line-height: 1.6;
+  }
+
+  .instructions-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .instruction-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 22px; height: 22px;
+    background: var(--terracotta);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-text {
+    font-size: 13px;
+    color: var(--mid-brown);
+    line-height: 1.55;
+  }
+
+  .instructions-tip {
+    background: rgba(232,184,75,0.12);
+    border-left: 3px solid var(--golden);
+    border-radius: 0 8px 8px 0;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: var(--mid-brown);
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  .instructions-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .ingredient-tag {
+    background: var(--cream);
+    border: 1px solid rgba(196,113,74,0.18);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--mid-brown);
+  }
+
+  .instructions-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-light);
+    font-weight: 600;
+    margin-bottom: 7px;
+  }
+
+  /* ── ROUTINE DU JOUR ── */
+  .routine-section {
+    position: relative;
+    z-index: 5;
+    padding: 0 24px 20px;
+  }
+
+  .routine-card {
+    background: linear-gradient(135deg, rgba(122,158,126,0.15) 0%, rgba(168,197,172,0.1) 100%);
+    border: 1.5px solid rgba(122,158,126,0.25);
+    border-radius: 24px;
+    padding: 20px;
+  }
+
+  .routine-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--deep-brown);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .routine-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .routine-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .routine-dot {
+    width: 8px; height: 8px;
+    background: var(--sage);
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+
+  .routine-text {
+    font-size: 14px;
+    color: var(--mid-brown);
+    line-height: 1.4;
+  }
+
+  .routine-text strong {
+    color: var(--deep-brown);
+    font-weight: 600;
+  }
+
+  /* ── CONSEIL DU JOUR ── */
+  .conseil-section {
+    position: relative;
+    z-index: 5;
+    padding: 0 24px 32px;
+  }
+
+  .conseil-card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1.5px solid rgba(232,184,75,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .conseil-card::before {
+    content: '"';
+    position: absolute;
+    top: -10px; left: 12px;
+    font-family: 'Fraunces', serif;
+    font-size: 100px;
+    color: rgba(232,184,75,0.12);
+    line-height: 1;
+  }
+
+  .conseil-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--golden);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .conseil-text {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-style: italic;
+    color: var(--mid-brown);
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── LOADING STATE ── */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 24px;
+  }
+
+  .loading-mascot {
+    animation: spin-bounce 1.5s ease-in-out infinite;
+  }
+
+  @keyframes spin-bounce {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.1) rotate(5deg); }
+    75% { transform: scale(0.9) rotate(-5deg); }
+  }
+
+  .loading-text {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    color: var(--deep-brown);
+    text-align: center;
+  }
+
+  .loading-sub {
+    font-size: 14px;
+    color: var(--text-light);
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.5;
+  }
+
+  .loading-dots {
+    display: flex; gap: 6px;
+  }
+
+  .loading-dot {
+    width: 8px; height: 8px;
+    background: var(--terracotta);
+    border-radius: 50%;
+    animation: dot-bounce 1.2s ease-in-out infinite;
+  }
+
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; background: var(--sage); }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; background: var(--golden); }
+
+  @keyframes dot-bounce {
+    0%, 100% { transform: translateY(0); opacity: 0.5; }
+    50% { transform: translateY(-8px); opacity: 1; }
+  }
+
+  /* ── GENERATE BUTTON ── */
+  .generate-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 16px 40px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(196,113,74,0.35);
+    transition: all 0.3s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .generate-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 12px 40px rgba(196,113,74,0.45);
+  }
+
+  .generate-btn:active {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── CONFIG PANEL ── */
+  .config-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--warm-white);
+    border-radius: 28px 28px 0 0;
+    padding: 28px 24px 40px;
+    z-index: 50;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -8px 40px rgba(61,43,31,0.12);
+  }
+
+  .config-panel.open {
+    transform: translateY(0);
+  }
+
+  .config-handle {
+    width: 36px; height: 4px;
+    background: var(--peach);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .config-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--deep-brown);
+    margin-bottom: 20px;
+  }
+
+  .config-field {
+    margin-bottom: 16px;
+  }
+
+  .config-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-light);
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .config-input {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--deep-brown);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .config-input:focus {
+    border-color: var(--terracotta);
+  }
+
+  .config-row {
+    display: flex; gap: 12px;
+  }
+
+  .config-row .config-field { flex: 1; }
+
+  .config-chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+
+  .config-chip {
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--mid-brown);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .config-chip.selected {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: white;
+  }
+
+  .config-submit {
+    width: 100%;
+    margin-top: 20px;
+    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .config-submit:hover { opacity: 0.9; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(61,43,31,0.3);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(2px);
+  }
+
+  .overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .scroll-pad { height: 100px; }
+
+  /* Fade in animation */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .moment-card {
+    animation: fadeSlideIn 0.5s ease both;
+  }
+
+  .moment-card:nth-child(1) { animation-delay: 0.1s; }
+  .moment-card:nth-child(2) { animation-delay: 0.2s; }
+  .moment-card:nth-child(3) { animation-delay: 0.3s; }
+  .moment-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* ── FEEDBACK WIDGET ── */
+.feedback-bar {
+  margin: 0 24px 24px;
+  background: linear-gradient(135deg, rgba(196,113,74,0.07) 0%, rgba(232,184,75,0.07) 100%);
+  border: 1.5px solid rgba(196,113,74,0.18);
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(196,113,74,0.08);
+}
+
+.feedback-label {
+  font-size: 13px; color: var(--mid-brown);
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.feedback-stars {
+  display: flex; gap: 6px;
+}
+
+.feedback-star {
+  font-size: 24px; cursor: pointer;
+  transition: transform 0.15s;
+  filter: grayscale(1) opacity(0.35);
+  user-select: none;
+}
+
+.feedback-star:hover,
+.feedback-star.lit {
+  filter: none;
+  transform: scale(1.2);
+}
+
+.feedback-sent {
+  font-size: 13px; color: var(--sage);
+  font-weight: 600;
+  display: none;
+}
+
+.feedback-sent.show { display: block; }
+
+/* ── TOAST NOTIFICATION ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--deep-brown);
+  color: white; border-radius: 14px;
+  padding: 12px 20px; font-size: 14px;
+  box-shadow: 0 8px 24px rgba(61,43,31,0.25);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 200; white-space: nowrap;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+</style>
+</head>
+<body>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- SVG MASCOTS DEFINITIONS               -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+    <!-- GOJI BERRY - Petit héros rouge -->
+    <symbol id="mascot-goji" viewBox="0 0 80 80">
+      <!-- Corps -->
+      <ellipse cx="40" cy="48" rx="22" ry="24" fill="#C0392B"/>
+      <ellipse cx="40" cy="46" rx="20" ry="22" fill="#E74C3C"/>
+      <!-- Reflet -->
+      <ellipse cx="33" cy="38" rx="6" ry="4" fill="rgba(255,255,255,0.3)" transform="rotate(-20 33 38)"/>
+      <!-- Feuilles -->
+      <ellipse cx="28" cy="27" rx="8" ry="4" fill="#27AE60" transform="rotate(-30 28 27)"/>
+      <ellipse cx="52" cy="26" rx="8" ry="4" fill="#2ECC71" transform="rotate(30 52 26)"/>
+      <!-- Tige -->
+      <rect x="38" y="22" width="4" height="8" rx="2" fill="#8B6914"/>
+      <!-- Visage -->
+      <circle cx="34" cy="47" r="3.5" fill="#000" opacity="0.7"/>
+      <circle cx="46" cy="47" r="3.5" fill="#000" opacity="0.7"/>
+      <circle cx="35" cy="46" r="1.2" fill="white"/>
+      <circle cx="47" cy="46" r="1.2" fill="white"/>
+      <!-- Sourire -->
+      <path d="M34 55 Q40 61 46 55" stroke="#8B0000" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- Joues -->
+      <circle cx="28" cy="51" r="4" fill="rgba(255,180,180,0.5)"/>
+      <circle cx="52" cy="51" r="4" fill="rgba(255,180,180,0.5)"/>
+      <!-- Cape de super-héros -->
+      <path d="M20 52 L18 70 L40 64 L62 70 L60 52 Q40 60 20 52Z" fill="#8B0000" opacity="0.8"/>
+      <path d="M20 52 Q40 58 60 52" fill="none" stroke="#C0392B" stroke-width="1"/>
+    </symbol>
+
+    <!-- CURCUMA - Sage doyen doré -->
+    <symbol id="mascot-curcuma" viewBox="0 0 80 80">
+      <!-- Racine/corps -->
+      <ellipse cx="40" cy="50" rx="18" ry="20" fill="#E67E22"/>
+      <ellipse cx="40" cy="48" rx="16" ry="18" fill="#F39C12"/>
+      <!-- NÅ“uds de racine -->
+      <ellipse cx="56" cy="52" rx="10" ry="8" fill="#E67E22"/>
+      <ellipse cx="24" cy="55" rx="9" ry="7" fill="#E67E22"/>
+      <ellipse cx="55" cy="52" rx="8" ry="6" fill="#F0A500"/>
+      <ellipse cx="25" cy="55" rx="7" ry="5" fill="#F0A500"/>
+      <!-- Chapeau de sage -->
+      <ellipse cx="40" cy="33" rx="20" ry="6" fill="#8B6914"/>
+      <rect x="28" y="20" width="24" height="14" rx="4" fill="#6B4F0A"/>
+      <rect x="30" y="22" width="20" height="10" rx="3" fill="#8B6914"/>
+      <!-- Étoiles de sagesse -->
+      <text x="34" y="30" font-size="7" fill="#F1C40F">✦</text>
+      <text x="41" y="29" font-size="5" fill="#F1C40F">✦</text>
+      <!-- Visage sage -->
+      <circle cx="35" cy="46" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="45" cy="46" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="45" r="1" fill="white"/>
+      <circle cx="46" cy="45" r="1" fill="white"/>
+      <!-- Sourcils de sage -->
+      <path d="M31 41 Q35 39 38 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M42 41 Q45 39 49 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- Sourire sage -->
+      <path d="M33 53 Q40 58 47 53" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- Barbe -->
+      <path d="M33 57 Q40 65 47 57" stroke="#D4A017" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- GINGEMBRE - Piquant et dynamique -->
+    <symbol id="mascot-gingembre" viewBox="0 0 80 80">
+      <!-- Corps -->
+      <ellipse cx="40" cy="50" rx="16" ry="18" fill="#CA8A04"/>
+      <ellipse cx="40" cy="48" rx="14" ry="16" fill="#D97706"/>
+      <!-- Branches dynamiques -->
+      <ellipse cx="58" cy="44" rx="11" ry="8" fill="#CA8A04" transform="rotate(20 58 44)"/>
+      <ellipse cx="22" cy="42" rx="11" ry="8" fill="#CA8A04" transform="rotate(-20 22 42)"/>
+      <ellipse cx="57" cy="44" rx="9" ry="6" fill="#D97706" transform="rotate(20 57 44)"/>
+      <ellipse cx="23" cy="42" rx="9" ry="6" fill="#D97706" transform="rotate(-20 23 42)"/>
+      <!-- Petite branche en haut -->
+      <ellipse cx="52" cy="30" rx="8" ry="6" fill="#CA8A04" transform="rotate(-30 52 30)"/>
+      <ellipse cx="51" cy="30" rx="6" ry="4" fill="#D97706" transform="rotate(-30 51 30)"/>
+      <!-- Flammes de piquant ! -->
+      <path d="M60 20 Q63 12 58 8 Q65 14 64 20 Q67 13 63 8 Q70 16 66 22Z" fill="#EF4444" opacity="0.8"/>
+      <path d="M60 20 Q62 15 59 12 Q64 17 62 22Z" fill="#FCD34D"/>
+      <!-- Visage dynamique -->
+      <circle cx="35" cy="47" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="45" cy="47" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="46" r="1" fill="white"/>
+      <circle cx="46" cy="46" r="1" fill="white"/>
+      <!-- Sourcils en action -->
+      <path d="M31 42 Q35 40 38 42" stroke="#92400E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M42 42 Q45 40 49 42" stroke="#92400E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Bouche ouverte dynamique -->
+      <path d="M33 54 Q40 60 47 54" stroke="#92400E" stroke-width="2" fill="#FCA5A5" stroke-linecap="round"/>
+      <!-- Éclairs d'énergie -->
+      <text x="8" y="35" font-size="12" fill="#F59E0B">⚡</text>
+      <text x="62" y="50" font-size="10" fill="#F59E0B">⚡</text>
+    </symbol>
+
+    <!-- MYRTILLE - Petit génie antioxydant -->
+    <symbol id="mascot-myrtille" viewBox="0 0 80 80">
+      <!-- Corps -->
+      <circle cx="40" cy="50" r="22" fill="#7C3AED"/>
+      <circle cx="40" cy="48" r="20" fill="#8B5CF6"/>
+      <!-- Reflet -->
+      <ellipse cx="33" cy="40" rx="6" ry="4" fill="rgba(255,255,255,0.25)" transform="rotate(-15 33 40)"/>
+      <!-- Petite corolle en haut -->
+      <circle cx="40" cy="28" r="5" fill="#6D28D9"/>
+      <circle cx="33" cy="30" r="4" fill="#7C3AED"/>
+      <circle cx="47" cy="30" r="4" fill="#7C3AED"/>
+      <!-- Lunettes de génie -->
+      <circle cx="34" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
+      <circle cx="46" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
+      <line x1="41" y1="46" x2="39" y2="46" stroke="#C4B5FD" stroke-width="2"/>
+      <line x1="27" y1="46" x2="24" y2="44" stroke="#C4B5FD" stroke-width="2"/>
+      <line x1="53" y1="46" x2="56" y2="44" stroke="#C4B5FD" stroke-width="2"/>
+      <!-- Yeux dans les lunettes -->
+      <circle cx="34" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/>
+      <circle cx="46" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/>
+      <circle cx="35" cy="45" r="1" fill="white"/>
+      <circle cx="47" cy="45" r="1" fill="white"/>
+      <!-- Sourire de génie satisfait -->
+      <path d="M34 56 Q40 62 46 56" stroke="#4C1D95" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Joues -->
+      <circle cx="27" cy="53" r="4" fill="rgba(196,181,253,0.4)"/>
+      <circle cx="53" cy="53" r="4" fill="rgba(196,181,253,0.4)"/>
+      <!-- Molécules antioxydantes -->
+      <circle cx="14" cy="30" r="3" fill="#A78BFA" opacity="0.6"/>
+      <circle cx="18" cy="24" r="2" fill="#C4B5FD" opacity="0.6"/>
+      <line x1="14" y1="30" x2="18" y2="24" stroke="#A78BFA" stroke-width="1" opacity="0.6"/>
+      <circle cx="64" cy="28" r="3" fill="#A78BFA" opacity="0.6"/>
+      <circle cx="60" cy="22" r="2" fill="#C4B5FD" opacity="0.6"/>
+      <line x1="64" y1="28" x2="60" y2="22" stroke="#A78BFA" stroke-width="1" opacity="0.6"/>
+    </symbol>
+
+    <!-- AVOCAT - Cool et décontracté -->
+    <symbol id="mascot-avocat" viewBox="0 0 80 80">
+      <!-- Corps avocat -->
+      <ellipse cx="40" cy="50" rx="20" ry="26" fill="#166534"/>
+      <ellipse cx="40" cy="52" rx="18" ry="24" fill="#16A34A"/>
+      <!-- Chair intérieure -->
+      <ellipse cx="40" cy="55" rx="13" ry="17" fill="#BBF7D0"/>
+      <ellipse cx="40" cy="57" rx="10" ry="13" fill="#86EFAC"/>
+      <!-- Noyau/ventre -->
+      <ellipse cx="40" cy="60" rx="7" ry="9" fill="#92400E"/>
+      <ellipse cx="40" cy="59" rx="5" ry="7" fill="#A16207"/>
+      <!-- Lunettes de soleil cool -->
+      <rect x="26" y="40" width="12" height="8" rx="4" fill="#0F172A"/>
+      <rect x="42" y="40" width="12" height="8" rx="4" fill="#0F172A"/>
+      <line x1="38" y1="44" x2="42" y2="44" stroke="#334155" stroke-width="2"/>
+      <line x1="26" y1="44" x2="22" y2="42" stroke="#334155" stroke-width="2"/>
+      <line x1="54" y1="44" x2="58" y2="42" stroke="#334155" stroke-width="2"/>
+      <!-- Reflets lunettes -->
+      <ellipse cx="30" cy="42" rx="2.5" ry="1.5" fill="rgba(255,255,255,0.3)" transform="rotate(-20 30 42)"/>
+      <ellipse cx="46" cy="42" rx="2.5" ry="1.5" fill="rgba(255,255,255,0.3)" transform="rotate(-20 46 42)"/>
+      <!-- Sourire cool -->
+      <path d="M33 55 Q40 61 47 55" stroke="#14532D" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Petite tige décontractée -->
+      <rect x="38" y="22" width="4" height="10" rx="2" fill="#166534"/>
+      <ellipse cx="40" cy="20" rx="6" ry="4" fill="#16A34A" transform="rotate(-15 40 20)"/>
+      <!-- Emoji cool -->
+      <text x="30" y="75" font-size="9" fill="#14532D">😎</text>
+    </symbol>
+
+  </defs>
+</svg>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- LOADING SCREEN                        -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-mascot">
+    <svg width="90" height="90"><use href="#mascot-goji"/></svg>
+  </div>
+  <div class="loading-text">Vitalia prépare ton plan ✨</div>
+  <div class="loading-sub">Nos super-aliments analysent tes besoins...</div>
+  <div class="loading-dots">
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- OVERLAY CONFIG PANEL                  -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="overlay" id="overlay" onclick="fermerConfig()"></div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- CONFIG PANEL                          -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="config-panel" id="configPanel">
+  <div class="config-handle"></div>
+  <div class="config-title">🌿 Personnalise ton plan</div>
+
+  <div class="config-field">
+    <label class="config-label">Comment tu te sens ?</label>
+    <div class="config-chips" id="symptomsChips">
+      <div class="config-chip selected" onclick="toggleChip(this, 'fatigue')">😴 Fatigue</div>
+      <div class="config-chip selected" onclick="toggleChip(this, 'stress')">😰 Stress</div>
+      <div class="config-chip" onclick="toggleChip(this, 'digestion')">🌀 Digestion</div>
+      <div class="config-chip" onclick="toggleChip(this, 'sommeil')">🌙 Sommeil</div>
+      <div class="config-chip" onclick="toggleChip(this, 'inflammation')">🔥 Inflammation</div>
+      <div class="config-chip" onclick="toggleChip(this, 'energie')">⚡ Énergie</div>
+    </div>
+  </div>
+
+  <div class="config-row">
+    <div class="config-field">
+      <label class="config-label">Temps de cuisson max</label>
+      <select class="config-input" id="tempsMax">
+        <option value="15">15 min ⚡</option>
+        <option value="30" selected>30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">1 heure</option>
+      </select>
+    </div>
+    <div class="config-field">
+      <label class="config-label">Budget/jour</label>
+      <select class="config-input" id="budgetMax">
+        <option value="10">10€ 💚</option>
+        <option value="15" selected>15€</option>
+        <option value="25">25€</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="config-field">
+    <label class="config-label">Régimes alimentaires</label>
+    <div class="config-chips">
+      <div class="config-chip selected" onclick="toggleChip(this, 'sans_gluten')" data-regime="sans_gluten">🌾 Sans gluten</div>
+      <div class="config-chip" onclick="toggleChip(this, 'vegan')" data-regime="vegan">🌱 Végan</div>
+      <div class="config-chip" onclick="toggleChip(this, 'sans_lactose')" data-regime="sans_lactose">🥛 Sans lactose</div>
+      <div class="config-chip" onclick="toggleChip(this, 'keto')" data-regime="keto">🥑 Kéto</div>
+    </div>
+  </div>
+
+  <button class="config-submit" onclick="genererPlan()">
+    ✨ Générer mon plan
+  </button>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- MAIN APP                              -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div id="app" style="opacity:0; transition: opacity 0.5s;">
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">Vita<span>lia</span></div>
+    <div class="date-badge" id="dateBadge">Mardi 17 fév.</div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-card">
+      <div class="hero-greeting">Ton plan du jour</div>
+      <div class="hero-message" id="heroMessage">
+        Bonjour ! Prêt à prendre soin de toi ? 🌿
+      </div>
+      <div class="hero-score">
+        <span class="hero-score-label">Score nutritionnel</span>
+        <span class="hero-score-value" id="scoreValue">8/10</span>
+        <div class="stars" id="starsContainer"></div>
+      </div>
+
+      <!-- Mascots flottants -->
+      <div class="mascots-row">
+        <svg class="mascot"><use href="#mascot-goji"/></svg>
+        <svg class="mascot"><use href="#mascot-curcuma"/></svg>
+        <svg class="mascot"><use href="#mascot-gingembre"/></svg>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- COMPANIONS BAR -->
+  <div class="companions-section">
+    <div class="section-label">Tes alliés du jour</div>
+    <div class="companions-scroll">
+      <div class="companion-chip">
+        <div class="companion-avatar active" style="background: linear-gradient(135deg, #FEE2E2, #FECACA);">
+          <svg><use href="#mascot-goji"/></svg>
+        </div>
+        <div class="companion-name">Goji</div>
+      </div>
+      <div class="companion-chip">
+        <div class="companion-avatar" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A);">
+          <svg><use href="#mascot-curcuma"/></svg>
+        </div>
+        <div class="companion-name">Curcuma</div>
+      </div>
+      <div class="companion-chip">
+        <div class="companion-avatar" style="background: linear-gradient(135deg, #FFF7ED, #FED7AA);">
+          <svg><use href="#mascot-gingembre"/></svg>
+        </div>
+        <div class="companion-name">Gingembre</div>
+      </div>
+      <div class="companion-chip">
+        <div class="companion-avatar" style="background: linear-gradient(135deg, #EDE9FE, #DDD6FE);">
+          <svg><use href="#mascot-myrtille"/></svg>
+        </div>
+        <div class="companion-name">Myrtille</div>
+      </div>
+      <div class="companion-chip">
+        <div class="companion-avatar" style="background: linear-gradient(135deg, #DCFCE7, #BBF7D0);">
+          <svg><use href="#mascot-avocat"/></svg>
+        </div>
+        <div class="companion-name">Avocat</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN TIMELINE -->
+  <div class="plan-section">
+    <div class="section-label">Ton programme</div>
+    <div class="timeline" id="timeline">
+
+      <!-- MATIN -->
+      <div class="moment-card matin" onclick="toggleInstructions('matin')">
+        <div class="moment-header">
+          <div class="moment-time-block">
+            <div class="moment-emoji">🌅</div>
+            <div>
+              <div class="moment-time" id="matin-time">7h30</div>
+              <div class="moment-label">Petit-déjeuner</div>
+            </div>
+          </div>
+          <div class="moment-calories" id="matin-cal">350 kcal</div>
+        </div>
+        <div class="moment-title" id="matin-titre">Bol Énergie Matinale au Curcuma Doré</div>
+        <div class="moment-description" id="matin-desc">Un porridge crémeux sans gluten au lait d'amande, généreusement parfumé au curcuma pour un réveil tout en douceur.</div>
+        <div class="moment-footer">
+          <div class="moment-motivant" id="matin-motivant">Une cuillère d'or pour bien démarrer ! ✨</div>
+          <button class="expand-btn" id="btn-matin">▼</button>
+        </div>
+        <div class="moment-instructions" id="instructions-matin">
+          <div class="instructions-content" id="matin-instructions">
+            <div class="instructions-section-label">Ingredients</div>
+            <div class="instructions-ingredients">
+              <span class="ingredient-tag">40g flocons sarrasin</span><span class="ingredient-tag">200ml lait d'amande</span><span class="ingredient-tag">1/2 c.a.c curcuma</span><span class="ingredient-tag">1 pincee cannelle</span><span class="ingredient-tag">20g amandes effilees</span><span class="ingredient-tag">1 c.a.c miel</span>
+            </div>
+            <div class="instructions-section-label">Preparation</div>
+            <div class="instructions-steps">
+              <div class="instruction-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Faire chauffer le lait d'amande dans une casserole a feu moyen. Des les premiers fremissements, ajouter les flocons de sarrasin.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Incorporer le curcuma et la cannelle. Reduire le feu et laisser gonfler 4-5 min en remuant, jusqu'a obtenir une texture cremeuse.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Verser dans un bol et parsemer d'amandes effilees. Ajouter un filet de miel si souhaite. Deguster chaud immediatement.</div>
+              </div>
+            </div>
+            <div class="instructions-tip"><strong>Astuce :</strong> Le curcuma s'absorbe mieux avec une petite touche de matiere grasse (presente dans les amandes). La cannelle potentialise ses effets anti-inflammatoires et aide a reguler la glycemie matinale.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDI -->
+      <div class="moment-card midi" onclick="toggleInstructions('midi')">
+        <div class="moment-header">
+          <div class="moment-time-block">
+            <div class="moment-emoji">☀️</div>
+            <div>
+              <div class="moment-time" id="midi-time">12h30</div>
+              <div class="moment-label">Déjeuner</div>
+            </div>
+          </div>
+          <div class="moment-calories" id="midi-cal">550 kcal</div>
+        </div>
+        <div class="moment-title" id="midi-titre">Bowl Réconfort Lentilles & Potimarron Rôti</div>
+        <div class="moment-description" id="midi-desc">Un mélange gourmand de lentilles corail, de potimarron rôti au romarin et d'épinards frais, le tout arrosé d'une vinaigrette citron-gingembre.</div>
+        <div class="moment-footer">
+          <div class="moment-motivant" id="midi-motivant">Ce bol est une vraie caresse pour tes papilles 💛</div>
+          <button class="expand-btn" id="btn-midi">▼</button>
+        </div>
+        <div class="moment-instructions" id="instructions-midi">
+          <div class="instructions-content" id="midi-instructions">
+            <div class="instructions-section-label">Ingredients</div>
+            <div class="instructions-ingredients">
+              <span class="ingredient-tag">60g lentilles corail</span><span class="ingredient-tag">150g potimarron</span><span class="ingredient-tag">1 poignee epinards frais</span><span class="ingredient-tag">2 c.a.s huile d'olive</span><span class="ingredient-tag">1 branche romarin</span><span class="ingredient-tag">Jus 1/2 citron</span><span class="ingredient-tag">1 c.a.c gingembre rape</span>
+            </div>
+            <div class="instructions-section-label">Preparation</div>
+            <div class="instructions-steps">
+              <div class="instruction-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Prechauffer le four a 200 degres. Couper le potimarron en cubes de 2cm (pas besoin de peler). Disposer sur une plaque avec huile d'olive et romarin. Enfourner 20 min jusqu'a caramelisation.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Rincer les lentilles corail et cuire dans 2x leur volume d'eau salee pendant 10-12 min a feu moyen. Egoutter et laisser tiedir.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Preparer la vinaigrette citron-gingembre : melanger 3 c.a.s d'huile d'olive, le jus de citron, le gingembre rape, sel et poivre.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">4</div>
+                <div class="step-text">Assembler dans un grand bol : epinards frais, lentilles tiedies, potimarron roti. Arroser de vinaigrette et servir aussitot.</div>
+              </div>
+            </div>
+            <div class="instructions-tip"><strong>Astuce :</strong> Les lentilles et le citron forment un duo gagnant : la vitamine C du citron multiplie par 3 l'absorption du fer vegetaldes legumineuses. Le potimarron fournit du beta-carotene et de la vitamine A pour l'immunite.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APRÈS-MIDI -->
+      <div class="moment-card apres-midi" onclick="toggleInstructions('apres_midi')">
+        <div class="moment-header">
+          <div class="moment-time-block">
+            <div class="moment-emoji">🍃</div>
+            <div>
+              <div class="moment-time" id="apres_midi-time">15h30</div>
+              <div class="moment-label">Pause</div>
+            </div>
+          </div>
+          <div class="moment-calories" id="apres_midi-cal">150 kcal</div>
+        </div>
+        <div class="moment-title" id="apres_midi-titre">Pause Douceur & Cohérence Cardiaque</div>
+        <div class="moment-description" id="apres_midi-desc">Un carré de chocolat noir à 70% accompagné d'une tisane au thym, suivi de 5 minutes de cohérence cardiaque pour recentrer ton énergie.</div>
+        <div class="moment-footer">
+          <div class="moment-motivant" id="apres_midi-motivant">Prends ce moment rien que pour toi 🙏</div>
+          <button class="expand-btn" id="btn-apres_midi">▼</button>
+        </div>
+        <div class="moment-instructions" id="instructions-apres_midi">
+          <div class="instructions-content" id="apres_midi-instructions">
+            <div class="instructions-section-label">Ingredients</div>
+            <div class="instructions-ingredients">
+              <span class="ingredient-tag">1 carre chocolat noir 70%+</span><span class="ingredient-tag">250ml eau bouillante</span><span class="ingredient-tag">1 sachet thym bio</span><span class="ingredient-tag">Miel optionnel</span>
+            </div>
+            <div class="instructions-section-label">Preparation</div>
+            <div class="instructions-steps">
+              <div class="instruction-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Faire bouillir l'eau et verser sur le sachet de thym dans une grande tasse. Couvrir et laisser infuser exactement 5 minutes pour preserver les huiles essentielles.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Pendant l'infusion, pratiquer la coherence cardiaque : yeux fermes, inspirer lentement sur 5 secondes, expirer sur 5 secondes. Repeter 5 minutes.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Deguster le carre de chocolat en pleine conscience : le laisser fondre lentement sur la langue pour profiter pleinement de ses flavonoides et de son magnesium.</div>
+              </div>
+            </div>
+            <div class="instructions-tip"><strong>Astuce :</strong> Le thym est un antioxydant puissant avec 20x plus de polyphenols que la plupart des herbes. Le chocolat noir &gt;70% contient 64mg de magnesium par carre, ideal contre le stress. La coherence cardiaque reduit le cortisol de 20% en 5 min.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SOIR -->
+      <div class="moment-card soir" onclick="toggleInstructions('soir')">
+        <div class="moment-header">
+          <div class="moment-time-block">
+            <div class="moment-emoji">🌙</div>
+            <div>
+              <div class="moment-time" id="soir-time">19h30</div>
+              <div class="moment-label">Dîner</div>
+            </div>
+          </div>
+          <div class="moment-calories" id="soir-cal">450 kcal</div>
+        </div>
+        <div class="moment-title" id="soir-titre">Velouté Cocon de Patate Douce & Pois Chiches Croquants</div>
+        <div class="moment-description" id="soir-desc">Une soupe onctueuse à la patate douce et lait de coco, agrémentée de pois chiches rôtis aux épices pour le croquant.</div>
+        <div class="moment-footer">
+          <div class="moment-motivant" id="soir-motivant">Un dîner léger et nourrissant pour une nuit réparatrice 🌙</div>
+          <button class="expand-btn" id="btn-soir">▼</button>
+        </div>
+        <div class="moment-instructions" id="instructions-soir">
+          <div class="instructions-content" id="soir-instructions">
+            <div class="instructions-section-label">Ingredients</div>
+            <div class="instructions-ingredients">
+              <span class="ingredient-tag">300g patate douce</span><span class="ingredient-tag">1 oignon</span><span class="ingredient-tag">50ml lait de coco</span><span class="ingredient-tag">1 boite pois chiches</span><span class="ingredient-tag">1 c.a.c paprika fume</span><span class="ingredient-tag">1 c.a.c cumin</span><span class="ingredient-tag">Huile d'olive</span><span class="ingredient-tag">Sel, poivre</span>
+            </div>
+            <div class="instructions-section-label">Preparation</div>
+            <div class="instructions-steps">
+              <div class="instruction-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Prechauffer le four a 200 degres. Egoutter et rincer les pois chiches, les ealer sur une plaque avec huile d'olive, paprika fume et cumin. Enfourner 15-20 min jusqu'a ce qu'ils soient bien croustillants.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Eplucher et couper la patate douce en cubes de 3cm. Dans une casserole, faire revenir l'oignon emince dans l'huile 3 min. Ajouter la patate douce, couvrir d'eau a hauteur.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Porter a ebullition puis cuire a feu moyen 15 min jusqu'a ce que la patate douce soit fondante. Mixer avec le lait de coco pour obtenir un veloute lisse. Assaisonner.</div>
+              </div>
+              <div class="instruction-step">
+                <div class="step-num">4</div>
+                <div class="step-text">Servir le veloute dans des bols genereux, garnir de pois chiches croustillants. Ajouter un filet d'huile d'olive et quelques feuilles de coriandre si disponible.</div>
+              </div>
+            </div>
+            <div class="instructions-tip"><strong>Astuce :</strong> La patate douce est riche en tryptophane, precurseur de la serotonine et de la melatonine — parfaite le soir pour favoriser un endormissement serein. Le lait de coco apporte des triglycerides a chaine moyenne, facilement digeres.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FEEDBACK BAR -->
+  <div class="feedback-bar" id="feedbackBar" style="display:none">
+    <div>
+      <div class="feedback-label">Ce plan te convient ?</div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:2px;">Ta note nous aide à améliorer tes prochains plans</div>
+    </div>
+    <div class="feedback-stars" id="feedbackStars">
+      <span class="feedback-star" onclick="noterPlan(1)">⭐</span>
+      <span class="feedback-star" onclick="noterPlan(2)">⭐</span>
+      <span class="feedback-star" onclick="noterPlan(3)">⭐</span>
+      <span class="feedback-star" onclick="noterPlan(4)">⭐</span>
+      <span class="feedback-star" onclick="noterPlan(5)">⭐</span>
+    </div>
+    <span class="feedback-sent" id="feedbackSent">Merci ! 🙏</span>
+  </div>
+
+  <!-- ROUTINE DU JOUR -->
+  <div class="routine-section">
+    <div class="routine-card">
+      <div class="routine-title">🧘 Routine du jour</div>
+      <div class="routine-items">
+        <div class="routine-item">
+          <div class="routine-dot"></div>
+          <div class="routine-text"><strong>Matin :</strong> <span id="routine-matin">5 minutes de cohérence cardiaque (inspirer 5s, expirer 5s)</span></div>
+        </div>
+        <div class="routine-item">
+          <div class="routine-dot" style="background: var(--terracotta);"></div>
+          <div class="routine-text"><strong>Complément phare :</strong> <span id="routine-complement">Vitamine D — 1 goutte ce midi avec ton repas pour soutenir l'immunité</span></div>
+        </div>
+        <div class="routine-item">
+          <div class="routine-dot" style="background: var(--golden);"></div>
+          <div class="routine-text"><strong>Aromathérapie :</strong> <span id="routine-aroma">Diffusion lavande le soir pour préparer le sommeil</span></div>
+        </div>
+        <div class="routine-item">
+          <div class="routine-dot" style="background: var(--mirtille-purple);"></div>
+          <div class="routine-text"><strong>Soir :</strong> <span id="routine-soir">10 minutes de lecture légère ou d'écoute de musique douce, sans écran</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSEIL DU JOUR -->
+  <div class="conseil-section">
+    <div class="conseil-card">
+      <div class="conseil-title">💡 Le saviez-vous ?</div>
+      <div class="conseil-text" id="conseilText">
+        Le curcuma et le magnésium (présent dans les légumineuses) sont de précieux alliés contre la fatigue et le stress. Le curcuma aide à moduler l'inflammation, tandis que le magnésium participe à plus de 300 réactions enzymatiques, dont la production d'énergie.
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-pad"></div>
+</div>
+
+<!-- BOUTON GÉNÉRER -->
+<button class="generate-btn" id="generateBtn" onclick="ouvrirConfig()">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+  </svg>
+  Nouveau plan
+</button>
+
+<script>
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// CONFIGURATION SUPABASE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+const SUPABASE_URL = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ4OTM1OTM2NjEwNywiaWF0IjoxNzM0ODkzNTkzNjYxMDcsImV4cCI6MjA1MDQ2OTU5M319.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4' // â† à remplacer
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// STATE — chargé depuis le profil
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+let selectedSymptoms = ['fatigue', 'stress']
+let selectedRegimes = ['sans_gluten']
+let currentPlan = null
+let profilUtilisateur = null // profil complet chargé depuis localStorage/Supabase
+let currentHistoriqueId = null // ID de l'entrée historique du plan en cours
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// INIT — charger le profil dès le départ
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+document.addEventListener('DOMContentLoaded', async () => {
+  // Date française
+  const maintenant = new Date()
+  const opts = { weekday: 'long', day: 'numeric', month: 'short' }
+  document.getElementById('dateBadge').textContent =
+    maintenant.toLocaleDateString('fr-FR', opts)
+
+  // 1. Récupérer l'ID profil — depuis l'URL (?profil_id=...) ou localStorage
+  const urlParams = new URLSearchParams(window.location.search)
+  const profilIdUrl = urlParams.get('profil_id')
+  const profilIdLocal = localStorage.getItem('vitalia_profil_id')
+  const profilId = profilIdUrl || profilIdLocal
+
+  if (profilId && profilId !== 'new') {
+    // 2. Charger d'abord depuis localStorage (instantané)
+    const profilLocal = localStorage.getItem('vitalia_profil')
+    if (profilLocal) {
+      try {
+        profilUtilisateur = JSON.parse(profilLocal)
+        appliquerProfil(profilUtilisateur)
+        console.log('✅ Profil chargé depuis localStorage:', profilId)
+      } catch(e) {}
+    }
+
+    // 3. Rafraîchir depuis Supabase en arrière-plan
+    chargerProfilSupabase(profilId)
+  }
+
+  afficherEtoiles(8)
+
+  // Afficher le widget feedback après que le contenu statique soit visible (demo/prototype)
+  setTimeout(() => {
+    const fb = document.getElementById('feedbackBar')
+    if (fb && fb.style.display === 'none') {
+      fb.style.display = 'flex'
+    }
+  }, 3000)
+
+  if (profilId && profilId !== 'new') {
+    // Profil trouvé → générer le plan automatiquement
+    setTimeout(() => genererPlan(), 500)
+  } else {
+    // Aucun profil → rediriger vers l'onboarding
+    setTimeout(() => {
+      window.location.href = 'onboarding.html'
+    }, 800)
+  }
+})
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// CHARGER PROFIL DEPUIS SUPABASE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+async function chargerProfilSupabase(profilId) {
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/profils_utilisateurs?id=eq.${profilId}&limit=1`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    )
+    if (response.ok) {
+      const data = await response.json()
+      if (data && data[0]) {
+        profilUtilisateur = data[0]
+        appliquerProfil(profilUtilisateur)
+        localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+        console.log('✅ Profil rafraîchi depuis Supabase')
+      }
+    }
+  } catch(e) {
+    console.log('Profil chargé depuis localStorage uniquement')
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// APPLIQUER LE PROFIL À L'INTERFACE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function appliquerProfil(p) {
+  if (!p) return
+
+  // Pré-remplir les symptômes depuis les objectifs du profil
+  if (p.objectifs_generaux && p.objectifs_generaux.length > 0) {
+    selectedSymptoms = p.objectifs_generaux
+    // Cocher les chips correspondantes dans le panel config
+    document.querySelectorAll('#symptomsChips .config-chip').forEach(chip => {
+      const val = chip.getAttribute('onclick')?.match(/'([^']+)'\)$/)?.[1]
+      if (val && selectedSymptoms.includes(val)) {
+        chip.classList.add('selected')
+      } else {
+        chip.classList.remove('selected')
+      }
+    })
+  }
+
+  // Pré-remplir les régimes
+  if (p.regimes_alimentaires && p.regimes_alimentaires.length > 0) {
+    selectedRegimes = p.regimes_alimentaires
+  }
+
+  // Pré-remplir budget et temps
+  if (p.budget_max) {
+    const budgetEl = document.getElementById('budgetMax')
+    if (budgetEl) {
+      // Trouver l'option la plus proche
+      const val = p.budget_max <= 10 ? '10' : p.budget_max <= 15 ? '15' : '25'
+      budgetEl.value = val
+    }
+  }
+
+  if (p.temps_max) {
+    const tempsEl = document.getElementById('tempsMax')
+    if (tempsEl) {
+      const val = p.temps_max <= 15 ? '15' : p.temps_max <= 30 ? '30' : p.temps_max <= 45 ? '45' : '60'
+      tempsEl.value = val
+    }
+  }
+
+  // Personnaliser le message d'accueil
+  if (p.prenom) {
+    document.getElementById('heroMessage').textContent =
+      `Bonjour ${p.prenom} ! Prêt à prendre soin de toi ? 🌿`
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// GÉNÉRER UN PLAN — flux complet N1→N2→N3
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+async function genererPlan() {
+  fermerConfig()
+
+  document.getElementById('loadingScreen').style.opacity = '1'
+  document.getElementById('loadingScreen').style.pointerEvents = 'all'
+  document.getElementById('app').style.opacity = '0'
+
+  // Récupérer l'ID profil (URL > localStorage > fallback prototype)
+  const urlParams = new URLSearchParams(window.location.search)
+  const profilId = urlParams.get('profil_id')
+    || localStorage.getItem('vitalia_profil_id')
+    || null
+
+  const tempsMax = parseInt(document.getElementById('tempsMax').value)
+  const budgetMax = parseInt(document.getElementById('budgetMax').value)
+
+  try {
+    let ingredientsSelectionnes = null
+
+    // ── NIVEAU 1 & 2 : si on a un vrai profil Supabase ──
+    if (profilId && profilId !== 'new') {
+      try {
+        const reponseN12 = await fetch(
+          `${SUPABASE_URL}/functions/v1/generer-routine`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              profil_id: profilId,
+              symptomes: selectedSymptoms,
+              preferences_moment: { temps_max: tempsMax, budget_max: budgetMax }
+            })
+          }
+        )
+        if (reponseN12.ok) {
+          const dataN12 = await reponseN12.json()
+          if (dataN12.ingredients_selectionnes) {
+            ingredientsSelectionnes = dataN12.ingredients_selectionnes
+            console.log('✅ N1+N2 : ingrédients filtrés depuis profil réel')
+          }
+        }
+      } catch(e) {
+        console.log('ℹï¸ N1+N2 indisponible, fallback ingrédients locaux')
+      }
+    }
+
+    // Fallback : construire les ingrédients localement avec rotation
+    if (!ingredientsSelectionnes) {
+      ingredientsSelectionnes = construireIngredients(selectedSymptoms)
+      // Mélanger chaque catégorie pour varier même sans N1+N2
+      Object.keys(ingredientsSelectionnes).forEach(cat => {
+        if (Array.isArray(ingredientsSelectionnes[cat])) {
+          ingredientsSelectionnes[cat] = shuffleArray(ingredientsSelectionnes[cat])
+        }
+      })
+      console.log('ℹï¸ Ingrédients construits localement (avec rotation)')
+    }
+
+    // ── NIVEAU 3 : génération LLM ──
+    const profilSecurite = profilUtilisateur ? {
+      regimes: profilUtilisateur.regimes_alimentaires || selectedRegimes,
+      allergies: profilUtilisateur.allergies || [],
+      enceinte: profilUtilisateur.enceinte || false,
+      age: profilUtilisateur.age || 35,
+      objectifs: profilUtilisateur.objectifs_generaux || selectedSymptoms,
+      prenom: profilUtilisateur.prenom || null
+    } : {
+      regimes: selectedRegimes,
+      allergies: [],
+      enceinte: false,
+      age: 35,
+      objectifs: selectedSymptoms
+    }
+
+    const reponseN3 = await fetch(
+      `${SUPABASE_URL}/functions/v1/generer-plan`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          profil_id: profilId || ('proto-' + Date.now()),
+          ingredients_selectionnes: ingredientsSelectionnes,
+          profil_securite: profilSecurite,
+          symptomes_declares: selectedSymptoms,
+          preferences: { temps_max: tempsMax, budget_max: budgetMax, saison: getSaison() },
+          force_regeneration: true
+        })
+      }
+    )
+
+    const dataN3 = await reponseN3.json()
+
+    if (dataN3.success && dataN3.plan) {
+      afficherPlan(dataN3.plan)
+    } else {
+      console.error('Réponse API N3:', dataN3)
+      throw new Error(dataN3.error || 'Plan invalide reçu')
+    }
+
+  } catch (err) {
+    console.error('Erreur génération:', err)
+    alert('Erreur : ' + err.message + '\n\nVérifie la console (F12) pour plus de détails.')
+  } finally {
+    document.getElementById('loadingScreen').style.opacity = '0'
+    document.getElementById('loadingScreen').style.pointerEvents = 'none'
+    document.getElementById('app').style.opacity = '1'
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// AFFICHER LE PLAN
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function afficherPlan(plan) {
+  currentPlan = plan
+
+  // Hero
+  document.getElementById('heroMessage').textContent = plan.message_personnalise || 'Ton plan est prêt ! 🌿'
+  const score = plan.score_nutritionnel || 7
+  document.getElementById('scoreValue').textContent = score + '/10'
+  afficherEtoiles(score)
+
+  // Moments
+  const moments = ['matin', 'midi', 'apres_midi', 'soir']
+  const emojis = { matin: '🌅', midi: '☀️', apres_midi: '🍃', soir: '🌙' }
+
+  moments.forEach(moment => {
+    const data = plan[moment]
+    if (!data) return
+    const key = moment.replace('_', '_')
+    setText(moment + '-time', data.heure_suggere || '')
+    setText(moment + '-titre', data.titre || '')
+    setText(moment + '-desc', data.description || '')
+    setText(moment + '-motivant', data.message_motivant || '')
+    setText(moment + '-cal', (data.calories_estimees || '—') + ' kcal')
+    renderInstructions(moment, data.instructions)
+  })
+
+  // Routine
+  const r = plan.routine_du_jour || {}
+  if (r.matin) setText('routine-matin', r.matin)
+  if (r.complement_phare) setText('routine-complement', r.complement_phare)
+  if (r.aromatherapie) setText('routine-aroma', r.aromatherapie)
+  if (r.soir) setText('routine-soir', r.soir)
+
+  // Conseil
+  if (plan.conseil_du_jour) setText('conseilText', plan.conseil_du_jour)
+
+  // Logger le plan vu dans l'historique
+  loggerPlanVu(plan)
+
+  // Afficher le widget feedback
+  const feedbackBar = document.getElementById('feedbackBar')
+  if (feedbackBar) {
+    feedbackBar.style.display = 'flex'
+    // Reset état feedback
+    document.querySelectorAll('.feedback-star').forEach(s => s.classList.remove('lit'))
+    const sentEl = document.getElementById('feedbackSent')
+    if (sentEl) { sentEl.classList.remove('show') }
+    document.getElementById('feedbackStars').style.display = 'flex'
+  }
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.textContent = val
+}
+
+function setHTML(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.innerHTML = val
+}
+
+/**
+ * Render rich instructions for a meal moment
+ * Supports both string (simple) and object {ingredients, steps, tip} formats
+ */
+function renderInstructions(moment, data) {
+  var el = document.getElementById(moment + '-instructions')
+  if (!el) return
+
+  // Cas 1 : objet structure {ingredients, steps, tip} (plans statiques)
+  if (data && typeof data === 'object' && !Array.isArray(data) && data.steps) {
+    var ingHtml = ''
+    if (data.ingredients && data.ingredients.length) {
+      ingHtml = '<div class="instructions-section-label">Ingredients</div>' +
+        '<div class="instructions-ingredients">' +
+        data.ingredients.map(function(i) {
+          return '<span class="ingredient-tag">' + i + '</span>'
+        }).join('') + '</div>'
+    }
+    var stepsHtml = '<div class="instructions-section-label">Preparation</div>' +
+      '<div class="instructions-steps">' +
+      data.steps.map(function(step, n) {
+        return '<div class="instruction-step"><div class="step-num">' + (n+1) +
+          '</div><div class="step-text">' + step + '</div></div>'
+      }).join('') + '</div>'
+    var tipHtml = data.tip
+      ? '<div class="instructions-tip"><strong>Astuce :</strong> ' + data.tip + '</div>'
+      : ''
+    el.innerHTML = ingHtml + stepsHtml + tipHtml
+    return
+  }
+
+  // Cas 2 : string venant du LLM - on la decoupe en etapes numerotees
+  if (typeof data === 'string' && data.trim()) {
+    var text = data.trim()
+
+    // Decouper par newline ou par phrase (". ")
+    var rawLines
+    if (text.indexOf('\n') >= 0) {
+      rawLines = text.split('\n')
+    } else {
+      // Split sur ". " : reconstitue chaque phrase avec son point
+      var parts = text.split('. ')
+      rawLines = parts.map(function(s, i) {
+        return (i < parts.length - 1) ? s + '.' : s
+      })
+    }
+
+    // Nettoyer et filtrer les fragments trop courts
+    var steps = rawLines
+      .map(function(l) { return l.replace(/^\d+[.)]\s*/, '').trim() })
+      .filter(function(l) { return l.length > 10 })
+
+    if (steps.length >= 2) {
+      el.innerHTML = '<div class="instructions-section-label">Preparation</div>' +
+        '<div class="instructions-steps">' +
+        steps.map(function(step, n) {
+          return '<div class="instruction-step">' +
+            '<div class="step-num">' + (n+1) + '</div>' +
+            '<div class="step-text">' + step + '</div>' +
+            '</div>'
+        }).join('') + '</div>'
+    } else {
+      el.innerHTML = '<div class="instructions-section-label">Preparation</div>' +
+        '<div class="instructions-steps"><div class="instruction-step">' +
+        '<div class="step-num">1</div><div class="step-text">' + text + '</div>' +
+        '</div></div>'
+    }
+    return
+  }
+
+  // Cas 3 : fallback
+  if (data) el.textContent = String(data)
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// HISTORIQUE & FEEDBACK
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+/**
+ * Enregistre le plan vu dans historique_recommandations
+ * Retourne l'UUID de la ligne créée (pour le feedback ensuite)
+ */
+async function loggerPlanVu(plan) {
+  const profilId = localStorage.getItem('vitalia_profil_id')
+  if (!profilId || profilId === 'new') return
+
+  // Extraire les IDs produits du plan
+  const produitsVus = extraireIdsProduits(plan)
+
+  const entry = {
+    profil_id: profilId,
+    produits_vus: produitsVus,
+    symptomes_declares: selectedSymptoms,
+    plan_json: plan,
+    date_utilisation: new Date().toISOString()
+  }
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/historique_recommandations`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(entry)
+      }
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data && data[0]) {
+        currentHistoriqueId = data[0].id
+        console.log('✅ Plan logué dans historique:', currentHistoriqueId)
+      }
+    }
+  } catch(e) {
+    console.log('ℹï¸ Log historique non disponible (offline?)')
+  }
+}
+
+/**
+ * Extraire tous les IDs produits mentionnés dans le plan
+ */
+function extraireIdsProduits(plan) {
+  const ids = new Set()
+  const moments = ['matin', 'midi', 'apres_midi', 'soir']
+
+  moments.forEach(moment => {
+    const data = plan[moment]
+    if (!data) return
+    // Chercher les patterns ALI_XXX, NUT_XXX, ARO_XXX, ROU_XXX dans le JSON
+    const texte = JSON.stringify(data)
+    const matches = texte.match(/[A-Z]{2,3}_\d{3}/g) || []
+    matches.forEach(id => ids.add(id))
+    // Ajouter aussi le titre comme identifiant textuel
+    if (data.titre) ids.add(data.titre.substring(0, 30))
+  })
+
+  return Array.from(ids)
+}
+
+/**
+ * Enregistre la note de satisfaction (1-5 étoiles)
+ */
+async function noterPlan(note) {
+  // Animer les étoiles
+  const stars = document.querySelectorAll('.feedback-star')
+  stars.forEach((s, i) => {
+    s.classList.toggle('lit', i < note)
+  })
+
+  // Masquer les étoiles, afficher "Merci"
+  setTimeout(() => {
+    document.getElementById('feedbackStars').style.display = 'none'
+    const sentEl = document.getElementById('feedbackSent')
+    if (sentEl) sentEl.classList.add('show')
+  }, 400)
+
+  // Toast
+  afficherToast(note >= 4 ? '🎉 Super ! On ameliore tes prochains plans !' : note >= 3 ? '👍 Note ! On diversifie la suite' : '🔄 Compris ! Plan plus varie demain')
+
+  // Sauvegarder en Supabase si on a un ID historique
+  if (currentHistoriqueId) {
+    try {
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/historique_recommandations?id=eq.${currentHistoriqueId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            note_satisfaction: note,
+            feedback_donne_le: new Date().toISOString()
+          })
+        }
+      )
+      console.log('✅ Feedback', note, '★ sauvegardé')
+    } catch(e) {
+      console.log('ℹï¸ Feedback sauvegardé localement uniquement')
+    }
+  }
+
+  // Sauvegarder aussi localement
+  const feedbacks = JSON.parse(localStorage.getItem('vitalia_feedbacks') || '[]')
+  feedbacks.push({
+    date: new Date().toISOString(),
+    note,
+    symptomes: selectedSymptoms,
+    historique_id: currentHistoriqueId
+  })
+  // Garder les 50 derniers
+  if (feedbacks.length > 50) feedbacks.splice(0, feedbacks.length - 50)
+  localStorage.setItem('vitalia_feedbacks', JSON.stringify(feedbacks))
+}
+
+/**
+ * Affiche un toast temporaire
+ */
+function afficherToast(message) {
+  const toast = document.getElementById('toast')
+  if (!toast) return
+  toast.textContent = message
+  toast.classList.add('show')
+  setTimeout(() => toast.classList.remove('show'), 3000)
+}
+
+function afficherEtoiles(score) {
+  const container = document.getElementById('starsContainer')
+  const plein = Math.floor(score / 2)
+  const demi = score % 2 === 1 ? 1 : 0
+  let html = ''
+  for (let i = 0; i < plein; i++) html += '<span class="star">⭐</span>'
+  if (demi) html += '<span class="star">✨</span>'
+  container.innerHTML = html
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// TOGGLE INSTRUCTIONS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function toggleInstructions(moment) {
+  const el = document.getElementById('instructions-' + moment)
+  const btn = document.getElementById('btn-' + moment)
+  if (!el) return
+  el.classList.toggle('open')
+  if (btn) btn.textContent = el.classList.contains('open') ? '▲' : '▼'
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// CONFIG PANEL
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function ouvrirConfig() {
+  document.getElementById('configPanel').classList.add('open')
+  document.getElementById('overlay').classList.add('active')
+}
+
+function fermerConfig() {
+  document.getElementById('configPanel').classList.remove('open')
+  document.getElementById('overlay').classList.remove('active')
+}
+
+function toggleChip(el, val) {
+  el.classList.toggle('selected')
+  // Gérer les listes
+  if (el.dataset.regime) {
+    if (el.classList.contains('selected')) {
+      if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
+    } else {
+      selectedRegimes = selectedRegimes.filter(r => r !== val)
+    }
+  } else {
+    if (el.classList.contains('selected')) {
+      if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val)
+    } else {
+      selectedSymptoms = selectedSymptoms.filter(s => s !== val)
+    }
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// UTILITAIRES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function getSaison() {
+  const m = new Date().getMonth() + 1
+  if (m >= 3 && m <= 5) return 'printemps'
+  if (m >= 6 && m <= 8) return 'été'
+  if (m >= 9 && m <= 11) return 'automne'
+  return 'hiver'
+}
+
+// Mélange un tableau aléatoirement (Fisher-Yates)
+function shuffleArray(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+// Construit une sélection d'ingrédients adaptée aux symptômes choisis
+// (simule le travail des Niveaux 1 & 2 pour le prototype)
+function construireIngredients(symptomes) {
+  // Pool complet — on pioche aléatoirement dedans
+  const pool = {
+    proteines: shuffleArray([
+      { id: 'ALI_010', nom: 'Lentilles corail', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_011', nom: 'Pois chiches', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_012', nom: 'Tofu', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_014', nom: 'Å’ufs', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_015', nom: 'Sardines', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_016', nom: 'Tempeh', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_017', nom: 'Edamame', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_018', nom: 'Haricots noirs', type_produit: 'ALI', score_final: 7 }
+    ]),
+    legumes: shuffleArray([
+      { id: 'ALI_005', nom: 'Épinards', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_007', nom: 'Patate douce', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_013', nom: 'Brocolis', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_019', nom: 'Courgettes', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_020', nom: 'Artichaut', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_021', nom: 'Betterave', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_022', nom: 'Chou kale', type_produit: 'ALI', score_final: 9 },
+      { id: 'ALI_023', nom: 'Carottes', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_024', nom: 'Fenouil', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_025', nom: 'Potimarron', type_produit: 'ALI', score_final: 7 }
+    ]),
+    cereales: shuffleArray([
+      { id: 'ALI_008', nom: 'Quinoa', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_009', nom: 'Flocons de sarrasin', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_026', nom: 'Riz complet', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_027', nom: 'Millet', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_028', nom: 'Avoine', type_produit: 'ALI', score_final: 8 }
+    ]),
+    epices: shuffleArray([
+      { id: 'ALI_001', nom: 'Curcuma', type_produit: 'ALI', score_final: 9 },
+      { id: 'ALI_002', nom: 'Gingembre', type_produit: 'ALI', score_final: 8 },
+      { id: 'ALI_003', nom: 'Cannelle', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_029', nom: 'Cumin', type_produit: 'ALI', score_final: 7 },
+      { id: 'ALI_030', nom: 'Coriandre', type_produit: 'ALI', score_final: 7 }
+    ]),
+    complements: shuffleArray([
+      { id: 'NUT_001', nom: 'Vitamine D', type_produit: 'NUT', score_final: 9 },
+      { id: 'NUT_002', nom: 'Zinc', type_produit: 'NUT', score_final: 8 },
+      { id: 'NUT_005', nom: 'Vitamine C', type_produit: 'NUT', score_final: 8 },
+      { id: 'NUT_006', nom: 'Spiruline', type_produit: 'NUT', score_final: 8 },
+      { id: 'NUT_007', nom: 'Oméga-3', type_produit: 'NUT', score_final: 9 }
+    ]),
+    routines: shuffleArray([
+      { id: 'ROU_001', nom: 'Cohérence cardiaque', type_produit: 'ROU', score_final: 8 },
+      { id: 'ROU_002', nom: 'Méditation guidée', type_produit: 'ROU', score_final: 8 },
+      { id: 'ROU_003', nom: 'Marche en plein air', type_produit: 'ROU', score_final: 7 },
+      { id: 'ROU_004', nom: 'Yoga doux', type_produit: 'ROU', score_final: 7 },
+      { id: 'ROU_006', nom: 'Journaling', type_produit: 'ROU', score_final: 7 }
+    ])
+  }
+
+  // Sélectionner un sous-ensemble aléatoire du pool
+  const base = {
+    proteines: pool.proteines.slice(0, 2),
+    legumes:   pool.legumes.slice(0, 4),
+    cereales:  pool.cereales.slice(0, 1),
+    epices:    pool.epices.slice(0, 2),
+    complements: pool.complements.slice(0, 2),
+    routines:  pool.routines.slice(0, 2)
+  }
+
+  // Ajuster selon symptômes
+  if (symptomes.includes('fatigue') || symptomes.includes('energie')) {
+    base.complements.push({ id: 'NUT_003', nom: 'Magnésium', type_produit: 'NUT', score_final: 9 })
+    base.complements.push({ id: 'NUT_004', nom: 'Vitamine B12', type_produit: 'NUT', score_final: 8 })
+    base.routines.push({ id: 'ROU_003', nom: 'Marche en plein air', type_produit: 'ROU', score_final: 7 })
+  }
+
+  if (symptomes.includes('stress')) {
+    base.complements.push({ id: 'NUT_009', nom: 'Rhodiola Rosea', type_produit: 'NUT', score_final: 8 })
+    base.complements.push({ id: 'NUT_010', nom: 'Ashwagandha', type_produit: 'NUT', score_final: 8 })
+    base.routines.push({ id: 'ROU_002', nom: 'Méditation guidée', type_produit: 'ROU', score_final: 8 })
+  }
+
+  if (symptomes.includes('sommeil')) {
+    base.complements.push({ id: 'NUT_013', nom: 'Mélatonine', type_produit: 'NUT', score_final: 7 })
+    base.complements.push({ id: 'NUT_012', nom: 'L-théanine', type_produit: 'NUT', score_final: 8 })
+    base.routines.push({ id: 'ROU_005', nom: 'Routine sommeil', type_produit: 'ROU', score_final: 9 })
+  }
+
+  if (symptomes.includes('digestion')) {
+    base.complements.push({ id: 'NUT_008', nom: 'Probiotiques', type_produit: 'NUT', score_final: 9 })
+    base.legumes.push({ id: 'ALI_020', nom: 'Artichaut', type_produit: 'ALI', score_final: 8 })
+  }
+
+  if (symptomes.includes('inflammation')) {
+    base.legumes.push({ id: 'ALI_004', nom: 'Myrtilles', type_produit: 'ALI', score_final: 9 })
+    base.complements.push({ id: 'NUT_007', nom: 'Oméga-3', type_produit: 'NUT', score_final: 9 })
+  }
+
+  return base
+}
+</script>
+</body>
+</html>
