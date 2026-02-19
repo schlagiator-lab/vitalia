@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia — Bienvenue</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --terracotta: #C4714A;
+    --terracotta-light: #E8956D;
+    --sage: #7A9E7E;
+    --sage-light: #A8C5AC;
+    --peach: #F2C4A0;
+    --golden: #E8B84B;
+    --deep-brown: #3D2B1F;
+    --mid-brown: #7A5C4A;
+    --text-light: #9E8070;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--deep-brown);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(196,113,74,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(122,158,126,0.10) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(232,184,75,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .onboarding-container {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px 40px;
+  }
+
+  /* ── LOGO / MASCOTTE ── */
+  .logo-area {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .mascotte {
+    font-size: 56px;
+    display: block;
+    margin-bottom: 8px;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .logo-title {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--deep-brown);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-sub {
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  /* ── CARTE ÉTAPE ── */
+  .step-card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 4px 24px rgba(61,43,31,0.08), 0 1px 4px rgba(61,43,31,0.04);
+    animation: slideUp 0.4s ease;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-header {
+    margin-bottom: 24px;
+  }
+
+  .step-number {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--terracotta);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .step-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--deep-brown);
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+
+  .step-desc {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.5;
+  }
+
+  /* ── BARRE DE PROGRESSION ── */
+  .progress-bar {
+    width: 100%;
+    max-width: 440px;
+    height: 4px;
+    background: rgba(196,113,74,0.15);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--terracotta), var(--golden));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── INPUTS ── */
+  .field-group {
+    margin-bottom: 20px;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mid-brown);
+    margin-bottom: 8px;
+  }
+
+  .field-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid rgba(61,43,31,0.12);
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--deep-brown);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field-input:focus {
+    border-color: var(--terracotta);
+    box-shadow: 0 0 0 3px rgba(196,113,74,0.12);
+  }
+
+  .field-input::placeholder { color: var(--text-light); }
+
+  /* ── CHIPS SÉLECTION MULTIPLE ── */
+  .chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1.5px solid rgba(61,43,31,0.12);
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--mid-brown);
+    background: var(--cream);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+
+  .chip:hover {
+    border-color: var(--terracotta-light);
+    background: rgba(196,113,74,0.06);
+  }
+
+  .chip.selected {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: white;
+    font-weight: 500;
+  }
+
+  .chip .chip-icon { font-size: 15px; }
+
+  /* ── TOGGLE OUI/NON ── */
+  .toggle-group {
+    display: flex;
+    gap: 10px;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 12px;
+    border: 1.5px solid rgba(61,43,31,0.12);
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--mid-brown);
+    background: var(--cream);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .toggle-btn:hover { border-color: var(--terracotta-light); }
+
+  .toggle-btn.selected {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: white;
+  }
+
+  /* ── BOUTON PRINCIPAL ── */
+  .btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-light) 100%);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(196,113,74,0.35); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: var(--text-light);
+    border: 1.5px solid rgba(61,43,31,0.12);
+    border-radius: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+
+  .btn-secondary:hover { border-color: var(--terracotta-light); color: var(--terracotta); }
+
+  /* ── ÉTAPE EMAIL ── */
+  .email-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(122,158,126,0.1);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--mid-brown);
+    line-height: 1.5;
+  }
+
+  .email-info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── ÉTAPE CONFIRMATION EMAIL ── */
+  .magic-sent {
+    text-align: center;
+    padding: 8px 0;
+  }
+
+  .magic-icon {
+    font-size: 52px;
+    display: block;
+    margin-bottom: 16px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+
+  .magic-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .magic-desc {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+
+  .magic-email-display {
+    font-weight: 600;
+    color: var(--terracotta);
+  }
+
+  .resend-link {
+    font-size: 13px;
+    color: var(--terracotta);
+    cursor: pointer;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+
+  /* ── LOADING ── */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .loading-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .loading-dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    animation: dotBounce 1.2s ease-in-out infinite;
+  }
+
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dotBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  .loading-text {
+    font-size: 15px;
+    color: var(--text-light);
+    margin-top: 12px;
+  }
+
+  /* ── MESSAGE ERREUR ── */
+  .error-msg {
+    display: none;
+    padding: 10px 14px;
+    background: rgba(192,57,43,0.08);
+    border: 1px solid rgba(192,57,43,0.2);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #C0392B;
+    margin-top: 12px;
+  }
+
+  .error-msg.visible { display: block; }
+
+  /* ── SELECT NATIF ── */
+  .field-select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid rgba(61,43,31,0.12);
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--deep-brown);
+    background: var(--cream);
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239E8070' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .field-select:focus { border-color: var(--terracotta); }
+
+  /* ── SECTION FACULTATIF ── */
+  .optional-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-light);
+    background: rgba(61,43,31,0.06);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .skip-link {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-light);
+    cursor: pointer;
+  }
+
+  .skip-link span {
+    color: var(--terracotta);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 480px) {
+    .step-card { padding: 24px 20px; border-radius: 20px; }
+    .logo-title { font-size: 28px; }
+    .step-title { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <span style="font-size:48px">🌿</span>
+  <div class="loading-dots">
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+  </div>
+  <div class="loading-text" id="loadingText">Création de ton profil...</div>
+</div>
+
+<div class="onboarding-container">
+
+  <!-- Logo -->
+  <div class="logo-area">
+    <span class="mascotte">🍅</span>
+    <div class="logo-title">Vitalia</div>
+    <div class="logo-sub">Ton compagnon bien-être holistique</div>
+  </div>
+
+  <!-- Barre de progression -->
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 0 : EMAIL (Magic Link)               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="stepEmail">
+    <div class="step-header">
+      <div class="step-title">Ton adresse email</div>
+      <div class="step-desc">Pour retrouver ton profil sur tous tes appareils — sans mot de passe.</div>
+    </div>
+
+    <div class="email-info">
+      <span class="email-info-icon">🔒</span>
+      <span>On t'envoie un lien magique. Un clic et tu es connecté·e, maintenant et à l'avenir.</span>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Adresse email</label>
+      <input
+        type="email"
+        class="field-input"
+        id="emailInput"
+        placeholder="toi@exemple.com"
+        autocomplete="email"
+        inputmode="email"
+      />
+    </div>
+
+    <div class="error-msg" id="emailError">Adresse email invalide. Vérifie et réessaie.</div>
+
+    <button class="btn-primary" id="btnSendMagic" onclick="envoyerLienMagique()">
+      Recevoir mon lien magique ✨
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 0b : EMAIL ENVOYÉ                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="stepEmailSent" style="display:none">
+    <div class="magic-sent">
+      <span class="magic-icon">📬</span>
+      <div class="magic-title">Vérifie ta boîte mail !</div>
+      <p class="magic-desc">
+        Un lien de connexion a été envoyé à<br>
+        <span class="magic-email-display" id="emailDisplay"></span>
+      </p>
+      <p class="magic-desc" style="margin-top:12px">
+        Clique sur le lien dans l'email pour continuer. Il est valide 1 heure.
+      </p>
+      <p style="font-size:13px; color:var(--text-light); margin-top:16px">
+        Pas reçu ? Vérifie tes spams ou&nbsp;
+        <button class="resend-link" onclick="renvoyerEmail()">renvoie le lien</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 1 : PRÉNOM & ÂGE                     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="step1" style="display:none">
+    <div class="step-header">
+      <div class="step-number">Étape 1 sur 4</div>
+      <div class="step-title">Faisons connaissance 👋</div>
+      <div class="step-desc">Quelques infos pour personnaliser tes recommandations.</div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Ton prénom</label>
+      <input type="text" class="field-input" id="prenomInput" placeholder="Marie" autocomplete="given-name" />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Ton âge</label>
+      <select class="field-select" id="ageInput">
+        <option value="">Sélectionne ton âge</option>
+        <option value="18-25">18 – 25 ans</option>
+        <option value="26-35">26 – 35 ans</option>
+        <option value="36-45">36 – 45 ans</option>
+        <option value="46-55">46 – 55 ans</option>
+        <option value="56-65">56 – 65 ans</option>
+        <option value="65+">65 ans et plus</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Tu es</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" data-value="femme" onclick="selectToggle('sexe', this)">Femme</button>
+        <button class="toggle-btn" data-value="homme" onclick="selectToggle('sexe', this)">Homme</button>
+        <button class="toggle-btn" data-value="autre" onclick="selectToggle('sexe', this)">Autre</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="step1Error"></div>
+
+    <button class="btn-primary" onclick="allerStep(2)">Continuer →</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 2 : OBJECTIFS                        -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="step2" style="display:none">
+    <div class="step-header">
+      <div class="step-number">Étape 2 sur 4</div>
+      <div class="step-title">Tes objectifs bien-être 🎯</div>
+      <div class="step-desc">Choisis jusqu'à 3 objectifs. Tu pourras les modifier plus tard.</div>
+    </div>
+
+    <div class="chips-grid" id="objectifsChips">
+      <div class="chip" data-value="energie" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">⚡</span> Énergie
+      </div>
+      <div class="chip" data-value="stress" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🧘</span> Stress & anxiété
+      </div>
+      <div class="chip" data-value="sommeil" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🌙</span> Sommeil
+      </div>
+      <div class="chip" data-value="digestion" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🌿</span> Digestion
+      </div>
+      <div class="chip" data-value="immunite" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🛡️</span> Immunité
+      </div>
+      <div class="chip" data-value="douleurs" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">💪</span> Douleurs
+      </div>
+      <div class="chip" data-value="peau" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">✨</span> Peau & éclat
+      </div>
+      <div class="chip" data-value="poids" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">⚖️</span> Équilibre poids
+      </div>
+    </div>
+
+    <div class="error-msg" id="step2Error"></div>
+
+    <button class="btn-primary" onclick="allerStep(3)" style="margin-top:20px">Continuer →</button>
+    <button class="btn-secondary" onclick="allerStep(1)">← Retour</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 3 : RÉGIMES & ALLERGIES              -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="step3" style="display:none">
+    <div class="step-header">
+      <div class="step-number">Étape 3 sur 4</div>
+      <div class="step-title">Régimes & allergies 🥗</div>
+      <div class="step-desc">Pour ne jamais te proposer quelque chose que tu ne peux pas manger.</div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Régimes alimentaires <span class="optional-badge">Optionnel</span></label>
+      <div class="chips-grid">
+        <div class="chip" data-value="vegan" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">🌱</span> Végan
+        </div>
+        <div class="chip" data-value="vegetarien" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">🥦</span> Végétarien
+        </div>
+        <div class="chip" data-value="sans_gluten" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">🚫</span> Sans gluten
+        </div>
+        <div class="chip" data-value="sans_lactose" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">🥛</span> Sans lactose
+        </div>
+        <div class="chip" data-value="halal" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">☪️</span> Halal
+        </div>
+        <div class="chip" data-value="casher" onclick="toggleChip(this, 'regimes')">
+          <span class="chip-icon">✡️</span> Casher
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Allergies alimentaires <span class="optional-badge">Optionnel</span></label>
+      <div class="chips-grid">
+        <div class="chip" data-value="arachides" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🥜</span> Arachides
+        </div>
+        <div class="chip" data-value="noix" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🌰</span> Fruits à coque
+        </div>
+        <div class="chip" data-value="poisson" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🐟</span> Poisson
+        </div>
+        <div class="chip" data-value="crustaces" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🦐</span> Crustacés
+        </div>
+        <div class="chip" data-value="soja" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🫘</span> Soja
+        </div>
+        <div class="chip" data-value="sesame" onclick="toggleChip(this, 'allergies')">
+          <span class="chip-icon">🌾</span> Sésame
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="step3Error"></div>
+
+    <button class="btn-primary" onclick="allerStep(4)" style="margin-top:8px">Continuer →</button>
+    <button class="btn-secondary" onclick="allerStep(2)">← Retour</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ÉTAPE 4 : SANTÉ & SÉCURITÉ                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="step-card" id="step4" style="display:none">
+    <div class="step-header">
+      <div class="step-number">Étape 4 sur 4</div>
+      <div class="step-title">Santé & sécurité 🏥</div>
+      <div class="step-desc">Pour adapter tes recommandations en toute sécurité. Ces informations restent privées.</div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Grossesse ou allaitement ?</label>
+      <div class="toggle-group">
+        <button class="toggle-btn" data-value="non" onclick="selectToggle('grossesse', this)">Non</button>
+        <button class="toggle-btn" data-value="enceinte" onclick="selectToggle('grossesse', this)">Enceinte</button>
+        <button class="toggle-btn" data-value="allaitement" onclick="selectToggle('grossesse', this)">Allaitement</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Médicaments en cours <span class="optional-badge">Optionnel</span></label>
+      <input
+        type="text"
+        class="field-input"
+        id="medicamentsInput"
+        placeholder="ex: Levothyrox, aspirine..."
+      />
+      <div style="font-size:12px; color:var(--text-light); margin-top:6px">
+        Permet d'éviter les interactions. Sépare par des virgules.
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Conditions chroniques <span class="optional-badge">Optionnel</span></label>
+      <div class="chips-grid">
+        <div class="chip" data-value="diabete" onclick="toggleChip(this, 'pathologies')">
+          <span class="chip-icon">🩸</span> Diabète
+        </div>
+        <div class="chip" data-value="hypertension" onclick="toggleChip(this, 'pathologies')">
+          <span class="chip-icon">❤️</span> Hypertension
+        </div>
+        <div class="chip" data-value="hypothyroidie" onclick="toggleChip(this, 'pathologies')">
+          <span class="chip-icon">🦋</span> Hypothyroïdie
+        </div>
+        <div class="chip" data-value="sibo_ibs" onclick="toggleChip(this, 'pathologies')">
+          <span class="chip-icon">🫁</span> SIBO / SII
+        </div>
+        <div class="chip" data-value="endometriose" onclick="toggleChip(this, 'pathologies')">
+          <span class="chip-icon">🌸</span> Endométriose
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="step4Error"></div>
+
+    <button class="btn-primary" onclick="terminerOnboarding()">
+      Créer mon profil Vitalia 🌿
+    </button>
+    <button class="btn-secondary" onclick="allerStep(3)">← Retour</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIGURATION SUPABASE (SDK officiel)
+// ═══════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ4OTM1OTM2NjEwNywiaWF0IjoxNzM0ODkzNTkzNjYxMDcsImV4cCI6MjA1MDQ2OTU5M319.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4'
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ═══════════════════════════════════════════════════════
+// ÉTAT DE L'ONBOARDING
+// ═══════════════════════════════════════════════════════
+const state = {
+  email:       '',
+  prenom:      '',
+  age:         '',
+  sexe:        '',
+  grossesse:   'non',
+  objectifs:   [],
+  regimes:     [],
+  allergies:   [],
+  pathologies: [],
+  medicaments: [],
+}
+
+let currentStep = 0
+const TOTAL_STEPS = 4
+
+// ═══════════════════════════════════════════════════════
+// INITIALISATION : détecter si on revient d'un magic link
+// ═══════════════════════════════════════════════════════
+window.addEventListener('load', async () => {
+  // Vérifier si on est déjà connecté (localStorage)
+  const profilId = localStorage.getItem('vitalia_profil_id')
+  const profilComplet = localStorage.getItem('vitalia_profil_complet')
+  if (profilId && profilComplet === 'true') {
+    // Profil déjà complet → aller directement à l'app
+    window.location.href = 'index.html?profil_id=' + profilId
+    return
+  }
+
+  // Détecter le retour d'un magic link Supabase
+  // Supabase injecte access_token dans le hash ou en query param
+  const hash   = window.location.hash
+  const params = new URLSearchParams(window.location.search)
+
+  const accessToken  = params.get('access_token')  || extractFromHash('access_token')
+  const refreshToken = params.get('refresh_token') || extractFromHash('refresh_token')
+  const type         = params.get('type')          || extractFromHash('type')
+
+  if (accessToken && (type === 'magiclink' || type === 'signup' || type === 'recovery' || accessToken)) {
+    // L'utilisateur a cliqué sur le lien magique → on a sa session
+    afficherLoading('Connexion en cours...')
+    await gererRetourMagicLink(accessToken, refreshToken)
+    return
+  }
+
+  // Sinon : afficher l'écran email normalement
+  afficherEtape('Email')
+})
+
+function extractFromHash(key) {
+  const hash = window.location.hash.substring(1)
+  const params = new URLSearchParams(hash)
+  return params.get(key)
+}
+
+// ═══════════════════════════════════════════════════════
+// GESTION RETOUR MAGIC LINK
+// ═══════════════════════════════════════════════════════
+async function gererRetourMagicLink(accessToken, refreshToken) {
+  try {
+    // Injecter la session dans le SDK Supabase
+    if (refreshToken) {
+      await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+    }
+
+    // Récupérer l'utilisateur connecté
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+    if (error || !user) throw new Error('Token invalide ou expiré')
+
+    const userId = user.id
+    const email  = user.email
+
+    // Sauvegarder la session
+    localStorage.setItem('vitalia_access_token', accessToken)
+    if (refreshToken) localStorage.setItem('vitalia_refresh_token', refreshToken)
+    localStorage.setItem('vitalia_user_id', userId)
+    localStorage.setItem('vitalia_email',   email)
+
+    // Vérifier si ce user a déjà un profil Vitalia
+    const { data: profils } = await supabase
+      .from('profils_utilisateurs')
+      .select('*')
+      .eq('user_id', userId)
+      .limit(1)
+
+    if (profils && profils.length > 0 && profils[0].onboarding_complete) {
+      // Profil déjà complet → aller à l'app
+      const profilId = profils[0].id
+      localStorage.setItem('vitalia_profil_id',      profilId)
+      localStorage.setItem('vitalia_profil',         JSON.stringify(profils[0]))
+      localStorage.setItem('vitalia_profil_complet', 'true')
+      masquerLoading()
+      window.location.href = 'index.html?profil_id=' + profilId
+    } else {
+      // Nouvel utilisateur → continuer l'onboarding
+      state.email = email
+      masquerLoading()
+      afficherProgressBar()
+      allerStep(1)
+    }
+
+  } catch (err) {
+    console.error('Erreur magic link:', err)
+    masquerLoading()
+    document.getElementById('stepEmail').style.display = 'block'
+    afficherErreur('emailError', 'Lien expiré ou invalide. Redemande un nouveau lien.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ENVOI DU MAGIC LINK
+// ═══════════════════════════════════════════════════════
+async function envoyerLienMagique() {
+  const email = document.getElementById('emailInput').value.trim()
+
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    afficherErreur('emailError', 'Adresse email invalide. Vérifie et réessaie.')
+    return
+  }
+
+  cacherErreur('emailError')
+  const btn = document.getElementById('btnSendMagic')
+  btn.disabled = true
+  btn.textContent = 'Envoi en cours...'
+
+  try {
+    const redirectUrl = window.location.origin + window.location.pathname
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: redirectUrl,
+        shouldCreateUser: true,
+      }
+    })
+
+    if (error) throw error
+
+    state.email = email
+    localStorage.setItem('vitalia_email_pending', email)
+    document.getElementById('stepEmail').style.display = 'none'
+    document.getElementById('stepEmailSent').style.display = 'block'
+    document.getElementById('emailDisplay').textContent = email
+
+  } catch (err) {
+    console.error('Erreur envoi magic link:', err)
+    afficherErreur('emailError', 'Erreur : ' + (err.message || 'Vérifie ta connexion.'))
+    btn.disabled = false
+    btn.textContent = 'Recevoir mon lien magique ✨'
+  }
+}
+
+
+async function renvoyerEmail() {
+  document.getElementById('stepEmailSent').style.display = 'none'
+  document.getElementById('stepEmail').style.display = 'block'
+  document.getElementById('emailInput').value = state.email
+
+  const btn = document.getElementById('btnSendMagic')
+  btn.disabled = false
+  btn.textContent = 'Recevoir mon lien magique ✨'
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION ENTRE ÉTAPES
+// ═══════════════════════════════════════════════════════
+function allerStep(n) {
+  // Validation avant de quitter l'étape courante
+  if (n > currentStep) {
+    if (!validerStep(currentStep)) return
+  }
+
+  // Mettre à jour l'état depuis les inputs
+  sauvegarderEtape(currentStep)
+
+  // Masquer toutes les étapes
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const el = document.getElementById('step' + i)
+    if (el) el.style.display = 'none'
+  }
+
+  currentStep = n
+  const el = document.getElementById('step' + n)
+  if (el) {
+    el.style.display = 'block'
+    el.style.animation = 'none'
+    setTimeout(() => el.style.animation = 'slideUp 0.4s ease', 10)
+  }
+
+  // Mettre à jour la barre de progression
+  const pct = Math.round((n / TOTAL_STEPS) * 100)
+  document.getElementById('progressFill').style.width = pct + '%'
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function afficherEtape(nom) {
+  document.getElementById('step' + nom).style.display = 'block'
+}
+
+function afficherProgressBar() {
+  document.getElementById('progressBar').style.display = 'block'
+}
+
+function validerStep(step) {
+  if (step === 1) {
+    const prenom = document.getElementById('prenomInput').value.trim()
+    const age    = document.getElementById('ageInput').value
+    if (!prenom) {
+      afficherErreur('step1Error', 'Entre ton prénom pour continuer.')
+      return false
+    }
+    if (!age) {
+      afficherErreur('step1Error', 'Sélectionne ta tranche d\'âge.')
+      return false
+    }
+    cacherErreur('step1Error')
+  }
+
+  if (step === 2) {
+    if (state.objectifs.length === 0) {
+      afficherErreur('step2Error', 'Choisis au moins un objectif.')
+      return false
+    }
+    cacherErreur('step2Error')
+  }
+
+  return true
+}
+
+function sauvegarderEtape(step) {
+  if (step === 1) {
+    state.prenom = document.getElementById('prenomInput').value.trim()
+    state.age    = document.getElementById('ageInput').value
+  }
+  if (step === 4) {
+    const meds = document.getElementById('medicamentsInput').value.trim()
+    state.medicaments = meds ? meds.split(',').map(m => m.trim()).filter(Boolean) : []
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INTERACTIONS UI
+// ═══════════════════════════════════════════════════════
+function selectToggle(group, btn) {
+  const container = btn.closest('.toggle-group')
+  container.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'))
+  btn.classList.add('selected')
+  state[group] = btn.dataset.value
+}
+
+function toggleChip(chip, group, maxSelect) {
+  const value = chip.dataset.value
+
+  if (chip.classList.contains('selected')) {
+    chip.classList.remove('selected')
+    state[group] = state[group].filter(v => v !== value)
+  } else {
+    if (maxSelect && state[group].length >= maxSelect) {
+      // Désélectionner le premier pour faire de la place
+      const firstSelected = chip.closest('.chips-grid').querySelector('.chip.selected')
+      if (firstSelected) {
+        firstSelected.classList.remove('selected')
+        state[group] = state[group].filter(v => v !== firstSelected.dataset.value)
+      }
+    }
+    chip.classList.add('selected')
+    if (!state[group].includes(value)) state[group].push(value)
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// FINALISATION : CRÉER LE PROFIL SUPABASE
+// ═══════════════════════════════════════════════════════
+async function terminerOnboarding() {
+  if (!validerStep(4)) return
+  sauvegarderEtape(4)
+
+  afficherLoading('Création de ton profil...')
+
+  const accessToken = localStorage.getItem('vitalia_access_token')
+  const userId      = localStorage.getItem('vitalia_user_id')
+
+  if (!accessToken || !userId) {
+    masquerLoading()
+    afficherErreur('step4Error', 'Session expirée. Recharge la page et recommence.')
+    return
+  }
+
+  const profil = {
+    user_id:                userId,
+    email:                  state.email || localStorage.getItem('vitalia_email'),
+    prenom:                 state.prenom,
+    age:                    state.age,
+    sexe:                   state.sexe || 'non_specifie',
+    enceinte:               state.grossesse === 'enceinte',
+    allaitement:            state.grossesse === 'allaitement',
+    pathologies_chroniques: state.pathologies,
+    medications_actuelles:  state.medicaments,
+    allergies:              state.allergies,
+    regimes_alimentaires:   state.regimes,
+    objectifs_generaux:     state.objectifs,
+    niveau_activite:        'modere',
+    onboarding_complete:    true,
+    created_at:             new Date().toISOString(),
+    updated_at:             new Date().toISOString(),
+  }
+
+  try {
+    // Upsert via SDK Supabase (gère auth automatiquement)
+    const { data: created, error: insertError } = await supabase
+      .from('profils_utilisateurs')
+      .upsert(profil, { onConflict: 'user_id', ignoreDuplicates: false })
+      .select('id')
+      .single()
+
+    if (insertError) {
+      console.error('Erreur Supabase:', insertError)
+      throw new Error(insertError.message || 'Erreur création profil')
+    }
+
+    const profilId = created.id
+
+    // Sauvegarder dans localStorage pour usage immédiat
+    localStorage.setItem('vitalia_profil_id',       profilId)
+    localStorage.setItem('vitalia_profil',          JSON.stringify(profil))
+    localStorage.setItem('vitalia_profil_complet',  'true')
+
+    masquerLoading()
+
+    // 🎉 Rediriger vers l'app avec le profil créé
+    window.location.href = 'index.html?profil_id=' + profilId
+
+  } catch (err) {
+    console.error('Erreur création profil:', err)
+    masquerLoading()
+    afficherErreur('step4Error', 'Erreur lors de la création du profil. Réessaie dans un instant.')
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════════════════════
+function afficherLoading(texte) {
+  document.getElementById('loadingText').textContent = texte || 'Chargement...'
+  document.getElementById('loadingOverlay').classList.add('visible')
+}
+
+function masquerLoading() {
+  document.getElementById('loadingOverlay').classList.remove('visible')
+}
+
+function afficherErreur(id, msg) {
+  const el = document.getElementById(id)
+  if (el) { el.textContent = msg; el.classList.add('visible') }
+}
+
+function cacherErreur(id) {
+  const el = document.getElementById(id)
+  if (el) el.classList.remove('visible')
+}
+
+// Appui Entrée sur le champ email
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const activeStep = document.querySelector('.step-card[style*="block"]')
+    if (document.getElementById('stepEmail').style.display !== 'none') {
+      envoyerLienMagique()
+    }
+  }
+})
+</script>
+</body>
+</html>
