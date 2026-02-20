@@ -276,7 +276,7 @@
 <!-- LOADING -->
 <div class="loading-screen" id="loadingScreen">
   <div class="loading-mascot"><svg width="90" height="90"><use href="#mascot-goji"/></svg></div>
-  <div class="loading-text">Vitalia prépare ton plan ✨</div>
+  <div class="loading-text" id="loadingText">Vitalia prépare ton plan ✨</div>
   <div class="loading-sub">Nos super-aliments analysent tes besoins...</div>
   <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
 </div>
@@ -515,14 +515,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var urlParams = new URLSearchParams(window.location.search)
   var profilId = urlParams.get('profil_id') || localStorage.getItem('vitalia_profil_id')
+  var modeDemo = urlParams.get('demo') === 'true'
 
   if (profilId && profilId !== 'new') {
+    // ✅ Utilisateur connu — charger profil et générer plan
+    localStorage.setItem('vitalia_profil_id', profilId)
     var pl = localStorage.getItem('vitalia_profil')
     if (pl) { try { profilUtilisateur = JSON.parse(pl); appliquerProfil(profilUtilisateur) } catch(e){} }
     chargerProfilSupabase(profilId)
-    setTimeout(function(){ genererPlan() }, 500)
-  } else {
-    // Mode demo
+
+    // Restaurer plan depuis session si disponible (protection refresh mobile)
+    var planSession = sessionStorage.getItem('vitalia_plan_session')
+    if (planSession) {
+      try {
+        var planRestaure = JSON.parse(planSession)
+        setTimeout(function(){
+          document.getElementById('loadingScreen').style.opacity='0'
+          document.getElementById('loadingScreen').style.pointerEvents='none'
+          document.getElementById('app').style.opacity='1'
+          afficherPlan(planRestaure)
+          enregistrerIngredientsBase()
+        }, 600)
+      } catch(e) { setTimeout(function(){ genererPlan() }, 500) }
+    } else {
+      setTimeout(function(){ genererPlan() }, 500)
+    }
+
+  } else if (modeDemo) {
+    // 🎭 Mode démo explicite (?demo=true)
     setTimeout(function(){
       document.getElementById('loadingScreen').style.opacity = '0'
       document.getElementById('loadingScreen').style.pointerEvents = 'none'
@@ -531,6 +551,16 @@ document.addEventListener('DOMContentLoaded', function() {
       ajouterActionsBarStatique()
       setTimeout(function(){ var fb=document.getElementById('feedbackBar'); if(fb) fb.style.display='flex' },3000)
     }, 1800)
+
+  } else {
+    // 🚪 Pas de profil → rediriger vers onboarding
+    var lt = document.getElementById('loadingText')
+    if (lt) {
+      lt.innerHTML = 'Bienvenue sur Vitalia ! 🌿<br><small style="font-size:14px;opacity:0.7">Création de ton profil...</small>'
+    }
+    setTimeout(function(){
+      window.location.href = 'onboarding.html'
+    }, 1200)
   }
 })
 
@@ -569,15 +599,21 @@ function appliquerProfil(p) {
 async function genererPlan() {
   fermerConfig()
   sessionStorage.removeItem('vitalia_plan_session')
+
+  var profilId = new URLSearchParams(window.location.search).get('profil_id')||localStorage.getItem('vitalia_profil_id')||null
+
+  // Sécurité : sans profil, on ne peut pas générer un vrai plan
+  if (!profilId || profilId === 'new') {
+    window.location.href = 'onboarding.html'
+    return
+  }
+
   document.getElementById('loadingScreen').style.opacity='1'
   document.getElementById('loadingScreen').style.pointerEvents='all'
   document.getElementById('app').style.opacity='0'
 
-  var profilId = new URLSearchParams(window.location.search).get('profil_id')||localStorage.getItem('vitalia_profil_id')||null
-
   try {
     var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(document.getElementById('tempsMax').value),budget_max:parseInt(document.getElementById('budgetMax').value)},force_regeneration:true}
-    if (!profilId||profilId==='new') body.profil_override={regimes:selectedRegimes,allergies:[],enceinte:false,age:35,objectifs:selectedSymptoms}
 
     var r = await fetch(SUPABASE_URL+'/functions/v1/generer-plan',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify(body)})
     if (!r.ok) throw new Error('Erreur serveur '+r.status)
