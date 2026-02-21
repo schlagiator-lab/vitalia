@@ -949,20 +949,21 @@ window.addEventListener('load', async () => {
   window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   console.log('✅ Supabase client initialisé')
 
-  // Vérifier profil complet en localStorage
-  const profilId      = localStorage.getItem('vitalia_profil_id')
-  const profilComplet = localStorage.getItem('vitalia_profil_complet')
+  // ── Vérifier session Supabase EN PREMIER (source de vérité) ──
+  const { data: { session } } = await window._sb.auth.getSession()
 
-  if (profilId && profilComplet === 'true') {
-    window.location.href = 'index.html?profil_id=' + profilId
+  if (session) {
+    // Session valide → gererSessionUtilisateur vérifiera la BDD (pas le localStorage seul)
+    await gererSessionUtilisateur(session.user)
     return
   }
 
-  // Vérifier session Supabase active
-  const { data: { session } } = await window._sb.auth.getSession()
-  if (session) {
-    await gererSessionUtilisateur(session.user)
-    return
+  // Aucune session Supabase → nettoyer le localStorage si des données trainent (compte supprimé)
+  const hadLocalData = localStorage.getItem('vitalia_profil_id')
+  if (hadLocalData) {
+    console.warn('⚠️ localStorage orphelin détecté sans session → nettoyage')
+    ;['vitalia_user_id','vitalia_email','vitalia_profil_id','vitalia_profil','vitalia_profil_complet']
+      .forEach(k => localStorage.removeItem(k))
   }
 
   afficherEtape('Email')
@@ -978,11 +979,18 @@ async function gererSessionUtilisateur(user) {
     localStorage.setItem('vitalia_email',   user.email)
     state.email = user.email
 
-    const { data: profils } = await window._sb
+    const { data: profils, error: profilError } = await window._sb
       .from('profils_utilisateurs')
       .select('*')
       .eq('user_id', user.id)
       .limit(1)
+
+    // ── SESSION ORPHELINE : erreur BDD ou compte supprimé côté Supabase ──
+    if (profilError) {
+      console.warn('⚠️ Session orpheline détectée (erreur BDD):', profilError.message)
+      await _nettoyerSessionOrpheline()
+      return
+    }
 
     if (profils && profils.length > 0 && profils[0].onboarding_complete) {
       const profilId = profils[0].id
@@ -998,9 +1006,20 @@ async function gererSessionUtilisateur(user) {
     }
   } catch (err) {
     console.error('Erreur session:', err)
-    masquerLoading()
-    afficherEtape('Email')
+    await _nettoyerSessionOrpheline()
   }
+}
+
+// ── Nettoyage session invalide / compte supprimé ──
+async function _nettoyerSessionOrpheline() {
+  try { await window._sb.auth.signOut() } catch (_) {}
+  const keysToRemove = [
+    'vitalia_user_id', 'vitalia_email',
+    'vitalia_profil_id', 'vitalia_profil', 'vitalia_profil_complet'
+  ]
+  keysToRemove.forEach(k => localStorage.removeItem(k))
+  masquerLoading()
+  afficherEtape('Email')
 }
 
 // ═══════════════════════════════════════════════════════
