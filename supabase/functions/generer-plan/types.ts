@@ -14,7 +14,7 @@ export interface ProfilUtilisateur {
   medications?: string[];
   
   // Régimes & allergies
-  regime_alimentaire?: string[]; // ['vegan', 'sans-gluten']
+  regime_alimentaire?: string[]; // ['vegan', 'halal', 'casher', 'sans-gluten','vegetarien','paleo','keto']
   allergenes?: string[]; // ['gluten', 'lactose', 'noix']
   groupe_sanguin?: string;
   
