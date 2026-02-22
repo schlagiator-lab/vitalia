@@ -1,10 +1,11 @@
 // supabase/functions/generer-plan/niveau1-securite.ts
+// VERSION CORRIGÉE : Sans emojis
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ProfilUtilisateur, ProduitFiltre } from './types.ts';
 
 /**
- * NIVEAU 1 : FILTRAGE SÉCURITÉ (BDD)
+ * NIVEAU 1 : FILTRAGE SECURITE (BDD)
  * Exclusion stricte des contre-indications, allergies, interactions
  */
 
@@ -14,7 +15,7 @@ export async function filtrerProduitsSecurite(
   typesProduits: string[] = ['nutraceutique', 'aromatherapie']
 ): Promise<ProduitFiltre[]> {
   
-  console.log('🔒 NIVEAU 1 : Filtrage sécurité...');
+  console.log('[NIVEAU 1] Filtrage securite produits...');
   
   // 1. Récupérer TOUS les produits
   const { data: produits, error } = await supabase
@@ -33,8 +34,8 @@ export async function filtrerProduitsSecurite(
     `);
   
   if (error) {
-    console.error('Erreur récupération produits:', error);
-    throw new Error('Erreur filtrage sécurité');
+    console.error('[ERROR] Erreur recuperation produits:', error);
+    throw new Error('Erreur filtrage securite');
   }
   
   // 2. Filtrage strict
@@ -42,13 +43,13 @@ export async function filtrerProduitsSecurite(
     
     // Vérifier grossesse
     if (profil.grossesse && p.populations_risque?.includes('grossesse')) {
-      console.log(`❌ ${p.nom} exclu : grossesse`);
+      console.log(`[EXCLU] ${p.nom} : grossesse`);
       return false;
     }
     
     // Vérifier allaitement
     if (profil.allaitement && p.populations_risque?.includes('allaitement')) {
-      console.log(`❌ ${p.nom} exclu : allaitement`);
+      console.log(`[EXCLU] ${p.nom} : allaitement`);
       return false;
     }
     
@@ -59,7 +60,7 @@ export async function filtrerProduitsSecurite(
         contrIndications.some(ci => ci.toLowerCase().includes(path.toLowerCase()))
       );
       if (hasContrIndication) {
-        console.log(`❌ ${p.nom} exclu : contre-indication pathologie`);
+        console.log(`[EXCLU] ${p.nom} : contre-indication pathologie`);
         return false;
       }
     }
@@ -71,17 +72,17 @@ export async function filtrerProduitsSecurite(
         interactions.some(int => int.toLowerCase().includes(med.toLowerCase()))
       );
       if (hasInteraction) {
-        console.log(`❌ ${p.nom} exclu : interaction médicamenteuse`);
+        console.log(`[EXCLU] ${p.nom} : interaction medicamenteuse`);
         return false;
       }
     }
     
-    console.log(`✅ ${p.nom} sécurisé`);
+    console.log(`[OK] ${p.nom} securise`);
     return true;
     
   }) || [];
   
-  console.log(`🔒 Filtrage sécurité : ${produitsFiltres.length}/${produits?.length || 0} produits sûrs`);
+  console.log(`[NIVEAU 1] Filtrage securite : ${produitsFiltres.length}/${produits?.length || 0} produits surs`);
   
   return produitsFiltres as ProduitFiltre[];
 }
@@ -91,7 +92,7 @@ export async function filtrerRecettesSecurite(
   profil: ProfilUtilisateur
 ): Promise<any[]> {
   
-  console.log('🔒 NIVEAU 1 : Filtrage recettes sécurité...');
+  console.log('[NIVEAU 1] Filtrage recettes securite...');
   
   // Construction des filtres SQL
   let query = supabase
@@ -126,14 +127,11 @@ export async function filtrerRecettesSecurite(
   const { data: recettes, error } = await query;
   
   if (error) {
-    console.error('Erreur récupération recettes:', error);
-    throw new Error('Erreur filtrage recettes sécurité');
+    console.error('[ERROR] Erreur recuperation recettes:', error);
+    throw new Error('Erreur filtrage recettes securite');
   }
   
-  // Filtrage allergènes dans ingrédients (nécessite requête supplémentaire)
-  // TODO : améliorer avec jointure sur table ingrédients
-  
-  console.log(`🔒 Filtrage recettes : ${recettes?.length || 0} recettes sûres`);
+  console.log(`[NIVEAU 1] Filtrage recettes : ${recettes?.length || 0} recettes sures`);
   
   return recettes || [];
 }
@@ -143,15 +141,15 @@ export async function filtrerRoutinesSecurite(
   profil: ProfilUtilisateur
 ): Promise<any[]> {
   
-  console.log('🔒 NIVEAU 1 : Filtrage routines sécurité...');
+  console.log('[NIVEAU 1] Filtrage routines securite...');
   
   const { data: routines, error } = await supabase
     .from('routines')
     .select('*');
   
   if (error) {
-    console.error('Erreur récupération routines:', error);
-    throw new Error('Erreur filtrage routines sécurité');
+    console.error('[ERROR] Erreur recuperation routines:', error);
+    throw new Error('Erreur filtrage routines securite');
   }
   
   // Filtrage contre-indications
@@ -174,7 +172,7 @@ export async function filtrerRoutinesSecurite(
     return true;
   }) || [];
   
-  console.log(`🔒 Filtrage routines : ${routinesFiltrees.length}/${routines?.length || 0} routines sûres`);
+  console.log(`[NIVEAU 1] Filtrage routines : ${routinesFiltrees.length}/${routines?.length || 0} routines sures`);
   
   return routinesFiltrees;
 }
