@@ -123,6 +123,16 @@ export async function filtrerRecettesSecurite(
   if (profil.regime_alimentaire?.includes('keto')) {
     query = query.eq('regime_keto', true);
   }
+
+   // Régime halal
+  if (profil.regime_alimentaire?.includes('halal')) {
+    query = query.eq('regime_halal', true);
+  }
+  
+  // Régime casher
+  if (profil.regime_alimentaire?.includes('casher') || profil.regime_alimentaire?.includes('cachère')) {
+    query = query.eq('regime_casher', true);
+  }
   
   const { data: recettes, error } = await query;
   
