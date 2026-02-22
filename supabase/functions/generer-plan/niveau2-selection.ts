@@ -1,4 +1,5 @@
 // supabase/functions/generer-plan/niveau2-selection.ts
+// VERSION CORRIGÉE : Sans emojis
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { 
@@ -12,12 +13,12 @@ import {
 } from './types.ts';
 
 /**
- * NIVEAU 2 : SÉLECTION INTELLIGENTE (Algorithme)
+ * NIVEAU 2 : SELECTION INTELLIGENTE (Algorithme)
  * Scoring contextuel + Rotation anti-répétition
  */
 
 // ============================================================================
-// RÉCUPÉRATION HISTORIQUE
+// RECUPERATION HISTORIQUE
 // ============================================================================
 
 export async function recupererHistoriqueRotation(
@@ -25,7 +26,7 @@ export async function recupererHistoriqueRotation(
   profilId: string
 ): Promise<HistoriqueRotation> {
   
-  console.log('📊 Récupération historique rotation...');
+  console.log('[NIVEAU 2] Recuperation historique rotation...');
   
   // 1. Items fréquents (30 derniers jours)
   const { data: itemsFrequents } = await supabase
@@ -70,7 +71,7 @@ export async function recupererHistoriqueRotation(
     ingredients_recents: ingredientsFlat
   };
   
-  console.log(`📊 Historique : ${historique.items_frequents.length} items, ${historique.styles_recents.length} styles, ${historique.ingredients_recents.length} ingrédients`);
+  console.log(`[NIVEAU 2] Historique : ${historique.items_frequents.length} items, ${historique.styles_recents.length} styles, ${historique.ingredients_recents.length} ingredients`);
   
   return historique;
 }
@@ -85,7 +86,7 @@ export function scorerProduits(
   historique: HistoriqueRotation
 ): ProduitFiltre[] {
   
-  console.log('🧮 Scoring produits...');
+  console.log('[NIVEAU 2] Scoring produits...');
   
   return produits.map(p => {
     let score = 0;
@@ -124,7 +125,7 @@ export function scorerProduits(
 }
 
 // ============================================================================
-// SÉLECTION STYLE CULINAIRE
+// SELECTION STYLE CULINAIRE
 // ============================================================================
 
 export function selectionnerStyleCulinaire(
@@ -132,12 +133,12 @@ export function selectionnerStyleCulinaire(
   historique: HistoriqueRotation
 ): string {
   
-  console.log('🍽️ Sélection style culinaire...');
+  console.log('[NIVEAU 2] Selection style culinaire...');
   
   // Styles disponibles
   const stylesDisponibles = profil.styles_cuisines_favoris && profil.styles_cuisines_favoris.length > 0
     ? profil.styles_cuisines_favoris
-    : ['méditerranéen', 'asiatique', 'français', 'italien', 'mexicain', 'indien', 'libanais'];
+    : ['mediterraneen', 'asiatique', 'francais', 'italien', 'mexicain', 'indien', 'libanais'];
   
   // Exclure styles non désirés
   const stylesFiltres = stylesDisponibles.filter(s =>
@@ -161,17 +162,17 @@ export function selectionnerStyleCulinaire(
     // 70% : Choisir parmi top 3
     const top3 = stylesAvecScores.slice(0, 3);
     const selected = selectionPonderee(top3);
-    console.log(`🍽️ Style sélectionné (top 3) : ${selected}`);
+    console.log(`[NIVEAU 2] Style selectionne (top 3) : ${selected}`);
     return selected;
   } else if (stylesAvecScores.length > 0) {
     // 30% : Découverte aléatoire
     const selected = stylesFiltres[Math.floor(Math.random() * stylesFiltres.length)];
-    console.log(`🍽️ Style sélectionné (aléatoire) : ${selected}`);
+    console.log(`[NIVEAU 2] Style selectionne (aleatoire) : ${selected}`);
     return selected;
   } else {
     // Fallback
-    console.log('🍽️ Style par défaut : méditerranéen');
-    return 'méditerranéen';
+    console.log('[NIVEAU 2] Style par defaut : mediterraneen');
+    return 'mediterraneen';
   }
 }
 
@@ -194,7 +195,7 @@ function selectionPonderee(options: { style: string; score: number }[]): string 
 }
 
 // ============================================================================
-// SÉLECTION RECETTES
+// SELECTION RECETTES
 // ============================================================================
 
 export async function selectionnerRecettes(
@@ -204,7 +205,7 @@ export async function selectionnerRecettes(
   historique: HistoriqueRotation
 ): Promise<{ petitDej: any; dejeuner: any; diner: any }> {
   
-  console.log('🍳 Sélection recettes...');
+  console.log('[NIVEAU 2] Selection recettes...');
   
   // Récupérer recettes par type de repas
   const petitDej = await selectionnerRecetteParType(
@@ -237,9 +238,7 @@ async function selectionnerRecetteParType(
     .eq('type_repas', typeRepas);
   
   // Filtrer par style si disponible
-  // Note : si pas assez de recettes avec ce style, on élargit
   const { data: recettesStyle } = await query.eq('categorie', styleCulinaire);
-  
   const { data: recettesToutes } = await query;
   
   const recettes = (recettesStyle && recettesStyle.length > 0) 
@@ -247,7 +246,7 @@ async function selectionnerRecetteParType(
     : recettesToutes || [];
   
   if (recettes.length === 0) {
-    console.warn(`⚠️ Aucune recette trouvée pour ${typeRepas}`);
+    console.warn(`[WARN] Aucune recette trouvee pour ${typeRepas}`);
     return null;
   }
   
@@ -278,13 +277,13 @@ async function selectionnerRecetteParType(
   
   const recetteSelectionnee = recettesAvecScores.find(r => r.id === selected);
   
-  console.log(`🍳 Recette ${typeRepas} : ${recetteSelectionnee?.nom || 'N/A'}`);
+  console.log(`[NIVEAU 2] Recette ${typeRepas} : ${recetteSelectionnee?.nom || 'N/A'}`);
   
   return recetteSelectionnee;
 }
 
 // ============================================================================
-// SÉLECTION ROUTINES
+// SELECTION ROUTINES
 // ============================================================================
 
 export function selectionnerRoutines(
@@ -294,7 +293,7 @@ export function selectionnerRoutines(
   nbMax: number = 3
 ): RoutineCandidate[] {
   
-  console.log('🧘 Sélection routines...');
+  console.log('[NIVEAU 2] Selection routines...');
   
   // Scoring
   const routinesAvecScores = routines.map(r => {
@@ -319,7 +318,7 @@ export function selectionnerRoutines(
   
   const selected = routinesAvecScores.slice(0, nbMax);
   
-  console.log(`🧘 ${selected.length} routines sélectionnées`);
+  console.log(`[NIVEAU 2] ${selected.length} routines selectionnees`);
   
   return selected;
 }
