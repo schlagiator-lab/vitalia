@@ -1,4 +1,5 @@
 // supabase/functions/generer-plan/utils.ts
+// VERSION CORRIGÉE : Sans emojis
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -16,7 +17,7 @@ export async function enregistrerPlanGenere(
   plan: any
 ): Promise<string | null> {
   
-  console.log('💾 Enregistrement plan généré...');
+  console.log('[SAUVEGARDE] Enregistrement plan genere...');
   
   try {
     const { data, error } = await supabase
@@ -27,22 +28,22 @@ export async function enregistrerPlanGenere(
         objectif_principal: plan.objectif,
         plan_json: plan,
         genere_le: new Date().toISOString(),
-        expire_le: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 jours
+        expire_le: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       })
       .select('id')
       .single();
     
     if (error) {
-      console.error('Erreur enregistrement plan:', error);
+      console.error('[ERROR] Erreur enregistrement plan:', error);
       return null;
     }
     
-    console.log(`💾 Plan enregistré : ${data.id}`);
+    console.log(`[SAUVEGARDE] Plan enregistre : ${data.id}`);
     
     return data.id;
     
   } catch (error) {
-    console.error('Erreur enregistrement plan:', error);
+    console.error('[ERROR] Erreur enregistrement plan:', error);
     return null;
   }
 }
@@ -63,7 +64,7 @@ export async function enregistrerItemsVus(
   }>
 ): Promise<void> {
   
-  console.log(`💾 Enregistrement ${items.length} items vus...`);
+  console.log(`[SAUVEGARDE] Enregistrement ${items.length} items vus...`);
   
   try {
     const itemsAInserer = items.map(item => ({
@@ -87,13 +88,13 @@ export async function enregistrerItemsVus(
       .insert(itemsAInserer);
     
     if (error) {
-      console.error('Erreur enregistrement items:', error);
+      console.error('[ERROR] Erreur enregistrement items:', error);
     } else {
-      console.log(`💾 ${items.length} items enregistrés`);
+      console.log(`[SAUVEGARDE] ${items.length} items enregistres`);
     }
     
   } catch (error) {
-    console.error('Erreur enregistrement items:', error);
+    console.error('[ERROR] Erreur enregistrement items:', error);
   }
 }
 
@@ -108,24 +109,22 @@ export async function chercherRecetteCache(
   typeRepas: string
 ): Promise<any | null> {
   
-  console.log('🔍 Recherche recette en cache...');
+  console.log('[CACHE] Recherche recette en cache...');
   
   try {
-    // Chercher recette similaire dans recettes_sauvegardees
     const { data, error } = await supabase
       .from('recettes_sauvegardees')
       .select('*')
       .eq('type_repas', typeRepas)
       .eq('style_culinaire', styleCulinaire)
-      .gte('note_moyenne', 3) // Minimum 3/5
+      .gte('note_moyenne', 3)
       .limit(10);
     
     if (error || !data || data.length === 0) {
-      console.log('🔍 Aucune recette en cache');
+      console.log('[CACHE] Aucune recette en cache');
       return null;
     }
     
-    // Trouver recette avec ingrédients similaires
     const recetteSimilaire = data.find(r => {
       const ingredientsCommuns = r.ingredients_ids?.filter((id: string) =>
         ingredientsIds.includes(id)
@@ -135,15 +134,15 @@ export async function chercherRecetteCache(
     });
     
     if (recetteSimilaire) {
-      console.log(`🔍 Recette trouvée en cache : ${recetteSimilaire.nom}`);
+      console.log(`[CACHE] Recette trouvee en cache : ${recetteSimilaire.nom}`);
       return recetteSimilaire;
     }
     
-    console.log('🔍 Aucune recette similaire en cache');
+    console.log('[CACHE] Aucune recette similaire en cache');
     return null;
     
   } catch (error) {
-    console.error('Erreur recherche cache:', error);
+    console.error('[ERROR] Erreur recherche cache:', error);
     return null;
   }
 }
@@ -154,9 +153,9 @@ export async function sauvegarderRecetteGeneree(
   profilId: string
 ): Promise<void> {
   
-  if (!recette.genere_par_llm) return; // Ne sauvegarder que recettes LLM
+  if (!recette.genere_par_llm) return;
   
-  console.log('💾 Sauvegarde recette générée...');
+  console.log('[SAUVEGARDE] Sauvegarde recette generee...');
   
   try {
     const { error } = await supabase
@@ -174,13 +173,13 @@ export async function sauvegarderRecetteGeneree(
       });
     
     if (error) {
-      console.error('Erreur sauvegarde recette:', error);
+      console.error('[ERROR] Erreur sauvegarde recette:', error);
     } else {
-      console.log('💾 Recette sauvegardée');
+      console.log('[SAUVEGARDE] Recette sauvegardee');
     }
     
   } catch (error) {
-    console.error('Erreur sauvegarde recette:', error);
+    console.error('[ERROR] Erreur sauvegarde recette:', error);
   }
 }
 
@@ -190,7 +189,7 @@ export async function sauvegarderRecetteGeneree(
 
 export function validerProfil(profil: any): boolean {
   if (!profil || !profil.id) {
-    console.error('❌ Profil invalide : ID manquant');
+    console.error('[ERROR] Profil invalide : ID manquant');
     return false;
   }
   
@@ -198,12 +197,11 @@ export function validerProfil(profil: any): boolean {
 }
 
 export function validerContexte(contexte: any): boolean {
-  // Contexte peut être vide (bien-être général)
   return true;
 }
 
 // ============================================================================
-// FORMATAGE RÉPONSE
+// FORMATAGE REPONSE
 // ============================================================================
 
 export function formaterReponseAPI(plan: any, planId: string | null) {
