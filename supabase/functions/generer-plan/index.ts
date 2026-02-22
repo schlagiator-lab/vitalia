@@ -1,4 +1,5 @@
 // supabase/functions/generer-plan/index.ts
+// VERSION CORRIGÉE : Sans emojis pour compatibilité Deno
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -56,7 +57,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 === GÉNÉRATION PLAN HYBRIDE (3 NIVEAUX) ===');
+    console.log('[START] === GENERATION PLAN HYBRIDE (3 NIVEAUX) ===');
     
     // Parse body
     const { profil, contexte } = await req.json();
@@ -80,10 +81,10 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     // ========================================================================
-    // NIVEAU 1 : FILTRAGE SÉCURITÉ (BDD)
+    // NIVEAU 1 : FILTRAGE SECURITE (BDD)
     // ========================================================================
     
-    console.log('\n🔒 === NIVEAU 1 : FILTRAGE SÉCURITÉ ===');
+    console.log('\n[NIVEAU 1] === FILTRAGE SECURITE ===');
     
     const [produitsSurs, recettesSures, routinesSures] = await Promise.all([
       filtrerProduitsSecurite(supabase, profil as ProfilUtilisateur),
@@ -91,13 +92,13 @@ serve(async (req) => {
       filtrerRoutinesSecurite(supabase, profil as ProfilUtilisateur)
     ]);
     
-    console.log(`✅ Niveau 1 terminé : ${produitsSurs.length} produits, ${recettesSures.length} recettes, ${routinesSures.length} routines sûrs`);
+    console.log(`[NIVEAU 1] Termine : ${produitsSurs.length} produits, ${recettesSures.length} recettes, ${routinesSures.length} routines surs`);
     
     // ========================================================================
-    // NIVEAU 2 : SÉLECTION INTELLIGENTE (Algorithme)
+    // NIVEAU 2 : SELECTION INTELLIGENTE (Algorithme)
     // ========================================================================
     
-    console.log('\n🧮 === NIVEAU 2 : SÉLECTION INTELLIGENTE ===');
+    console.log('\n[NIVEAU 2] === SELECTION INTELLIGENTE ===');
     
     // Récupérer historique rotation
     const historique = await recupererHistoriqueRotation(supabase, profil.id);
@@ -132,16 +133,16 @@ serve(async (req) => {
       3
     );
     
-    console.log(`✅ Niveau 2 terminé : ${nutraceutiquesSelectionnes.length} nutraceutiques, ${aromatherapieSelectionnee.length} HE, style=${styleCulinaire}, ${routinesSelectionnees.length} routines`);
+    console.log(`[NIVEAU 2] Termine : ${nutraceutiquesSelectionnes.length} nutraceutiques, ${aromatherapieSelectionnee.length} HE, style=${styleCulinaire}, ${routinesSelectionnees.length} routines`);
     
     // ========================================================================
-    // NIVEAU 3 : GÉNÉRATION CRÉATIVE (LLM)
+    // NIVEAU 3 : GENERATION CREATIVE (LLM)
     // ========================================================================
     
-    console.log('\n🎨 === NIVEAU 3 : GÉNÉRATION CRÉATIVE (LLM) ===');
+    console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
     
     // Déterminer ingrédients obligatoires (basés sur nutraceutiques)
-    const ingredientsObligatoires = ['lentilles', 'épinards', 'patate douce']; // TODO: logique dynamique
+    const ingredientsObligatoires = ['lentilles', 'epinards', 'patate douce']; // TODO: logique dynamique
     
     // Générer recettes via LLM (avec fallback BDD)
     const [recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
@@ -180,13 +181,13 @@ serve(async (req) => {
       {}
     );
     
-    console.log(`✅ Niveau 3 terminé : 3 recettes générées, message motivation`);
+    console.log('[NIVEAU 3] Termine : 3 recettes generees, message motivation');
     
     // ========================================================================
     // COMPOSITION PLAN FINAL
     // ========================================================================
     
-    console.log('\n📦 === COMPOSITION PLAN FINAL ===');
+    console.log('\n[COMPOSITION] === PLAN FINAL ===');
     
     const plan: PlanGenere = {
       profil_id: profil.id,
@@ -201,10 +202,10 @@ serve(async (req) => {
         id: p.id,
         nom: p.nom,
         type: p.type,
-        dosage: '1 gélule/jour', // TODO: récupérer depuis BDD
-        timing: 'Matin avec petit-déjeuner',
+        dosage: '1 gelule/jour', // TODO: récupérer depuis BDD
+        timing: 'Matin avec petit-dejeuner',
         moment_optimal: 'matin',
-        raison: `Aide pour ${p.symptomes_cibles?.[0] || 'bien-être'}`,
+        raison: `Aide pour ${p.symptomes_cibles?.[0] || 'bien-etre'}`,
         niveau_preuve: p.niveau_preuve
       })),
       
@@ -215,7 +216,7 @@ serve(async (req) => {
         dosage: '2-3 gouttes',
         timing: 'Soir avant coucher',
         moment_optimal: 'soir',
-        raison: `Favorise ${p.symptomes_cibles?.[0] || 'détente'}`,
+        raison: `Favorise ${p.symptomes_cibles?.[0] || 'detente'}`,
         niveau_preuve: p.niveau_preuve
       })),
       
@@ -225,15 +226,15 @@ serve(async (req) => {
         categorie: r.categorie,
         duree: r.duree_quotidienne || '10 min',
         moment: r.moment_optimal || 'matin',
-        protocole: 'Suivre instructions détaillées',
-        raison: `Aide pour ${r.symptomes_cibles?.[0] || 'bien-être'}`
+        protocole: 'Suivre instructions detaillees',
+        raison: `Aide pour ${r.symptomes_cibles?.[0] || 'bien-etre'}`
       })),
       
       message_motivation: messageMotivation,
       conseils_generaux: [
         'Prends le temps de savourer chaque repas',
-        'Hydrate-toi régulièrement tout au long de la journée',
-        'Écoute les signaux de ton corps'
+        'Hydrate-toi regulierement tout au long de la journee',
+        'Ecoute les signaux de ton corps'
       ],
       
       genere_le: new Date().toISOString(),
@@ -244,7 +245,7 @@ serve(async (req) => {
     // SAUVEGARDE & TRACKING
     // ========================================================================
     
-    console.log('\n💾 === SAUVEGARDE & TRACKING ===');
+    console.log('\n[SAUVEGARDE] === TRACKING ===');
     
     // Enregistrer plan
     const planId = await enregistrerPlanGenere(supabase, profil.id, plan);
@@ -305,13 +306,13 @@ serve(async (req) => {
       sauvegarderRecetteGeneree(supabase, recetteDiner, profil.id)
     ]);
     
-    console.log('✅ Sauvegarde terminée');
+    console.log('[SAUVEGARDE] Terminee');
     
     // ========================================================================
-    // RÉPONSE FINALE
+    // REPONSE FINALE
     // ========================================================================
     
-    console.log('\n✅ === PLAN GÉNÉRÉ AVEC SUCCÈS ===\n');
+    console.log('\n[SUCCESS] === PLAN GENERE AVEC SUCCES ===\n');
     
     return new Response(
       JSON.stringify(formaterReponseAPI(plan, planId), null, 2),
@@ -325,7 +326,7 @@ serve(async (req) => {
     );
     
   } catch (error) {
-    console.error('❌ Erreur génération plan:', error);
+    console.error('[ERROR] Erreur generation plan:', error);
     
     return new Response(
       JSON.stringify(formaterErreurAPI(
@@ -365,7 +366,7 @@ async function genererRecetteAvecFallback(
   );
   
   if (recetteCache) {
-    console.log(`📦 Recette ${typeRepas} depuis cache`);
+    console.log(`[CACHE] Recette ${typeRepas} depuis cache`);
     return transformerRecetteBDD(recetteCache);
   }
   
@@ -379,12 +380,12 @@ async function genererRecetteAvecFallback(
   );
   
   if (recetteLLM) {
-    console.log(`🎨 Recette ${typeRepas} générée par LLM`);
+    console.log(`[LLM] Recette ${typeRepas} generee par LLM`);
     return recetteLLM;
   }
   
   // 3. Fallback : sélection depuis BDD
-  console.log(`📚 Recette ${typeRepas} depuis BDD (fallback)`);
+  console.log(`[FALLBACK] Recette ${typeRepas} depuis BDD`);
   const { petitDej, dejeuner, diner } = await selectionnerRecettes(
     supabase,
     profil,
@@ -404,16 +405,16 @@ async function genererRecetteAvecFallback(
 function genererRecetteParDefaut(typeRepas: string): any {
   // Recette de secours si tout échoue
   return {
-    nom: `Recette ${typeRepas} équilibrée`,
+    nom: `Recette ${typeRepas} equilibree`,
     type_repas: typeRepas,
     style_culinaire: 'simple',
     ingredients: [
-      { nom: 'Ingrédient 1', quantite: 100, unite: 'g' },
-      { nom: 'Ingrédient 2', quantite: 50, unite: 'g' }
+      { nom: 'Ingredient 1', quantite: 100, unite: 'g' },
+      { nom: 'Ingredient 2', quantite: 50, unite: 'g' }
     ],
     instructions: [
-      'Préparer les ingrédients',
-      'Suivre les étapes de cuisson'
+      'Preparer les ingredients',
+      'Suivre les etapes de cuisson'
     ],
     temps_preparation: 15,
     temps_cuisson: 20,
@@ -422,23 +423,4 @@ function genererRecetteParDefaut(typeRepas: string): any {
   };
 }
 
-console.log('🚀 Edge Function generer-plan chargée');
-```
-
----
-
-## 🎯 Récapitulatif de l'Architecture
-```
-📁 supabase/functions/generer-plan/
-│
-├── 📄 index.ts                  # Orchestration des 3 niveaux
-│   ├─ NIVEAU 1 : Filtrage sécurité
-│   ├─ NIVEAU 2 : Sélection intelligente
-│   ├─ NIVEAU 3 : Génération LLM
-│   └─ Sauvegarde & tracking
-│
-├── 📄 types.ts                  # Définitions TypeScript
-├── 📄 niveau1-securite.ts       # Filtrage CI, allergies, interactions
-├── 📄 niveau2-selection.ts      # Scoring + rotation anti-répétition
-├── 📄 niveau3-llm.ts            # Génération créative DeepSeek
-└── 📄 utils.ts                  # Fonctions utilitaires
+console.log('[INIT] Edge Function generer-plan chargee');
