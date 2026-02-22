@@ -217,38 +217,6 @@
 
   .scroll-pad { height: 100px; }
   @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* ── USER BADGE (header) ── */
-  .user-badge { display: flex; align-items: center; gap: 8px; background: var(--warm-white); border: 1.5px solid var(--peach); border-radius: 20px; padding: 5px 12px 5px 6px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
-  .user-badge:hover { background: var(--peach); border-color: var(--terracotta); }
-  .user-avatar { width: 26px; height: 26px; background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; font-weight: 700; flex-shrink: 0; }
-  .user-name { font-size: 13px; color: var(--mid-brown); font-weight: 500; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  /* ── PROFILE PANEL ── */
-  .profile-panel { position: fixed; top: 0; left: 0; bottom: 0; width: 360px; max-width: 95vw; background: var(--warm-white); z-index: 60; transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); box-shadow: 8px 0 40px rgba(61,43,31,0.12); display: flex; flex-direction: column; overflow-y: auto; }
-  .profile-panel.open { transform: translateX(0); }
-  .profile-panel-header { padding: 28px 20px 20px; border-bottom: 1px solid rgba(196,113,74,0.12); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-  .profile-panel-title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700; color: var(--deep-brown); }
-  .profile-panel-close { width: 32px; height: 32px; background: var(--cream); border: none; border-radius: 10px; cursor: pointer; font-size: 18px; color: var(--mid-brown); display: flex; align-items: center; justify-content: center; }
-  .profile-avatar-block { display: flex; flex-direction: column; align-items: center; padding: 24px 20px 16px; gap: 8px; border-bottom: 1px solid rgba(196,113,74,0.08); flex-shrink: 0; }
-  .profile-avatar-big { width: 64px; height: 64px; background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; color: white; font-weight: 700; }
-  .profile-fullname { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--deep-brown); }
-  .profile-email { font-size: 12px; color: var(--text-light); }
-  .profile-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
-  .profile-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--terracotta); font-weight: 600; margin-bottom: 4px; margin-top: 4px; }
-  .profile-field { display: flex; flex-direction: column; gap: 6px; }
-  .profile-label { font-size: 12px; font-weight: 500; color: var(--mid-brown); }
-  .profile-input { width: 100%; padding: 11px 14px; border: 1.5px solid rgba(61,43,31,0.12); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--deep-brown); background: var(--cream); outline: none; transition: border-color 0.2s; }
-  .profile-input:focus { border-color: var(--terracotta); }
-  .profile-select { width: 100%; padding: 11px 14px; border: 1.5px solid rgba(61,43,31,0.12); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--deep-brown); background: var(--cream); outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239E8070' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; cursor: pointer; }
-  .profile-chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
-  .profile-chip { background: var(--cream); border: 1.5px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--mid-brown); cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif; user-select: none; }
-  .profile-chip.selected { background: var(--terracotta); border-color: var(--terracotta); color: white; }
-  .profile-save-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--terracotta), var(--terracotta-light)); color: white; border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; margin-top: 4px; }
-  .profile-save-btn:hover { opacity: 0.9; }
-  .profile-logout-btn { width: 100%; padding: 12px; background: none; border: 1.5px solid rgba(61,43,31,0.15); border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--text-light); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .profile-logout-btn:hover { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.05); }
-  .profile-save-status { text-align: center; font-size: 12px; color: var(--sage); font-weight: 500; min-height: 18px; }
 </style>
 </head>
 <body>
@@ -335,150 +303,6 @@
   </div>
 </div>
 
-<!-- PROFILE PANEL -->
-<div class="profile-panel" id="profilePanel">
-  <div class="profile-panel-header">
-    <div class="profile-panel-title">👤 Mon profil</div>
-    <button class="profile-panel-close" onclick="fermerProfil()">✕</button>
-  </div>
-
-  <div class="profile-avatar-block">
-    <div class="profile-avatar-big" id="profileAvatarBig">?</div>
-    <div class="profile-fullname" id="profileFullname">—</div>
-    <div class="profile-email" id="profileEmailDisplay">—</div>
-  </div>
-
-  <div class="profile-body">
-
-    <div class="profile-section-title">Informations personnelles</div>
-
-    <div class="profile-field">
-      <label class="profile-label">Prénom</label>
-      <input type="text" class="profile-input" id="pf-prenom" placeholder="Ton prénom" />
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Tranche d'âge</label>
-      <select class="profile-select" id="pf-age">
-        <option value="">— Sélectionner —</option>
-        <option value="18-25">18 – 25 ans</option>
-        <option value="26-35">26 – 35 ans</option>
-        <option value="36-45">36 – 45 ans</option>
-        <option value="46-55">46 – 55 ans</option>
-        <option value="56-65">56 – 65 ans</option>
-        <option value="65+">65 ans et plus</option>
-      </select>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Sexe</label>
-      <select class="profile-select" id="pf-sexe">
-        <option value="non_specifie">Non spécifié</option>
-        <option value="femme">Femme</option>
-        <option value="homme">Homme</option>
-        <option value="autre">Autre</option>
-      </select>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Groupe sanguin</label>
-      <select class="profile-select" id="pf-groupe-sanguin">
-        <option value="">— Non renseigné —</option>
-        <option value="A+">A+</option>
-        <option value="A-">A-</option>
-        <option value="B+">B+</option>
-        <option value="B-">B-</option>
-        <option value="AB+">AB+</option>
-        <option value="AB-">AB-</option>
-        <option value="O+">O+</option>
-        <option value="O-">O-</option>
-      </select>
-    </div>
-
-    <div class="profile-section-title">Santé & restrictions</div>
-
-    <div class="profile-field">
-      <label class="profile-label">Médicaments actuels <span style="font-size:10px;color:var(--text-light)">(séparés par des virgules)</span></label>
-      <input type="text" class="profile-input" id="pf-medicaments" placeholder="Ex: Levothyrox, Metformine..." />
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Pathologies chroniques</label>
-      <div class="profile-chips-wrap" id="pf-pathologies">
-        <div class="profile-chip" data-val="diabete" onclick="toggleProfileChip(this,'pathologies')">🩸 Diabète</div>
-        <div class="profile-chip" data-val="hypertension" onclick="toggleProfileChip(this,'pathologies')">❤️ Hypertension</div>
-        <div class="profile-chip" data-val="hypothyroidie" onclick="toggleProfileChip(this,'pathologies')">🦋 Hypothyroïdie</div>
-        <div class="profile-chip" data-val="sibo" onclick="toggleProfileChip(this,'pathologies')">🦠 SIBO</div>
-        <div class="profile-chip" data-val="endometriose" onclick="toggleProfileChip(this,'pathologies')">🌸 Endométriose</div>
-        <div class="profile-chip" data-val="fibromyalgie" onclick="toggleProfileChip(this,'pathologies')">💤 Fibromyalgie</div>
-      </div>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Allergies</label>
-      <div class="profile-chips-wrap" id="pf-allergies">
-        <div class="profile-chip" data-val="gluten" onclick="toggleProfileChip(this,'allergies')">🌾 Gluten</div>
-        <div class="profile-chip" data-val="lactose" onclick="toggleProfileChip(this,'allergies')">🥛 Lactose</div>
-        <div class="profile-chip" data-val="fruits_a_coque" onclick="toggleProfileChip(this,'allergies')">🥜 Fruits à coque</div>
-        <div class="profile-chip" data-val="soja" onclick="toggleProfileChip(this,'allergies')">🫘 Soja</div>
-        <div class="profile-chip" data-val="oeufs" onclick="toggleProfileChip(this,'allergies')">🥚 Œufs</div>
-        <div class="profile-chip" data-val="poisson" onclick="toggleProfileChip(this,'allergies')">🐟 Poisson</div>
-      </div>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Régimes alimentaires</label>
-      <div class="profile-chips-wrap" id="pf-regimes">
-        <div class="profile-chip" data-val="sans_gluten" onclick="toggleProfileChip(this,'regimes')">🌾 Sans gluten</div>
-        <div class="profile-chip" data-val="vegan" onclick="toggleProfileChip(this,'regimes')">🌱 Végan</div>
-        <div class="profile-chip" data-val="vegetarien" onclick="toggleProfileChip(this,'regimes')">🥗 Végétarien</div>
-        <div class="profile-chip" data-val="sans_lactose" onclick="toggleProfileChip(this,'regimes')">🥛 Sans lactose</div>
-        <div class="profile-chip" data-val="keto" onclick="toggleProfileChip(this,'regimes')">🥑 Kéto</div>
-        <div class="profile-chip" data-val="halal" onclick="toggleProfileChip(this,'regimes')">☪️ Halal</div>
-        <div class="profile-chip" data-val="casher" onclick="toggleProfileChip(this,'regimes')">✡️ Casher</div>
-      </div>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Grossesse / Allaitement</label>
-      <select class="profile-select" id="pf-grossesse">
-        <option value="non">Non</option>
-        <option value="enceinte">Enceinte</option>
-        <option value="allaitement">Allaitement</option>
-      </select>
-    </div>
-
-    <div class="profile-section-title">Préférences</div>
-
-    <div class="profile-field">
-      <label class="profile-label">Niveau d'activité physique</label>
-      <select class="profile-select" id="pf-activite">
-        <option value="sedentaire">Sédentaire</option>
-        <option value="leger">Légèrement actif</option>
-        <option value="modere">Modérément actif</option>
-        <option value="actif">Actif</option>
-        <option value="tres_actif">Très actif</option>
-      </select>
-    </div>
-
-    <div class="profile-field">
-      <label class="profile-label">Budget compléments / mois</label>
-      <select class="profile-select" id="pf-budget">
-        <option value="faible">Faible (&lt; 30 CHF)</option>
-        <option value="moyen">Moyen (30–80 CHF)</option>
-        <option value="eleve">Élevé (&gt; 80 CHF)</option>
-      </select>
-    </div>
-
-    <div style="height:1px;background:rgba(196,113,74,0.1);margin:4px 0"></div>
-
-    <div class="profile-save-status" id="profileSaveStatus"></div>
-    <button class="profile-save-btn" onclick="sauvegarderProfil()">💾 Sauvegarder les modifications</button>
-    <button class="profile-logout-btn" onclick="seDeconnecter()">🚪 Se déconnecter</button>
-    <div style="height:16px"></div>
-  </div>
-</div>
-
 <!-- CONFIG PANEL -->
 <div class="config-panel" id="configPanel">
   <div class="config-handle"></div>
@@ -524,10 +348,7 @@
   <div class="toast" id="toast"></div>
 
   <div class="header">
-    <button class="user-badge" id="userBadge" onclick="ouvrirProfil()">
-      <div class="user-avatar" id="userAvatarLetter">?</div>
-      <span class="user-name" id="userDisplayName">Mon profil</span>
-    </button>
+    <div class="logo">Vita<span>lia</span></div>
     <div class="header-actions">
       <button class="bookmark-btn" onclick="ouvrirSauvegardees()">🔖 <span id="savedCount">0</span></button>
       <div class="date-badge" id="dateBadge">Vendredi 20 fév.</div>
@@ -784,12 +605,6 @@ function appliquerProfil(p) {
   if (p.objectifs_generaux&&p.objectifs_generaux.length) selectedSymptoms=p.objectifs_generaux
   if (p.regimes_alimentaires&&p.regimes_alimentaires.length) selectedRegimes=p.regimes_alimentaires
   if (p.prenom) document.getElementById('heroMessage').textContent='Bonjour '+p.prenom+' ! Prêt à prendre soin de toi ? 🌿'
-  // Mettre à jour le badge utilisateur dans le header
-  if (p.prenom) {
-    var lettre = p.prenom[0].toUpperCase()
-    var avatarEl = document.getElementById('userAvatarLetter'); if(avatarEl) avatarEl.textContent = lettre
-    var nameEl = document.getElementById('userDisplayName'); if(nameEl) nameEl.textContent = p.prenom
-  }
 }
 
 async function genererPlan() {
@@ -809,23 +624,123 @@ async function genererPlan() {
   document.getElementById('app').style.opacity='0'
 
   try {
-    var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(document.getElementById('tempsMax').value),budget_max:parseInt(document.getElementById('budgetMax').value)},force_regeneration:true}
+    // Récupérer le profil complet depuis Supabase
+    var profilComplet = profilUtilisateur || {}
+    
+    // Déterminer le budget
+    var budgetVal = parseInt(document.getElementById('budgetMax').value)
+    var budget = budgetVal <= 10 ? 'faible' : budgetVal <= 20 ? 'moyen' : 'eleve'
+    
+    // Déterminer l'objectif principal depuis les symptômes sélectionnés
+    var objectifPrincipal = 'bien-etre-general'
+    if (selectedSymptoms.includes('fatigue')) objectifPrincipal = 'energie'
+    else if (selectedSymptoms.includes('stress') || selectedSymptoms.includes('anxiete')) objectifPrincipal = 'sommeil'
+    else if (selectedSymptoms.includes('digestion')) objectifPrincipal = 'digestion'
+    else if (selectedSymptoms.includes('immunite')) objectifPrincipal = 'immunite'
+    
+    // Construire le body pour la NOUVELLE API
+    var body = {
+      profil: {
+        id: profilId,
+        regime_alimentaire: profilComplet.regimes_alimentaires || selectedRegimes || [],
+        allergenes: profilComplet.allergenes || [],
+        budget: budget,
+        temps_preparation: parseInt(document.getElementById('tempsMax').value) || 45,
+        grossesse: profilComplet.grossesse || false,
+        allaitement: profilComplet.allaitement || false
+      },
+      contexte: {
+        symptomes_declares: selectedSymptoms,
+        objectif_principal: objectifPrincipal
+      }
+    }
 
-    var r = await fetch(SUPABASE_URL+'/functions/v1/generer-plan',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify(body)})
-    if (!r.ok) throw new Error('Erreur serveur '+r.status)
+    console.log('[DEBUG] Appel API avec body:', body)
+
+    var r = await fetch(SUPABASE_URL+'/functions/v1/generer-plan',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+SUPABASE_ANON_KEY
+      },
+      body:JSON.stringify(body)
+    })
+    
+    if (!r.ok) {
+      var errorText = await r.text()
+      console.error('[ERROR] Reponse serveur:', errorText)
+      throw new Error('Erreur serveur '+r.status)
+    }
+    
     var data = await r.json()
-    if (data.success&&data.plan) {
-      afficherPlan(data.plan)
-      sessionStorage.setItem('vitalia_plan_session',JSON.stringify(data.plan))
-    } else throw new Error(data.error||'Plan invalide')
+    console.log('[DEBUG] Reponse API:', data)
+    
+    if (data.success && data.plan) {
+      // Adapter le nouveau format vers l'ancien format attendu par afficherPlan
+      var planAdapte = adapterNouveauPlanVersAncien(data.plan)
+      afficherPlan(planAdapte)
+      sessionStorage.setItem('vitalia_plan_session',JSON.stringify(planAdapte))
+    } else {
+      throw new Error(data.error?.message || 'Plan invalide')
+    }
   } catch(err) {
-    console.error(err)
+    console.error('[ERROR]', err)
     alert('Erreur : '+err.message)
   } finally {
     document.getElementById('loadingScreen').style.opacity='0'
     document.getElementById('loadingScreen').style.pointerEvents='none'
     document.getElementById('app').style.opacity='1'
   }
+}
+
+// Fonction pour adapter le nouveau format API vers l'ancien format UI
+function adapterNouveauPlanVersAncien(nouveauPlan) {
+  console.log('[ADAPTER] Conversion du plan...')
+  
+  // Helper pour convertir une recette
+  function convertirRecette(recette, moment) {
+    if (!recette) return null
+    
+    var heures = {
+      'petit-dejeuner': '7h30',
+      'dejeuner': '12h30',
+      'diner': '19h30'
+    }
+    
+    return {
+      heure_suggere: heures[recette.type_repas] || '12h00',
+      titre: recette.nom || 'Recette',
+      description: recette.style_culinaire ? 'Style ' + recette.style_culinaire : '',
+      message_motivant: 'Bon appétit ! 🌿',
+      calories_estimees: recette.valeurs_nutritionnelles?.calories || 450,
+      instructions: {
+        ingredients: recette.ingredients?.map(function(i){ 
+          return (i.quantite || '') + ' ' + (i.unite || '') + ' ' + i.nom 
+        }) || [],
+        steps: recette.instructions || [],
+        tip: recette.astuces?.[0] || ''
+      }
+    }
+  }
+  
+  var planAdapte = {
+    message_personnalise: nouveauPlan.message_motivation || 'Ton plan est prêt ! 🌿',
+    score_nutritionnel: 8,
+    matin: convertirRecette(nouveauPlan.petit_dejeuner, 'matin'),
+    midi: convertirRecette(nouveauPlan.dejeuner, 'midi'),
+    apres_midi: null,
+    soir: convertirRecette(nouveauPlan.diner, 'soir'),
+    routine_du_jour: {
+      matin: nouveauPlan.routines?.[0]?.nom || '',
+      complement_phare: nouveauPlan.nutraceutiques?.[0]?.nom || '',
+      aromatherapie: nouveauPlan.aromatherapie?.[0]?.nom || '',
+      soir: nouveauPlan.routines?.[1]?.nom || ''
+    },
+    conseil_du_jour: nouveauPlan.conseils_generaux?.[0] || 'Prends soin de toi ! 🌿'
+  }
+  
+  console.log('[ADAPTER] Plan adapte:', planAdapte)
+  return planAdapte
 }
 
 function afficherPlan(plan) {
@@ -1219,174 +1134,7 @@ function mettreAJourAllies(){
   if(el) el.classList.add('active')
 }
 
-function fermerTout(){fermerConfig();fermerSauvegardees();fermerProfil()}
-// ═══════════════════════════════════════════════════════
-// PROFIL PANEL
-// ═══════════════════════════════════════════════════════
-
-// Stockage local des chips profil
-var profileChipsState = { pathologies: [], allergies: [], regimes: [] }
-
-function ouvrirProfil() {
-  remplirFormulaireProfil()
-  document.getElementById('profilePanel').classList.add('open')
-  document.getElementById('overlay').classList.add('active')
-}
-
-function fermerProfil() {
-  document.getElementById('profilePanel').classList.remove('open')
-  document.getElementById('overlay').classList.remove('active')
-}
-
-function remplirFormulaireProfil() {
-  var p = profilUtilisateur
-  if (!p) {
-    // Essayer localStorage
-    var local = localStorage.getItem('vitalia_profil')
-    if (local) { try { p = JSON.parse(local) } catch(e){} }
-  }
-  if (!p) return
-
-  // Avatar & nom
-  var prenom = p.prenom || ''
-  var lettre = prenom ? prenom[0].toUpperCase() : '?'
-  var el = document.getElementById('profileAvatarBig'); if(el) el.textContent = lettre
-  var badge = document.getElementById('userAvatarLetter'); if(badge) badge.textContent = lettre
-  var fn = document.getElementById('profileFullname'); if(fn) fn.textContent = prenom || '—'
-  var em = document.getElementById('profileEmailDisplay'); if(em) em.textContent = p.email || '—'
-
-  // Champs texte
-  setVal('pf-prenom', p.prenom || '')
-  setVal('pf-medicaments', (p.medications_actuelles || []).join(', '))
-
-  // Selects
-  setSelect('pf-age', p.age_tranche || '')
-  setSelect('pf-sexe', p.sexe || 'non_specifie')
-  setSelect('pf-groupe-sanguin', p.groupe_sanguin || '')
-  setSelect('pf-activite', p.niveau_activite || 'modere')
-  setSelect('pf-budget', p.budget_complements || 'moyen')
-
-  // Grossesse
-  var grossVal = p.enceinte ? 'enceinte' : (p.allaitement ? 'allaitement' : 'non')
-  setSelect('pf-grossesse', grossVal)
-
-  // Chips
-  profileChipsState.pathologies = p.pathologies_chroniques || []
-  profileChipsState.allergies = p.allergies || []
-  profileChipsState.regimes = p.regimes_alimentaires || []
-  refreshProfileChips('pf-pathologies', 'pathologies')
-  refreshProfileChips('pf-allergies', 'allergies')
-  refreshProfileChips('pf-regimes', 'regimes')
-}
-
-function setVal(id, val) { var e = document.getElementById(id); if(e) e.value = val }
-function setSelect(id, val) { var e = document.getElementById(id); if(e) e.value = val }
-
-function refreshProfileChips(containerId, group) {
-  var container = document.getElementById(containerId); if(!container) return
-  container.querySelectorAll('.profile-chip').forEach(function(chip) {
-    var val = chip.dataset.val
-    chip.classList.toggle('selected', profileChipsState[group].includes(val))
-  })
-}
-
-function toggleProfileChip(chip, group) {
-  var val = chip.dataset.val
-  if (chip.classList.contains('selected')) {
-    chip.classList.remove('selected')
-    profileChipsState[group] = profileChipsState[group].filter(function(v){ return v !== val })
-  } else {
-    chip.classList.add('selected')
-    if (!profileChipsState[group].includes(val)) profileChipsState[group].push(val)
-  }
-}
-
-async function sauvegarderProfil() {
-  var statusEl = document.getElementById('profileSaveStatus')
-  if(statusEl) statusEl.textContent = 'Sauvegarde...'
-
-  var prenom = (document.getElementById('pf-prenom').value || '').trim()
-  var medsRaw = (document.getElementById('pf-medicaments').value || '').trim()
-  var meds = medsRaw ? medsRaw.split(',').map(function(m){ return m.trim() }).filter(Boolean) : []
-  var grossesse = document.getElementById('pf-grossesse').value
-
-  var updates = {
-    prenom:                 prenom,
-    age_tranche:            document.getElementById('pf-age').value || null,
-    sexe:                   document.getElementById('pf-sexe').value || 'non_specifie',
-    groupe_sanguin:         document.getElementById('pf-groupe-sanguin').value || null,
-    niveau_activite:        document.getElementById('pf-activite').value || 'modere',
-    budget_complements:     document.getElementById('pf-budget').value || 'moyen',
-    medications_actuelles:  meds,
-    pathologies_chroniques: profileChipsState.pathologies,
-    allergies:              profileChipsState.allergies,
-    regimes_alimentaires:   profileChipsState.regimes,
-    enceinte:               grossesse === 'enceinte',
-    allaitement:            grossesse === 'allaitement',
-    updated_at:             new Date().toISOString()
-  }
-
-  // Mettre à jour en local immédiatement
-  profilUtilisateur = Object.assign({}, profilUtilisateur || {}, updates)
-  localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
-
-  // Mettre à jour le badge header
-  if (prenom) {
-    var lettre = prenom[0].toUpperCase()
-    var avatarEl = document.getElementById('userAvatarLetter'); if(avatarEl) avatarEl.textContent = lettre
-    var bigEl = document.getElementById('profileAvatarBig'); if(bigEl) bigEl.textContent = lettre
-    var nameEl = document.getElementById('userDisplayName'); if(nameEl) nameEl.textContent = prenom
-    var fnEl = document.getElementById('profileFullname'); if(fnEl) fnEl.textContent = prenom
-  }
-
-  // Sync Supabase
-  var profilId = localStorage.getItem('vitalia_profil_id')
-  if (profilId && profilId !== 'new') {
-    try {
-      var r = await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profilId, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify(updates)
-      })
-      if (r.ok) {
-        if(statusEl) { statusEl.textContent = '✅ Profil mis à jour !'; setTimeout(function(){ statusEl.textContent='' }, 3000) }
-        afficherToast('Profil sauvegardé ✅')
-      } else {
-        throw new Error('Erreur ' + r.status)
-      }
-    } catch(e) {
-      if(statusEl) { statusEl.textContent = '⚠️ Sauvegardé en local (sync échouée)'; setTimeout(function(){ statusEl.textContent='' }, 4000) }
-    }
-  } else {
-    if(statusEl) { statusEl.textContent = '✅ Sauvegardé localement'; setTimeout(function(){ statusEl.textContent='' }, 3000) }
-  }
-
-  // Appliquer régimes au plan
-  selectedRegimes = profileChipsState.regimes
-}
-
-async function seDeconnecter() {
-  if (!confirm('Se déconnecter de Vitalia ?')) return
-  // Déconnexion Supabase Auth si SDK disponible
-  if (window.supabase) {
-    try {
-      var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      await sb.auth.signOut()
-    } catch(e) {}
-  }
-  // Nettoyage localStorage
-  ;['vitalia_user_id','vitalia_email','vitalia_profil_id','vitalia_profil','vitalia_profil_complet']
-    .forEach(function(k){ localStorage.removeItem(k) })
-  sessionStorage.removeItem('vitalia_plan_session')
-  // Redirection onboarding
-  window.location.href = 'onboarding.html'
-}
-
+function fermerTout(){fermerConfig();fermerSauvegardees()}
 
 async function loggerPlanVu(plan){
   var profilId=localStorage.getItem('vitalia_profil_id'); if(!profilId||profilId==='new') return
