@@ -1,5 +1,5 @@
 // supabase/functions/generer-plan/niveau3-llm.ts
-// VERSION CORRIGÉE : Sans emojis
+// VERSION CORRIGÉE : Utilise Claude AI (Anthropic) au lieu de DeepSeek
 
 import { 
   RecetteGeneree, 
@@ -10,14 +10,14 @@ import {
 
 /**
  * NIVEAU 3 : CREATIVITE & VARIETE (LLM)
- * Génération de recettes originales avec DeepSeek API
+ * Génération de recettes originales avec Claude AI (Anthropic)
  */
 
-const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 // ============================================================================
-// GENERATION RECETTE VIA LLM
+// GENERATION RECETTE VIA CLAUDE AI
 // ============================================================================
 
 export async function genererRecetteLLM(
@@ -28,7 +28,7 @@ export async function genererRecetteLLM(
   contexte: ContexteUtilisateur
 ): Promise<RecetteGeneree | null> {
   
-  console.log(`[NIVEAU 3] Generation recette LLM (${typeRepas}, ${styleCulinaire})...`);
+  console.log(`[NIVEAU 3] Generation recette Claude AI (${typeRepas}, ${styleCulinaire})...`);
   
   try {
     const prompt = construirePromptRecette(
@@ -39,37 +39,46 @@ export async function genererRecetteLLM(
       contexte
     );
     
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        temperature: 0.8,
         messages: [
-          {
-            role: 'system',
-            content: 'Tu es un chef expert en nutrition bien-etre et cuisine creative. Tu generes des recettes originales, savoureuses et equilibrees.'
-          },
           {
             role: 'user',
             content: prompt
           }
-        ],
-        temperature: 0.8,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        ]
       })
     });
     
     if (!response.ok) {
-      console.error('[ERROR] Erreur API DeepSeek:', response.status);
+      const errorText = await response.text();
+      console.error('[ERROR] Erreur API Claude:', response.status, errorText);
       return null;
     }
     
     const data = await response.json();
-    const recetteJSON = JSON.parse(data.choices[0].message.content);
+    const textContent = data.content[0].text;
+    
+    // Parser le JSON (Claude peut retourner du texte avec ```json```)
+    const jsonMatch = textContent.match(/```json\n([\s\S]*?)\n```/) || 
+                      textContent.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      console.error('[ERROR] Pas de JSON trouve dans la reponse Claude');
+      return null;
+    }
+    
+    const jsonText = jsonMatch[1] || jsonMatch[0];
+    const recetteJSON = JSON.parse(jsonText);
     
     // Validation & transformation
     const recette: RecetteGeneree = {
@@ -96,7 +105,7 @@ export async function genererRecetteLLM(
     return recette;
     
   } catch (error) {
-    console.error('[ERROR] Erreur generation LLM:', error);
+    console.error('[ERROR] Erreur generation Claude AI:', error);
     return null;
   }
 }
@@ -161,8 +170,7 @@ function construirePromptRecette(
     ? 'Riche en vitamines C, D, zinc pour renforcer l\'immunite'
     : 'Equilibre et nutritif';
   
-  const prompt = `
-Tu es un chef expert en nutrition bien-etre. Cree une recette ORIGINALE et CREATIVE.
+  const prompt = `Tu es un chef expert en nutrition bien-etre. Cree une recette ORIGINALE et CREATIVE.
 
 ## CONTRAINTES STRICTES (NON NEGOCIABLES)
 
@@ -194,6 +202,8 @@ ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 5. **Variantes** : Propose 2-3 variations pour eviter la monotonie
 
 ## FORMAT DE SORTIE (JSON STRICT)
+
+Reponds UNIQUEMENT avec un objet JSON (sans backticks markdown) dans ce format exact :
 
 {
   "nom": "Nom creatif et accrocheur",
@@ -231,8 +241,7 @@ ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
 Bienveillant, encourageant, mais pas paternaliste. Explique simplement pourquoi c'est bon pour la sante.
 
-**Genere MAINTENANT la recette en JSON pur (sans markdown) :**
-`;
+**Genere MAINTENANT la recette en JSON :**`;
   
   return prompt;
 }
@@ -249,8 +258,7 @@ export async function genererMessageMotivation(
   console.log('[NIVEAU 3] Generation message motivation...');
   
   try {
-    const prompt = `
-Tu es un coach en bien-etre bienveillant. Genere un message de motivation COURT (2-3 phrases max) pour encourager l'utilisateur.
+    const prompt = `Tu es un coach en bien-etre bienveillant. Genere un message de motivation COURT (2-3 phrases max) pour encourager l'utilisateur.
 
 **Contexte** :
 - Symptomes : ${contexte.symptomes_declares?.join(', ') || 'aucun'}
@@ -267,29 +275,25 @@ Tu es un coach en bien-etre bienveillant. Genere un message de motivation COURT 
 **Exemples de MAUVAIS message** :
 "Felicitations ! Vous avez fait le premier pas vers une vie saine. Continuez comme ca !"
 
-Genere UN message court et authentique (max 150 caracteres) :
-`;
+Genere UN message court et authentique (max 150 caracteres) :`;
     
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        temperature: 0.9,
         messages: [
-          {
-            role: 'system',
-            content: 'Tu es un coach bien-etre bienveillant qui genere des messages courts et authentiques.'
-          },
           {
             role: 'user',
             content: prompt
           }
-        ],
-        temperature: 0.9,
-        max_tokens: 150
+        ]
       })
     });
     
@@ -298,7 +302,7 @@ Genere UN message court et authentique (max 150 caracteres) :
     }
     
     const data = await response.json();
-    const message = data.choices[0].message.content.trim();
+    const message = data.content[0].text.trim();
     
     console.log(`[NIVEAU 3] Message : ${message}`);
     
