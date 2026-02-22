@@ -1,5 +1,5 @@
 // supabase/functions/generer-plan/index.ts
-// VERSION CORRIGÉE : Sans emojis pour compatibilité Deno
+// VERSION CORRIGÉE : CORS complets + Sans emojis
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -40,20 +40,22 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Headers CORS réutilisables
+const CORS_HEADERS = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
 // ============================================================================
 // FONCTION PRINCIPALE
 // ============================================================================
 
 serve(async (req) => {
-  // CORS
+  // CORS Preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response('ok', { headers: CORS_HEADERS });
   }
 
   try {
@@ -62,18 +64,19 @@ serve(async (req) => {
     // Parse body
     const { profil, contexte } = await req.json();
     
-    // Validation
+    // Validation profil
     if (!validerProfil(profil)) {
       return new Response(
         JSON.stringify(formaterErreurAPI('Profil invalide', 'INVALID_PROFILE')),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: CORS_HEADERS }
       );
     }
     
+    // Validation contexte
     if (!validerContexte(contexte)) {
       return new Response(
         JSON.stringify(formaterErreurAPI('Contexte invalide', 'INVALID_CONTEXT')),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: CORS_HEADERS }
       );
     }
     
@@ -113,11 +116,11 @@ serve(async (req) => {
     // Sélectionner top produits
     const nutraceutiquesSelectionnes = produitsScores
       .filter(p => p.type === 'nutraceutique')
-      .slice(0, 3); // Top 3
+      .slice(0, 3);
     
     const aromatherapieSelectionnee = produitsScores
       .filter(p => p.type === 'aromatherapie')
-      .slice(0, 2); // Top 2
+      .slice(0, 2);
     
     // Sélectionner style culinaire
     const styleCulinaire = selectionnerStyleCulinaire(
@@ -141,8 +144,8 @@ serve(async (req) => {
     
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
     
-    // Déterminer ingrédients obligatoires (basés sur nutraceutiques)
-    const ingredientsObligatoires = ['lentilles', 'epinards', 'patate douce']; // TODO: logique dynamique
+    // Déterminer ingrédients obligatoires
+    const ingredientsObligatoires = ['lentilles', 'epinards', 'patate douce'];
     
     // Générer recettes via LLM (avec fallback BDD)
     const [recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
@@ -202,7 +205,7 @@ serve(async (req) => {
         id: p.id,
         nom: p.nom,
         type: p.type,
-        dosage: '1 gelule/jour', // TODO: récupérer depuis BDD
+        dosage: '1 gelule/jour',
         timing: 'Matin avec petit-dejeuner',
         moment_optimal: 'matin',
         raison: `Aide pour ${p.symptomes_cibles?.[0] || 'bien-etre'}`,
@@ -316,13 +319,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify(formaterReponseAPI(plan, planId), null, 2),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
+      { status: 200, headers: CORS_HEADERS }
     );
     
   } catch (error) {
@@ -332,13 +329,7 @@ serve(async (req) => {
       JSON.stringify(formaterErreurAPI(
         error instanceof Error ? error.message : 'Erreur inconnue'
       )),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 });
@@ -403,7 +394,6 @@ async function genererRecetteAvecFallback(
 }
 
 function genererRecetteParDefaut(typeRepas: string): any {
-  // Recette de secours si tout échoue
   return {
     nom: `Recette ${typeRepas} equilibree`,
     type_repas: typeRepas,
