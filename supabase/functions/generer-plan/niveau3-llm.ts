@@ -1,4 +1,5 @@
 // supabase/functions/generer-plan/niveau3-llm.ts
+// VERSION CORRIGÉE : Sans emojis
 
 import { 
   RecetteGeneree, 
@@ -8,7 +9,7 @@ import {
 } from './types.ts';
 
 /**
- * NIVEAU 3 : CRÉATIVITÉ & VARIÉTÉ (LLM)
+ * NIVEAU 3 : CREATIVITE & VARIETE (LLM)
  * Génération de recettes originales avec DeepSeek API
  */
 
@@ -16,7 +17,7 @@ const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY') || '';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 // ============================================================================
-// GÉNÉRATION RECETTE VIA LLM
+// GENERATION RECETTE VIA LLM
 // ============================================================================
 
 export async function genererRecetteLLM(
@@ -27,7 +28,7 @@ export async function genererRecetteLLM(
   contexte: ContexteUtilisateur
 ): Promise<RecetteGeneree | null> {
   
-  console.log(`🎨 NIVEAU 3 : Génération recette LLM (${typeRepas}, ${styleCulinaire})...`);
+  console.log(`[NIVEAU 3] Generation recette LLM (${typeRepas}, ${styleCulinaire})...`);
   
   try {
     const prompt = construirePromptRecette(
@@ -49,21 +50,21 @@ export async function genererRecetteLLM(
         messages: [
           {
             role: 'system',
-            content: 'Tu es un chef expert en nutrition bien-être et cuisine créative. Tu génères des recettes originales, savoureuses et équilibrées.'
+            content: 'Tu es un chef expert en nutrition bien-etre et cuisine creative. Tu generes des recettes originales, savoureuses et equilibrees.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.8, // Créativité élevée
+        temperature: 0.8,
         max_tokens: 2000,
         response_format: { type: 'json_object' }
       })
     });
     
     if (!response.ok) {
-      console.error('Erreur API DeepSeek:', response.status);
+      console.error('[ERROR] Erreur API DeepSeek:', response.status);
       return null;
     }
     
@@ -90,12 +91,12 @@ export async function genererRecetteLLM(
       genere_par_llm: true
     };
     
-    console.log(`🎨 Recette générée : ${recette.nom}`);
+    console.log(`[NIVEAU 3] Recette generee : ${recette.nom}`);
     
     return recette;
     
   } catch (error) {
-    console.error('Erreur génération LLM:', error);
+    console.error('[ERROR] Erreur generation LLM:', error);
     return null;
   }
 }
@@ -115,9 +116,9 @@ function construirePromptRecette(
   // Contraintes régime alimentaire
   const contraintesRegime = [];
   if (profil.regime_alimentaire?.includes('vegan')) {
-    contraintesRegime.push('100% VÉGANE (aucun produit animal)');
+    contraintesRegime.push('100% VEGANE (aucun produit animal)');
   } else if (profil.regime_alimentaire?.includes('vegetarien')) {
-    contraintesRegime.push('VÉGÉTARIEN (pas de viande/poisson)');
+    contraintesRegime.push('VEGETARIEN (pas de viande/poisson)');
   }
   
   if (profil.allergenes?.includes('gluten') || profil.regime_alimentaire?.includes('sans-gluten')) {
@@ -129,7 +130,7 @@ function construirePromptRecette(
   }
   
   if (profil.regime_alimentaire?.includes('paleo')) {
-    contraintesRegime.push('PALÉO');
+    contraintesRegime.push('PALEO');
   }
   
   if (profil.regime_alimentaire?.includes('keto')) {
@@ -144,69 +145,68 @@ function construirePromptRecette(
   
   // Budget
   const budget = profil.budget === 'faible' 
-    ? '5-8€/portion'
+    ? '5-8 euros/portion'
     : profil.budget === 'moyen'
-    ? '8-12€/portion'
-    : '12-20€/portion';
+    ? '8-12 euros/portion'
+    : '12-20 euros/portion';
   
   // Objectif nutritionnel
   const objectifNutri = contexte.objectif_principal === 'energie'
-    ? 'Riche en protéines et glucides complexes pour booster l\'énergie'
+    ? 'Riche en proteines et glucides complexes pour booster l\'energie'
     : contexte.objectif_principal === 'digestion'
-    ? 'Facile à digérer, riche en fibres et probiotiques'
+    ? 'Facile a digerer, riche en fibres et probiotiques'
     : contexte.objectif_principal === 'sommeil'
-    ? 'Riche en tryptophane et magnésium pour favoriser le sommeil'
+    ? 'Riche en tryptophane et magnesium pour favoriser le sommeil'
     : contexte.objectif_principal === 'immunite'
-    ? 'Riche en vitamines C, D, zinc pour renforcer l\'immunité'
-    : 'Équilibré et nutritif';
+    ? 'Riche en vitamines C, D, zinc pour renforcer l\'immunite'
+    : 'Equilibre et nutritif';
   
   const prompt = `
-Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CRÉATIVE.
+Tu es un chef expert en nutrition bien-etre. Cree une recette ORIGINALE et CREATIVE.
 
-## CONTRAINTES STRICTES (NON NÉGOCIABLES)
+## CONTRAINTES STRICTES (NON NEGOCIABLES)
 
 **Type de repas** : ${typeRepas}
 **Style culinaire** : ${styleCulinaire}
-**Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
-**Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
+**Regime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
+**Allergenes a EVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
 
-**Ingrédients OBLIGATOIRES à inclure** :
+**Ingredients OBLIGATOIRES a inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
-**Temps max** : ${tempsMax} minutes (préparation + cuisson)
+**Temps max** : ${tempsMax} minutes (preparation + cuisson)
 **Budget** : ${budget}
 **Objectif nutritionnel** : ${objectifNutri}
 **Portions** : 2
 
-## RÈGLES CRÉATIVES
+## REGLES CREATIVES
 
-1. **Nom accrocheur** : Évite les noms génériques. Sois créatif !
-   ❌ "Salade de quinoa"
-   ✅ "Buddha Bowl Arc-en-Ciel Énergisant"
+1. **Nom accrocheur** : Evite les noms generiques. Sois creatif !
+   Mauvais : "Salade de quinoa"
+   Bon : "Buddha Bowl Arc-en-Ciel Energisant"
 
-2. **Saveurs équilibrées** : Joue sur les textures (croquant, fondant, crémeux) et saveurs (sucré, salé, acidulé, umami)
+2. **Saveurs equilibrees** : Joue sur les textures (croquant, fondant, cremeux) et saveurs (sucre, sale, acidule, umami)
 
-3. **Astuces nutritionnelles** : Explique POURQUOI cette recette est bonne pour les symptômes : ${contexte.symptomes_declares?.join(', ') || 'bien-être général'}
+3. **Astuces nutritionnelles** : Explique POURQUOI cette recette est bonne pour les symptomes : ${contexte.symptomes_declares?.join(', ') || 'bien-etre general'}
 
-4. **Instructions CLAIRES** : Pas à pas, précis, facile à suivre
+4. **Instructions CLAIRES** : Pas a pas, precis, facile a suivre
 
-5. **Variantes** : Propose 2-3 variations pour éviter la monotonie
+5. **Variantes** : Propose 2-3 variations pour eviter la monotonie
 
 ## FORMAT DE SORTIE (JSON STRICT)
 
-\`\`\`json
 {
-  "nom": "Nom créatif et accrocheur",
+  "nom": "Nom creatif et accrocheur",
   "ingredients": [
     {
-      "nom": "Nom ingrédient",
+      "nom": "Nom ingredient",
       "quantite": 150,
       "unite": "g"
     }
   ],
   "instructions": [
-    "Étape 1 détaillée...",
-    "Étape 2 détaillée..."
+    "Etape 1 detaillee...",
+    "Etape 2 detaillee..."
   ],
   "temps_preparation": 15,
   "temps_cuisson": 20,
@@ -219,27 +219,26 @@ ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
   },
   "astuces": [
     "Astuce nutritionnelle 1",
-    "Astuce de préparation 2"
+    "Astuce de preparation 2"
   ],
   "variantes": [
     "Variante 1 : remplacer X par Y",
     "Variante 2 : ajouter Z"
   ]
 }
-\`\`\`
 
 ## TON
 
-Bienveillant, encourageant, mais pas paternaliste. Explique simplement pourquoi c'est bon pour la santé.
+Bienveillant, encourageant, mais pas paternaliste. Explique simplement pourquoi c'est bon pour la sante.
 
-**Génère MAINTENANT la recette en JSON pur (sans markdown) :**
+**Genere MAINTENANT la recette en JSON pur (sans markdown) :**
 `;
   
   return prompt;
 }
 
 // ============================================================================
-// GÉNÉRATION MESSAGE DE MOTIVATION
+// GENERATION MESSAGE DE MOTIVATION
 // ============================================================================
 
 export async function genererMessageMotivation(
@@ -247,28 +246,28 @@ export async function genererMessageMotivation(
   planGenere: any
 ): Promise<string> {
   
-  console.log('🎨 Génération message motivation...');
+  console.log('[NIVEAU 3] Generation message motivation...');
   
   try {
     const prompt = `
-Tu es un coach en bien-être bienveillant. Génère un message de motivation COURT (2-3 phrases max) pour encourager l'utilisateur.
+Tu es un coach en bien-etre bienveillant. Genere un message de motivation COURT (2-3 phrases max) pour encourager l'utilisateur.
 
 **Contexte** :
-- Symptômes : ${contexte.symptomes_declares?.join(', ') || 'aucun'}
-- Objectif : ${contexte.objectif_principal || 'bien-être général'}
+- Symptomes : ${contexte.symptomes_declares?.join(', ') || 'aucun'}
+- Objectif : ${contexte.objectif_principal || 'bien-etre general'}
 
 **Ton** :
 - Encourageant mais pas excessif
 - Authentique et humain
-- Évite les clichés type "Vous êtes sur la bonne voie !"
+- Evite les cliches type "Vous etes sur la bonne voie !"
 
 **Exemples de BON message** :
-"Ce plan va nourrir ton corps avec ce dont il a besoin. Prends le temps de savourer chaque bouchée ! 🌟"
+"Ce plan va nourrir ton corps avec ce dont il a besoin. Prends le temps de savourer chaque bouchee !"
 
 **Exemples de MAUVAIS message** :
-"Félicitations ! Vous avez fait le premier pas vers une vie saine. Continuez comme ça !"
+"Felicitations ! Vous avez fait le premier pas vers une vie saine. Continuez comme ca !"
 
-Génère UN message court et authentique (max 150 caractères) :
+Genere UN message court et authentique (max 150 caracteres) :
 `;
     
     const response = await fetch(DEEPSEEK_API_URL, {
@@ -282,7 +281,7 @@ Génère UN message court et authentique (max 150 caractères) :
         messages: [
           {
             role: 'system',
-            content: 'Tu es un coach bien-être bienveillant qui génère des messages courts et authentiques.'
+            content: 'Tu es un coach bien-etre bienveillant qui genere des messages courts et authentiques.'
           },
           {
             role: 'user',
@@ -295,24 +294,24 @@ Génère UN message court et authentique (max 150 caractères) :
     });
     
     if (!response.ok) {
-      return "Ce plan est fait pour toi ! Profite de chaque moment. 🌟";
+      return "Ce plan est fait pour toi ! Profite de chaque moment.";
     }
     
     const data = await response.json();
     const message = data.choices[0].message.content.trim();
     
-    console.log(`🎨 Message : ${message}`);
+    console.log(`[NIVEAU 3] Message : ${message}`);
     
     return message;
     
   } catch (error) {
-    console.error('Erreur génération message:', error);
-    return "Prends soin de toi avec ce plan sur mesure ! 🌿";
+    console.error('[ERROR] Erreur generation message:', error);
+    return "Prends soin de toi avec ce plan sur mesure !";
   }
 }
 
 // ============================================================================
-// FALLBACK : Recette depuis BDD si LLM échoue
+// FALLBACK : Recette depuis BDD si LLM echoue
 // ============================================================================
 
 export function transformerRecetteBDD(recetteBDD: any): RecetteGeneree {
@@ -339,21 +338,19 @@ export function transformerRecetteBDD(recetteBDD: any): RecetteGeneree {
 }
 
 function parseIngredients(ids: string[], quantites: string[]): Ingredient[] {
-  // Parse format CSV ou JSON
   if (!ids || !quantites) return [];
   
   return ids.map((id, i) => ({
     id,
-    nom: id, // TODO: récupérer nom depuis table ingrédients
+    nom: id,
     quantite: parseFloat(quantites[i]) || 0,
-    unite: 'g' // TODO: parser unité
+    unite: 'g'
   }));
 }
 
 function parseInstructions(instructions: string): string[] {
   if (!instructions) return [];
   
-  // Split par numéros ou par lignes
   return instructions
     .split(/\d+\.\s|[\n\r]+/)
     .filter(s => s.trim().length > 0)
