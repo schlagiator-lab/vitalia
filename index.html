@@ -651,6 +651,7 @@ async function genererPlan() {
     if (!r.ok) throw new Error('Erreur serveur '+r.status)
     var data = await r.json()
     if (data.success&&data.plan) {
+      currentHistoriqueId = data.plan_id || null
       afficherPlan(data.plan)
       sessionStorage.setItem('vitalia_plan_session',JSON.stringify(data.plan))
     } else throw new Error(data.error||'Plan invalide')
@@ -1070,24 +1071,8 @@ function ouvrirProfil(){
 
 async function loggerPlanVu(plan){
   var profilId=localStorage.getItem('vitalia_profil_id'); if(!profilId||profilId==='new') return
-  currentHistoriqueId = null
   try {
-    // 1. Sauvegarder le plan dans plans_generes_cache pour récupérer son plan_id
-    var planBody = {
-      profil_id: profilId,
-      symptomes: selectedSymptoms,
-      plan_json: plan,
-      created_at: new Date().toISOString()
-    }
-    var rPlan = await fetch(SUPABASE_URL+'/rest/v1/plans_generes_cache',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=representation'},
-      body:JSON.stringify(planBody)
-    })
-    var planId = null
-    if(rPlan.ok){var dp=await rPlan.json();if(dp&&dp[0]){planId=dp[0].id;currentHistoriqueId=planId}}
-
-    // 2. Extraire tous les items du plan et les logger dans historique_items_vus
+    // Logger les items du plan dans historique_items_vus
     var items = []
     var moments = ['matin','midi','apres_midi','soir']
     moments.forEach(function(m){
@@ -1095,18 +1080,18 @@ async function loggerPlanVu(plan){
         var p=plan[m]
         // Recette du repas
         if(p.recette_id||p.titre){
-          items.push({profil_id:profilId,plan_id:planId,type_item:'recette',item_id:p.recette_id||('gen-'+Date.now()),item_nom:p.titre||p.recette_id})
+          items.push({profil_id:profilId,type_item:'recette',item_id:p.recette_id||('gen-'+Date.now()),item_nom:p.titre||p.recette_id})
         }
         // Compléments/nutraceutiques
         if(p.complements&&Array.isArray(p.complements)){
           p.complements.forEach(function(c){
-            items.push({profil_id:profilId,plan_id:planId,type_item:'nutraceutique',item_id:c.id||c,item_nom:c.nom||c})
+            items.push({profil_id:profilId,type_item:'nutraceutique',item_id:c.id||c,item_nom:c.nom||c})
           })
         }
         // Routines
         if(p.routines&&Array.isArray(p.routines)){
           p.routines.forEach(function(r){
-            items.push({profil_id:profilId,plan_id:planId,type_item:'routine',item_id:r.id||r,item_nom:r.nom||r})
+            items.push({profil_id:profilId,type_item:'routine',item_id:r.id||r,item_nom:r.nom||r})
           })
         }
       }
@@ -1114,13 +1099,13 @@ async function loggerPlanVu(plan){
     // Routines globales du plan
     if(plan.routines&&Array.isArray(plan.routines)){
       plan.routines.forEach(function(r){
-        items.push({profil_id:profilId,plan_id:planId,type_item:'routine',item_id:r.id||r.item_id||r,item_nom:r.nom||r.item_nom||r})
+        items.push({profil_id:profilId,type_item:'routine',item_id:r.id||r.item_id||r,item_nom:r.nom||r.item_nom||r})
       })
     }
     // Nutraceutiques globaux
     if(plan.nutraceutiques&&Array.isArray(plan.nutraceutiques)){
       plan.nutraceutiques.forEach(function(n){
-        items.push({profil_id:profilId,plan_id:planId,type_item:'nutraceutique',item_id:n.id||n.item_id||n,item_nom:n.nom||n.item_nom||n})
+        items.push({profil_id:profilId,type_item:'nutraceutique',item_id:n.id||n.item_id||n,item_nom:n.nom||n.item_nom||n})
       })
     }
 
@@ -1138,13 +1123,13 @@ async function noterPlan(note){
   document.querySelectorAll('.feedback-star').forEach(function(s,i){s.classList.toggle('lit',i<note)})
   setTimeout(function(){document.getElementById('feedbackStars').style.display='none';var s=document.getElementById('feedbackSent');if(s)s.classList.add('show')},400)
   afficherToast(note>=4?'🎉 Super ! On améliore tes prochains plans !':note>=3?'👍 Noté ! On diversifie la suite':'🔄 Compris ! Plan plus varié demain')
-  // Mettre à jour la note dans plans_generes_cache
+  // Mettre à jour la note dans plans_generes
   if(currentHistoriqueId){
     try{
-      await fetch(SUPABASE_URL+'/rest/v1/plans_generes_cache?id=eq.'+currentHistoriqueId,{
+      await fetch(SUPABASE_URL+'/rest/v1/plans_generes?id=eq.'+currentHistoriqueId,{
         method:'PATCH',
         headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
-        body:JSON.stringify({note_satisfaction:note,feedback_le:new Date().toISOString()})
+        body:JSON.stringify({note_satisfaction:note,feedback_donne_le:new Date().toISOString()})
       })
     }catch(e){}
   }

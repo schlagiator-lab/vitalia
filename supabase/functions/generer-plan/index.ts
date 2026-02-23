@@ -57,15 +57,22 @@ const CORS_HEADERS = {
 
 // FIX P1 BIS : Remplace les ingrédients codés en dur
 function selectionnerIngredientsParObjectif(objectif: string): string[] {
-  const map: Record<string, string[]> = {
-    'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce'],
-    'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet'],
-    'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine'],
-    'immunite':          ['curcuma', 'gingembre', 'ail', 'brocoli'],
-    'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards'],
-    'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat']
+  const pool: Record<string, string[]> = {
+    'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
+    'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
+    'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'lait', 'noix', 'graines de courge', 'kiwi', 'camomille'],
+    'immunite':          ['curcuma', 'gingembre', 'ail', 'brocoli', 'poivron rouge', 'épinards', 'agrumes', 'myrtilles', 'kiwi', 'grenade'],
+    'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
+    'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
   };
-  return map[objectif] || map['bien-etre-general'];
+  const ingredients = pool[objectif] || pool['bien-etre-general'];
+  // Mélange Fisher-Yates puis sélection des 4 premiers pour varier à chaque appel
+  const shuffled = [...ingredients];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, 4);
 }
 
 // Recette de dernier recours si LLM + BDD échouent tous les deux
