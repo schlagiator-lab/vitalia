@@ -611,8 +611,21 @@ async function chargerProfilSupabase(id) {
 
 function appliquerProfil(p) {
   if (!p) return
-  if (p.objectifs_generaux&&p.objectifs_generaux.length) selectedSymptoms=p.objectifs_generaux
-  if (p.regimes_alimentaires&&p.regimes_alimentaires.length) selectedRegimes=p.regimes_alimentaires
+  if (p.objectifs_generaux&&p.objectifs_generaux.length) {
+    selectedSymptoms=p.objectifs_generaux
+    // Sync chip states with profile symptoms
+    document.querySelectorAll('#symptomsChips .config-chip').forEach(function(el){
+      var val=el.getAttribute('onclick').match(/'([^']+)'\)/)[1]
+      el.classList.toggle('selected', selectedSymptoms.includes(val))
+    })
+  }
+  if (p.regimes_alimentaires&&p.regimes_alimentaires.length) {
+    selectedRegimes=p.regimes_alimentaires
+    // Sync regime chip states
+    document.querySelectorAll('[data-regime]').forEach(function(el){
+      el.classList.toggle('selected', selectedRegimes.includes(el.getAttribute('data-regime')))
+    })
+  }
   if (p.prenom) document.getElementById('heroMessage').textContent='Bonjour '+p.prenom+' ! Prêt à prendre soin de toi ? 🌿'
   // Mettre à jour le badge profil dans le header
   var badge = document.getElementById('profileBadge')

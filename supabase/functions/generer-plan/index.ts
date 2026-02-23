@@ -59,9 +59,11 @@ const CORS_HEADERS = {
 function selectionnerIngredientsParObjectif(objectif: string): string[] {
   const pool: Record<string, string[]> = {
     'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
+    'fatigue':           ['lentilles corail', 'épinards', 'betterave', 'patate douce', 'foie de volaille', 'graines de sésame', 'noix de cajou', 'spiruline', 'amandes', 'œufs'],
     'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
-    'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'lait', 'noix', 'graines de courge', 'kiwi', 'camomille'],
+    'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'noix', 'graines de courge', 'kiwi', 'riz complet', 'lentilles'],
     'immunite':          ['curcuma', 'gingembre', 'ail', 'brocoli', 'poivron rouge', 'épinards', 'agrumes', 'myrtilles', 'kiwi', 'grenade'],
+    'inflammation':      ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
     'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
     'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
   };

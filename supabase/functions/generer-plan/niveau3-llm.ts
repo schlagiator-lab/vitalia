@@ -183,9 +183,11 @@ function construirePromptRecette(
   
   const objectifNutri: Record<string, string> = {
     'energie':           "Riche en protéines et glucides complexes pour booster l'énergie",
-    'digestion':         'Facile à digérer, riche en fibres et prébiotiques',
+    'fatigue':           'Riche en fer, vitamine B12 et magnésium pour combattre la fatigue',
+    'digestion':         'Facile à digérer, riche en fibres solubles et prébiotiques',
     'sommeil':           'Riche en tryptophane et magnésium pour favoriser le sommeil',
     'immunite':          'Riche en vitamines C, D, zinc pour renforcer l\'immunité',
+    'inflammation':      'Anti-inflammatoire, riche en oméga-3 et antioxydants',
     'stress':            'Riche en magnésium et adaptogènes pour réduire le stress',
     'bien-etre-general': 'Équilibré, varié et nutritif'
   };
