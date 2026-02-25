@@ -143,6 +143,8 @@
   .instructions-ingredients { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .ingredient-tag { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
   .instructions-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 7px; }
+  .recipe-timing { display: flex; gap: 10px; margin-bottom: 12px; }
+  .recipe-timing-chip { display: flex; align-items: center; gap: 4px; background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
 
   /* RECIPE ACTIONS BAR */
   .recipe-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(196,113,74,0.2); }
@@ -914,15 +916,17 @@ function renderInstructions(moment, recette) {
   var ingHtml='', stepsHtml='', tipHtml=''
 
   // Détecte si recette est un objet complet (new format) ou les instructions seules (legacy)
-  var instructions, ingredients, astuces
+  var instructions, ingredients, astuces, tempsPrep, tempsCuisson
   if (recette && recette.nom !== undefined) {
-    instructions = recette.instructions || []
-    ingredients  = recette.ingredients  || []
-    astuces      = recette.astuces      || []
+    instructions  = recette.instructions    || []
+    ingredients   = recette.ingredients     || []
+    astuces       = recette.astuces         || []
+    tempsPrep     = recette.temps_preparation
+    tempsCuisson  = recette.temps_cuisson
   } else {
-    instructions = recette
-    ingredients  = []
-    astuces      = []
+    instructions  = recette
+    ingredients   = []
+    astuces       = []
   }
 
   // Ingrédients
@@ -958,7 +962,16 @@ function renderInstructions(moment, recette) {
   if (!tipHtml && Array.isArray(astuces) && astuces.length)
     tipHtml = '<div class="instructions-tip"><strong>Astuce :</strong> '+astuces[0]+'</div>'
 
-  el.innerHTML = '<div class="instructions-content">'+ingHtml+stepsHtml+tipHtml+'</div>'
+  // Temps de préparation et de cuisson
+  var timingHtml = ''
+  if (tempsPrep || tempsCuisson) {
+    var chips = ''
+    if (tempsPrep)    chips += '<span class="recipe-timing-chip">⏱ '+tempsPrep+' min prep</span>'
+    if (tempsCuisson && tempsCuisson > 0) chips += '<span class="recipe-timing-chip">🔥 '+tempsCuisson+' min cuisson</span>'
+    if (chips) timingHtml = '<div class="recipe-timing">'+chips+'</div>'
+  }
+
+  el.innerHTML = '<div class="instructions-content">'+ingHtml+timingHtml+stepsHtml+tipHtml+'</div>'
   var content=el.querySelector('.instructions-content')
   if(content){var bar=document.createElement('div');bar.innerHTML=buildActionsBar(moment);content.appendChild(bar.firstChild)}
   var ingEl=el.querySelector('.instructions-ingredients'); if(ingEl) recipeBaseIng[moment]=ingEl.innerHTML
