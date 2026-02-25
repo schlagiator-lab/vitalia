@@ -258,6 +258,118 @@ Réponds UNIQUEMENT avec cet objet JSON exact, sans texte avant ou après :
 }
 
 // ============================================================================
+// GENERATION COLLATION 15H30 VIA LLM
+// Prompt explicitement anti-NAC : uniquement de la vraie nourriture
+// ============================================================================
+
+export async function genererPauseLLM(
+  profil: ProfilUtilisateur,
+  contexte: ContexteUtilisateur
+): Promise<any | null> {
+
+  console.log('[NIVEAU 3] Génération collation 15h30 via Claude AI...');
+
+  if (!ANTHROPIC_API_KEY) return null;
+
+  const contraintesRegime: string[] = [];
+  if (profil.regime_alimentaire?.includes('vegan'))        contraintesRegime.push('100% VEGANE');
+  else if (profil.regime_alimentaire?.includes('vegetarien')) contraintesRegime.push('VÉGÉTARIENNE');
+  if (profil.allergenes?.includes('gluten') || profil.regime_alimentaire?.includes('sans-gluten'))
+    contraintesRegime.push('SANS GLUTEN');
+  if (profil.allergenes?.includes('lactose')) contraintesRegime.push('SANS LACTOSE');
+
+  const objectifNutri: Record<string, string> = {
+    'vitalite':  'riche en énergie durable (glucides complexes + bonnes graisses)',
+    'serenite':  'apaisante, riche en magnésium et tryptophane',
+    'digestion': 'douce pour l\'intestin, riche en fibres solubles',
+    'sommeil':   'relaxante, riche en mélatonine ou tryptophane naturels',
+    'mobilite':  'anti-inflammatoire naturelle, riche en oméga-3 ou antioxydants',
+    'hormones':  'équilibrante, riche en acides gras essentiels et phytoestrogènes',
+    'energie':   'énergisante, à index glycémique modéré',
+    'stress':    'anti-stress, riche en magnésium',
+  };
+  const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'saine et équilibrée';
+
+  const prompt = `Tu es un chef nutritionniste. Crée une collation de 15h30 originale.
+
+## CONTRAINTES ABSOLUES
+
+**INTERDIT** (aucune exception) :
+- Compléments alimentaires, poudres, gélules, pilules
+- Superaliments en poudre : spiruline, maca, ashwagandha, chlorelle, protéines en poudre, collagène
+- Suppléments : magnésium en poudre, zinc en gélule, oméga-3 en capsule
+- Tout produit vendu en pharmacie ou rayon compléments
+
+**AUTORISÉ** : uniquement de la vraie nourriture du quotidien (fruits, légumes, noix, yaourt, pain, chocolat noir, etc.)
+
+**Régime** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
+**Allergènes à éviter** : ${(profil.allergenes || []).join(', ') || 'Aucun'}
+**Objectif nutritionnel** : ${objectifTexte}
+**Temps de préparation max** : 5 minutes, sans cuisson ou cuisson très rapide
+**Portions** : 1 personne
+
+## FORMAT JSON STRICT (sans backticks, sans texte autour)
+
+{
+  "nom": "Nom créatif et appétissant",
+  "ingredients": [
+    {"nom": "ingrédient", "quantite": 30, "unite": "g"}
+  ],
+  "instructions": ["Étape 1", "Étape 2"],
+  "temps_preparation": 3,
+  "temps_cuisson": 0,
+  "portions": 1,
+  "valeurs_nutritionnelles": {"calories": 150, "proteines": 4, "glucides": 18, "lipides": 7},
+  "astuces": ["Pourquoi cette collation est bonne pour : ${contexte.objectif_principal || 'le bien-être'}"]
+}`;
+
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 800,
+        temperature: 0.9,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      console.error(`[ERROR] Claude pause ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    let pauseJSON: any = null;
+    const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonBlock) { try { pauseJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
+    if (!pauseJSON) {
+      const jsonRaw = text.match(/\{[\s\S]*\}/);
+      if (jsonRaw) { try { pauseJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
+    }
+
+    if (!pauseJSON?.nom || !pauseJSON?.ingredients) {
+      console.error('[ERROR] JSON pause invalide');
+      return null;
+    }
+
+    console.log(`[NIVEAU 3] Collation générée : ${pauseJSON.nom}`);
+    return { ...pauseJSON, genere_par_llm: true };
+
+  } catch (error) {
+    console.error('[ERROR] Exception génération pause LLM:', error);
+    return null;
+  }
+}
+
+// ============================================================================
 // GENERATION MESSAGE DE MOTIVATION
 // ============================================================================
 

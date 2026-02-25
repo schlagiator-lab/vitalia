@@ -18,10 +18,14 @@ import {
   scorerProduits,
   selectionnerStyleCulinaire,
   selectionnerRecettes,
-  selectionnerRoutines
+  selectionnerRoutines,
+  selectionnerNutraceutiques,
+  selectionnerAromatherapie,
+  getIngredientsBanis
 } from './niveau2-selection.ts';
 import {
   genererRecetteLLM,
+  genererPauseLLM,
   genererMessageMotivation,
   transformerRecetteBDD
 } from './niveau3-llm.ts';
@@ -67,9 +71,11 @@ const INGREDIENTS_POOL: Record<string, string[]> = {
 
 // FIX P1 BIS : Ingrédients différents pour chaque repas de la journée
 // Retourne 3 listes non-chevauchantes (petit-dej, déjeuner, dîner)
+// ingredientsBanis : ingrédients vus < 7j, exclus du pool (Faille 4)
 function selectionnerIngredientsTroisRepas(
   objectif: string,
-  besoinsActifs: string[]
+  besoinsActifs: string[],
+  ingredientsBanis: Set<string> = new Set()
 ): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
   // Combiner les pools de tous les besoins actifs pour plus de diversité
   const tous = [...new Set(
@@ -77,8 +83,13 @@ function selectionnerIngredientsTroisRepas(
     .concat(INGREDIENTS_POOL[objectif] || INGREDIENTS_POOL['vitalite'])
   )];
 
+  // Filtrer les ingrédients bannis (vus < 7j)
+  const disponibles = tous.filter(ing => !ingredientsBanis.has(ing.toLowerCase().trim()));
+  // Fallback si le pool filtré est trop petit (< 9 ingrédients)
+  const pool = disponibles.length >= 9 ? disponibles : tous;
+
   // Shuffle Fisher-Yates unique pour garantir des ingrédients non répétés entre repas
-  const shuffled = [...tous];
+  const shuffled = [...pool];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -181,74 +192,189 @@ async function genererRecetteAvecFallback(
   return genererRecetteParDefaut(typeRepas, ingredientsObligatoires);
 }
 
-// Recettes de pause fixes par besoin (fallback si LLM indisponible)
-// Ces recettes sont simples, rapides, sans aucun complément alimentaire
+// Pool de pauses par objectif — 3 options par besoin, sélection aléatoire à chaque génération.
+// Toutes 100% alimentaires, sans aucun complément. Le LLM est exclu intentionnellement
+// car il tend à inclure des NAC (spiruline, ashwagandha, etc.) malgré les consignes.
 function recettePauseParDefaut(objectif: string): any {
-  const pauses: Record<string, any> = {
-    'vitalite': {
-      nom: 'Mix Énergie Banane & Noix de Cajou',
-      ingredients: [{nom:'banane',quantite:1,unite:''},{ nom:'noix de cajou',quantite:30,unite:'g'},{nom:'datte medjool',quantite:2,unite:''}],
-      instructions: ['Éplucher la banane et la couper en rondelles.','Disposer dans un bol avec les noix de cajou et les dattes.','Déguster lentement pour une énergie stable.'],
-      astuces: ['Le sucre naturel de la banane offre une énergie rapide, les graisses des noix de cajou la prolongent.'],
-      valeurs_nutritionnelles: {calories:200,proteines:5,glucides:30,lipides:8},
-      temps_preparation: 2, temps_cuisson: 0, portions: 1
-    },
-    'serenite': {
-      nom: 'Carré de Chocolat Noir & Tisane Camomille',
-      ingredients: [{nom:'chocolat noir 70%+',quantite:2,unite:'carrés'},{nom:'camomille bio',quantite:1,unite:'sachet'},{nom:'miel',quantite:1,unite:'c.a.c'}],
-      instructions: ['Infuser la camomille 5 min dans 250ml d\'eau bouillante.','Ajouter une cuillère de miel.','Déguster avec les carrés de chocolat noir en les laissant fondre lentement.'],
-      astuces: ['La camomille calme le système nerveux. Le cacao contient de la théobromine, douce et apaisante.'],
-      valeurs_nutritionnelles: {calories:130,proteines:2,glucides:15,lipides:7},
-      temps_preparation: 5, temps_cuisson: 0, portions: 1
-    },
-    'digestion': {
-      nom: 'Pomme & Beurre d\'Amande au Gingembre',
-      ingredients: [{nom:'pomme',quantite:1,unite:''},{nom:'beurre d\'amande',quantite:1,unite:'c.a.s'},{nom:'gingembre frais',quantite:1,unite:'pincée râpée'}],
-      instructions: ['Laver et trancher la pomme en quartiers.','Mélanger le beurre d\'amande avec le gingembre râpé.','Tremper les quartiers de pomme dans le beurre d\'amande épicé.'],
-      astuces: ['Les enzymes de la pomme et le gingembre stimulent doucement la digestion en milieu d\'après-midi.'],
-      valeurs_nutritionnelles: {calories:180,proteines:4,glucides:22,lipides:9},
-      temps_preparation: 3, temps_cuisson: 0, portions: 1
-    },
-    'sommeil': {
-      nom: 'Poignée de Cerises & Amandes',
-      ingredients: [{nom:'cerises fraîches ou séchées',quantite:80,unite:'g'},{nom:'amandes',quantite:15,unite:'g'},{nom:'tisane valériane',quantite:1,unite:'sachet (optionnel)'}],
-      instructions: ['Laver les cerises si fraîches.','Disposer cerises et amandes dans un petit bol.','Déguster tranquillement, idéalement en s\'éloignant des écrans.'],
-      astuces: ['Les cerises sont l\'une des rares sources alimentaires de mélatonine naturelle. Les amandes apportent du magnésium.'],
-      valeurs_nutritionnelles: {calories:150,proteines:4,glucides:18,lipides:7},
-      temps_preparation: 2, temps_cuisson: 0, portions: 1
-    },
-    'mobilite': {
-      nom: 'Smoothie Anti-Inflammatoire Myrtilles & Curcuma',
-      ingredients: [{nom:'myrtilles',quantite:100,unite:'g'},{nom:'banane',quantite:0.5,unite:''},{nom:'lait d\'amande',quantite:150,unite:'ml'},{nom:'curcuma',quantite:0.25,unite:'c.a.c'}],
-      instructions: ['Mixer tous les ingrédients jusqu\'à consistance lisse.','Verser dans un verre.','Boire immédiatement pour profiter des antioxydants.'],
-      astuces: ['Les myrtilles et le curcuma sont de puissants anti-inflammatoires naturels qui soulagent les articulations.'],
-      valeurs_nutritionnelles: {calories:160,proteines:3,glucides:28,lipides:4},
-      temps_preparation: 4, temps_cuisson: 0, portions: 1
-    },
-    'hormones': {
-      nom: 'Avocat Toast Complet & Graines de Lin',
-      ingredients: [{nom:'pain complet sans gluten',quantite:1,unite:'tranche'},{nom:'avocat',quantite:0.5,unite:''},{nom:'graines de lin',quantite:1,unite:'c.a.c'},{nom:'jus de citron',quantite:1,unite:'trait'}],
-      instructions: ['Toaster le pain.','Écraser l\'avocat avec le jus de citron et une pincée de sel.','Tartiner et parsemer de graines de lin.'],
-      astuces: ['Les acides gras essentiels de l\'avocat et les lignanes du lin soutiennent l\'équilibre hormonal.'],
-      valeurs_nutritionnelles: {calories:210,proteines:4,glucides:18,lipides:14},
-      temps_preparation: 5, temps_cuisson: 2, portions: 1
-    }
+  const pauses: Record<string, any[]> = {
+    'vitalite': [
+      {
+        nom: 'Mix Énergie Banane & Noix de Cajou',
+        ingredients: [{nom:'banane',quantite:1,unite:''},{nom:'noix de cajou',quantite:30,unite:'g'},{nom:'datte medjool',quantite:2,unite:''}],
+        instructions: ['Éplucher la banane et la couper en rondelles.','Disposer dans un bol avec les noix de cajou et les dattes.','Déguster lentement pour une énergie stable.'],
+        astuces: ['Le sucre naturel de la banane offre une énergie rapide, les graisses des noix de cajou la prolongent.'],
+        valeurs_nutritionnelles: {calories:200,proteines:5,glucides:30,lipides:8},
+        temps_preparation: 2, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Tartine Ricotta & Fruits Rouges',
+        ingredients: [{nom:'pain complet',quantite:1,unite:'tranche'},{nom:'ricotta',quantite:50,unite:'g'},{nom:'fraises ou myrtilles',quantite:80,unite:'g'},{nom:'miel',quantite:0.5,unite:'c.a.c'}],
+        instructions: ['Toaster légèrement le pain.','Étaler la ricotta généreusement.','Disposer les fruits rouges dessus et ajouter un filet de miel.'],
+        astuces: ['La ricotta apporte des protéines légères ; les fruits rouges sont riches en antioxydants et vitamine C pour booster l\'énergie.'],
+        valeurs_nutritionnelles: {calories:190,proteines:8,glucides:24,lipides:6},
+        temps_preparation: 3, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Bol Avoine Express Pomme & Cannelle',
+        ingredients: [{nom:'flocons d\'avoine',quantite:40,unite:'g'},{nom:'pomme',quantite:0.5,unite:''},{nom:'cannelle',quantite:1,unite:'pincée'},{nom:'lait végétal',quantite:100,unite:'ml'}],
+        instructions: ['Chauffer le lait végétal 1 min au micro-ondes.','Verser sur les flocons d\'avoine et laisser gonfler 2 min.','Ajouter la pomme râpée et la cannelle.'],
+        astuces: ['Les bêta-glucanes de l\'avoine stabilisent la glycémie pour une énergie sans pic ni chute.'],
+        valeurs_nutritionnelles: {calories:210,proteines:6,glucides:35,lipides:4},
+        temps_preparation: 4, temps_cuisson: 0, portions: 1
+      }
+    ],
+    'serenite': [
+      {
+        nom: 'Carré de Chocolat Noir & Tisane Camomille',
+        ingredients: [{nom:'chocolat noir 70%+',quantite:2,unite:'carrés'},{nom:'camomille bio',quantite:1,unite:'sachet'},{nom:'miel',quantite:1,unite:'c.a.c'}],
+        instructions: ['Infuser la camomille 5 min dans 250ml d\'eau bouillante.','Ajouter une cuillère de miel.','Déguster avec les carrés de chocolat noir en les laissant fondre lentement.'],
+        astuces: ['La camomille calme le système nerveux. Le cacao contient de la théobromine, douce et apaisante.'],
+        valeurs_nutritionnelles: {calories:130,proteines:2,glucides:15,lipides:7},
+        temps_preparation: 5, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Smoothie Banane Lait d\'Amande Chaud',
+        ingredients: [{nom:'banane mûre',quantite:1,unite:''},{nom:'lait d\'amande',quantite:200,unite:'ml'},{nom:'cannelle',quantite:1,unite:'pincée'},{nom:'vanille',quantite:1,unite:'trait'}],
+        instructions: ['Chauffer doucement le lait d\'amande sans bouillir.','Mixer avec la banane, la cannelle et la vanille.','Boire chaud, lentement, en pleine conscience.'],
+        astuces: ['La banane est riche en tryptophane précurseur de la sérotonine — l\'hormone du bien-être et de la sérénité.'],
+        valeurs_nutritionnelles: {calories:160,proteines:3,glucides:28,lipides:4},
+        temps_preparation: 4, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Noix du Brésil & Raisins Secs',
+        ingredients: [{nom:'noix du Brésil',quantite:3,unite:''},{nom:'raisins secs',quantite:20,unite:'g'},{nom:'tisane mélisse',quantite:1,unite:'tasse'}],
+        instructions: ['Préparer une tisane de mélisse (infuser 5 min).','Disposer les noix et les raisins dans un petit bol.','Déguster en savourant chaque bouchée.'],
+        astuces: ['3 noix du Brésil couvrent 100% des besoins journaliers en sélénium, minéral clé pour réduire l\'anxiété.'],
+        valeurs_nutritionnelles: {calories:120,proteines:3,glucides:14,lipides:7},
+        temps_preparation: 5, temps_cuisson: 0, portions: 1
+      }
+    ],
+    'digestion': [
+      {
+        nom: 'Pomme & Beurre d\'Amande au Gingembre',
+        ingredients: [{nom:'pomme',quantite:1,unite:''},{nom:'beurre d\'amande',quantite:1,unite:'c.a.s'},{nom:'gingembre frais',quantite:1,unite:'pincée râpée'}],
+        instructions: ['Laver et trancher la pomme en quartiers.','Mélanger le beurre d\'amande avec le gingembre râpé.','Tremper les quartiers de pomme dans le beurre d\'amande épicé.'],
+        astuces: ['Les enzymes de la pomme et le gingembre stimulent doucement la digestion en milieu d\'après-midi.'],
+        valeurs_nutritionnelles: {calories:180,proteines:4,glucides:22,lipides:9},
+        temps_preparation: 3, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Yaourt Nature & Kiwi',
+        ingredients: [{nom:'yaourt nature entier',quantite:125,unite:'g'},{nom:'kiwi',quantite:1,unite:''},{nom:'graines de chia',quantite:1,unite:'c.a.c'}],
+        instructions: ['Éplucher et trancher le kiwi.','Verser le yaourt dans un bol.','Disposer le kiwi sur le dessus et saupoudrer de graines de chia.'],
+        astuces: ['Le yaourt apporte des probiotiques ; le kiwi contient de l\'actinidine, enzyme qui améliore la digestion des protéines.'],
+        valeurs_nutritionnelles: {calories:130,proteines:7,glucides:16,lipides:4},
+        temps_preparation: 2, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Crackers Complets & Houmous Maison',
+        ingredients: [{nom:'crackers complets',quantite:4,unite:''},{nom:'houmous',quantite:3,unite:'c.a.s'},{nom:'concombre',quantite:5,unite:'rondelles'}],
+        instructions: ['Disposer les crackers sur une assiette.','Étaler l\'houmous sur chaque cracker.','Ajouter les rondelles de concombre par-dessus.'],
+        astuces: ['Les pois chiches de l\'houmous sont riches en fibres prébiotiques qui nourrissent le microbiome intestinal.'],
+        valeurs_nutritionnelles: {calories:170,proteines:6,glucides:22,lipides:6},
+        temps_preparation: 2, temps_cuisson: 0, portions: 1
+      }
+    ],
+    'sommeil': [
+      {
+        nom: 'Poignée de Cerises & Amandes',
+        ingredients: [{nom:'cerises fraîches ou séchées',quantite:80,unite:'g'},{nom:'amandes',quantite:15,unite:'g'},{nom:'tisane valériane',quantite:1,unite:'sachet (optionnel)'}],
+        instructions: ['Laver les cerises si fraîches.','Disposer cerises et amandes dans un petit bol.','Déguster tranquillement, idéalement en s\'éloignant des écrans.'],
+        astuces: ['Les cerises sont l\'une des rares sources alimentaires de mélatonine naturelle. Les amandes apportent du magnésium.'],
+        valeurs_nutritionnelles: {calories:150,proteines:4,glucides:18,lipides:7},
+        temps_preparation: 2, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Lait Chaud Miel & Muscade',
+        ingredients: [{nom:'lait entier ou végétal',quantite:200,unite:'ml'},{nom:'miel',quantite:1,unite:'c.a.c'},{nom:'muscade râpée',quantite:1,unite:'pincée'}],
+        instructions: ['Chauffer doucement le lait sans bouillir.','Ajouter le miel et remuer jusqu\'à dissolution.','Râper une pincée de muscade sur le dessus et déguster chaud.'],
+        astuces: ['La muscade contient de la myristique aux propriétés légèrement sédatives. Le miel favorise le passage du tryptophane vers le cerveau.'],
+        valeurs_nutritionnelles: {calories:140,proteines:4,glucides:18,lipides:5},
+        temps_preparation: 3, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Kiwi & Noix du Brésil',
+        ingredients: [{nom:'kiwi',quantite:2,unite:''},{nom:'noix du Brésil',quantite:2,unite:''},{nom:'tisane passiflore',quantite:1,unite:'tasse (optionnel)'}],
+        instructions: ['Éplucher et couper les kiwis en dés.','Disposer dans un bol avec les noix du Brésil.','Accompagner d\'une tisane de passiflore si disponible.'],
+        astuces: ['Des études montrent que 2 kiwis le soir améliorent la qualité et la durée du sommeil grâce à leur teneur en sérotonine et antioxydants.'],
+        valeurs_nutritionnelles: {calories:120,proteines:3,glucides:20,lipides:4},
+        temps_preparation: 2, temps_cuisson: 0, portions: 1
+      }
+    ],
+    'mobilite': [
+      {
+        nom: 'Smoothie Anti-Inflammatoire Myrtilles & Curcuma',
+        ingredients: [{nom:'myrtilles',quantite:100,unite:'g'},{nom:'banane',quantite:0.5,unite:''},{nom:'lait d\'amande',quantite:150,unite:'ml'},{nom:'curcuma',quantite:0.25,unite:'c.a.c'}],
+        instructions: ['Mixer tous les ingrédients jusqu\'à consistance lisse.','Verser dans un verre.','Boire immédiatement pour profiter des antioxydants.'],
+        astuces: ['Les myrtilles et le curcuma sont de puissants anti-inflammatoires naturels qui soulagent les articulations.'],
+        valeurs_nutritionnelles: {calories:160,proteines:3,glucides:28,lipides:4},
+        temps_preparation: 4, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Noix & Cerises Séchées',
+        ingredients: [{nom:'cerises séchées',quantite:30,unite:'g'},{nom:'noix',quantite:20,unite:'g'},{nom:'gingembre confit',quantite:5,unite:'g'}],
+        instructions: ['Mélanger les cerises séchées, les noix et le gingembre confit dans un bol.','Déguster lentement.'],
+        astuces: ['Les oméga-3 des noix et les anthocyanes des cerises réduisent l\'inflammation articulaire. Le gingembre amplifie cet effet.'],
+        valeurs_nutritionnelles: {calories:175,proteines:4,glucides:20,lipides:9},
+        temps_preparation: 1, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Tartine Avocat & Saumon Fumé',
+        ingredients: [{nom:'pain de seigle',quantite:1,unite:'tranche'},{nom:'avocat',quantite:0.25,unite:''},{nom:'saumon fumé',quantite:30,unite:'g'},{nom:'jus de citron',quantite:1,unite:'trait'}],
+        instructions: ['Écraser l\'avocat avec le citron et une pincée de sel.','Étaler sur le pain de seigle.','Disposer le saumon fumé par-dessus.'],
+        astuces: ['Le saumon est l\'une des meilleures sources d\'oméga-3 EPA/DHA à action anti-inflammatoire directe sur les articulations.'],
+        valeurs_nutritionnelles: {calories:190,proteines:12,glucides:14,lipides:9},
+        temps_preparation: 3, temps_cuisson: 0, portions: 1
+      }
+    ],
+    'hormones': [
+      {
+        nom: 'Avocat Toast Complet & Graines de Lin',
+        ingredients: [{nom:'pain complet sans gluten',quantite:1,unite:'tranche'},{nom:'avocat',quantite:0.5,unite:''},{nom:'graines de lin',quantite:1,unite:'c.a.c'},{nom:'jus de citron',quantite:1,unite:'trait'}],
+        instructions: ['Toaster le pain.','Écraser l\'avocat avec le jus de citron et une pincée de sel.','Tartiner et parsemer de graines de lin.'],
+        astuces: ['Les acides gras essentiels de l\'avocat et les lignanes du lin soutiennent l\'équilibre hormonal.'],
+        valeurs_nutritionnelles: {calories:210,proteines:4,glucides:18,lipides:14},
+        temps_preparation: 5, temps_cuisson: 2, portions: 1
+      },
+      {
+        nom: 'Bol de Graines de Courge & Noix',
+        ingredients: [{nom:'graines de courge',quantite:25,unite:'g'},{nom:'noix',quantite:20,unite:'g'},{nom:'figues séchées',quantite:2,unite:''}],
+        instructions: ['Mélanger les graines de courge et les noix dans un petit bol.','Couper les figues en petits morceaux et ajouter.','Déguster lentement.'],
+        astuces: ['Les graines de courge sont l\'une des meilleures sources alimentaires de zinc, minéral essentiel à la production hormonale.'],
+        valeurs_nutritionnelles: {calories:200,proteines:8,glucides:16,lipides:13},
+        temps_preparation: 1, temps_cuisson: 0, portions: 1
+      },
+      {
+        nom: 'Smoothie Épinards Banane & Graines de Lin',
+        ingredients: [{nom:'épinards frais',quantite:30,unite:'g'},{nom:'banane',quantite:1,unite:''},{nom:'graines de lin moulues',quantite:1,unite:'c.a.s'},{nom:'lait végétal',quantite:150,unite:'ml'}],
+        instructions: ['Mixer tous les ingrédients jusqu\'à consistance lisse.','Ajouter un peu d\'eau si trop épais.','Consommer immédiatement.'],
+        astuces: ['Les phytoestrogènes du lin et les folates des épinards contribuent à l\'équilibre des hormones féminines et à la réduction du SPM.'],
+        valeurs_nutritionnelles: {calories:180,proteines:5,glucides:28,lipides:6},
+        temps_preparation: 3, temps_cuisson: 0, portions: 1
+      }
+    ]
   };
-  return pauses[objectif] || pauses['vitalite'];
+
+  // Alias pour les besoins qui ne sont pas dans la liste principale
+  const pool = pauses[objectif] ?? pauses['energie'] ?? pauses['vitalite'];
+  const index = Math.floor(Math.random() * pool.length);
+  console.log(`[PAUSE] Option ${index + 1}/${pool.length} sélectionnée pour objectif : ${objectif}`);
+  return pool[index];
 }
 
-// Pause 15h30 : toujours une recette alimentaire simple et garantie sans NAC.
-// Le LLM est intentionnellement exclu ici car il tend à inclure des compléments
-// (spiruline, ashwagandha, etc.) malgré les consignes. Les recettes fixes ci-dessus
-// sont saines, rapides et 100% alimentaires.
-function genererPauseAvecFallback(
+// Pause 15h30 : LLM en premier (prompt anti-NAC strict), pool statique en fallback.
+async function genererPauseAvecFallback(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur
-): any {
+): Promise<any> {
   const objectif = contexte.objectif_principal || 'vitalite';
-  console.log(`[PAUSE] Recette alimentaire fixe pour objectif : ${objectif}`);
 
-  // Adapter selon les contraintes alimentaires
+  // 1. LLM — prompt interdit explicitement tout complément alimentaire
+  const pauseLLM = await genererPauseLLM(profil, contexte);
+  if (pauseLLM) return pauseLLM;
+
+  // 2. Fallback : pool statique garanti sans NAC
+  console.log(`[PAUSE] Fallback pool statique pour objectif : ${objectif}`);
   const recette = recettePauseParDefaut(objectif);
 
   // Si végane : retirer le miel de la recette sérénité si présent
@@ -380,16 +506,13 @@ serve(async (req) => {
     console.log('\n[NIVEAU 2] === SELECTION INTELLIGENTE ===');
 
     const historique = await recupererHistoriqueRotation(supabase, profil_id);
+    const ingredientsBanis = getIngredientsBanis(historique);
     const produitsScores = scorerProduits(produitsSurs, contexte, historique);
     // Note: scorerProduits utilise maintenant le besoin_score des tables junction
 
-    const nutraceutiquesSelectionnes = produitsScores
-      .filter(p => p.type === 'nutraceutique')
-      .slice(0, 3);
-
-    const aromatherapieSelectionnee = produitsScores
-      .filter(p => p.type === 'aromatherapie')
-      .slice(0, 2);
+    // Weighted Random Sampling — remplace les .slice() qui ignoraient le scoring
+    const nutraceutiquesSelectionnes = selectionnerNutraceutiques(produitsScores, 3);
+    const aromatherapieSelectionnee  = selectionnerAromatherapie(produitsScores, 2);
 
     const styleCulinaire = selectionnerStyleCulinaire(profil, historique);
 
@@ -419,7 +542,8 @@ serve(async (req) => {
       // Fallback : sélection depuis les pools de besoins, non-chevauchante
       const troisRepas = selectionnerIngredientsTroisRepas(
         contexte.objectif_principal || 'bien-etre-general',
-        besoinsUtilises
+        besoinsUtilises,
+        ingredientsBanis
       );
       ingPetitDej = troisRepas.petitDej;
       ingDejeuner = troisRepas.dejeuner;
@@ -438,9 +562,8 @@ serve(async (req) => {
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
 
     const forceRegen = force_regeneration === true;
-    // La pause est synchrone (recette alimentaire fixe garantie sans NAC)
-    const recettePause = genererPauseAvecFallback(profil, contexte);
-    const [recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
+    const [recettePause, recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
+      genererPauseAvecFallback(profil, contexte),
       genererRecetteAvecFallback(supabase, 'petit-dejeuner', styleCulinaire, ingPetitDej, profil, contexte, historique, forceRegen),
       genererRecetteAvecFallback(supabase, 'dejeuner',       styleCulinaire, ingDejeuner, profil, contexte, historique, forceRegen),
       genererRecetteAvecFallback(supabase, 'diner',          styleCulinaire, ingDiner,    profil, contexte, historique, forceRegen)
