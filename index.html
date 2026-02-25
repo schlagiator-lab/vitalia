@@ -381,6 +381,20 @@
       </div>
     </div>
     <div class="config-field">
+      <label class="config-label">Groupe sanguin</label>
+      <select class="config-input" id="pp-groupe-sanguin">
+        <option value="">Non renseigné</option>
+        <option value="A+">A+</option>
+        <option value="A-">A-</option>
+        <option value="B+">B+</option>
+        <option value="B-">B-</option>
+        <option value="AB+">AB+</option>
+        <option value="AB-">AB-</option>
+        <option value="O+">O+</option>
+        <option value="O-">O-</option>
+      </select>
+    </div>
+    <div class="config-field">
       <label class="config-label">Allergies (séparées par virgules)</label>
       <input type="text" class="config-input" id="pp-allergies" placeholder="ex: noix, lait, œufs">
     </div>
@@ -782,50 +796,130 @@ async function genererPlan() {
 
 function afficherPlan(plan) {
   currentPlan = plan
-  document.getElementById('heroMessage').textContent = plan.message_personnalise||'Ton plan est prêt ! 🌿'
-  var score = plan.score_nutritionnel||7
-  document.getElementById('scoreValue').textContent = score+'/10'
+
+  // Normalise les clés edge function → clés frontend
+  plan.matin = plan.petit_dejeuner || plan.matin
+  plan.midi  = plan.dejeuner       || plan.midi
+  plan.soir  = plan.diner          || plan.soir
+
+  document.getElementById('heroMessage').textContent = plan.message_motivation || plan.message_personnalise || 'Ton plan est prêt ! 🌿'
+  var score = plan.score_nutritionnel || 7
+  document.getElementById('scoreValue').textContent = score + '/10'
   afficherEtoiles(score)
-  ;['matin','midi','apres_midi','soir'].forEach(function(m){
-    var d=plan[m]; if(!d) return
-    setText(m+'-time',d.heure_suggere||'')
-    setText(m+'-titre',d.titre||'')
-    setText(m+'-desc',d.description||'')
-    setText(m+'-motivant',d.message_motivant||'')
-    setText(m+'-cal',(d.calories_estimees||'—')+' kcal')
-    renderInstructions(m,d.instructions)
-    recipeServings[m]=1
+
+  // Les 3 repas principaux
+  var heures = {matin:'7h30', midi:'12h30', soir:'19h30'}
+  ;['matin','midi','soir'].forEach(function(m){
+    var d = plan[m]; if (!d) return
+    setText(m+'-time',  heures[m] || '')
+    setText(m+'-titre', d.nom || d.titre || '')
+    var ings = d.ingredients || []
+    var desc = d.description || ings.slice(0,3).map(function(i){ return typeof i==='string' ? i : (i.nom||'') }).join(', ')
+    setText(m+'-desc', desc)
+    setText(m+'-motivant', (d.astuces && d.astuces[0]) || d.message_motivant || '')
+    var cal = (d.valeurs_nutritionnelles && d.valeurs_nutritionnelles.calories) || d.calories_estimees
+    setText(m+'-cal', (cal || '—') + (cal ? ' kcal' : ''))
+    renderInstructions(m, d)
+    recipeServings[m] = 1
   })
-  var r=plan.routine_du_jour||{}
-  if(r.matin)setText('routine-matin',r.matin)
-  if(r.complement_phare)setText('routine-complement',r.complement_phare)
-  if(r.aromatherapie)setText('routine-aroma',r.aromatherapie)
-  if(r.soir)setText('routine-soir',r.soir)
-  if(plan.conseil_du_jour)setText('conseilText',plan.conseil_du_jour)
+
+  // Carte après-midi : affiche le 1er nutraceutique + aromathérapie
+  var nutris  = plan.nutraceutiques || []
+  var aroma   = plan.aromatherapie  || []
+  var routines = plan.routines      || []
+  var nut0 = nutris[0]
+  if (nut0) {
+    setText('apres_midi-titre', nut0.nom)
+    setText('apres_midi-desc',  nut0.raison || '')
+    setText('apres_midi-motivant', nut0.dosage ? nut0.dosage + (nut0.timing ? ' — ' + nut0.timing : '') : '')
+    var amRecette = {
+      nom: nut0.nom,
+      ingredients: nutris.concat(aroma).map(function(p){ return {nom:p.nom, quantite:'', unite:''} }),
+      instructions: nutris.map(function(p){ return '💊 '+p.nom+' : '+(p.dosage||'')+(p.timing?' — '+p.timing:'')+(p.raison?' · '+p.raison:'') })
+                   .concat(aroma.map(function(p){ return '🌿 '+p.nom+' : '+(p.dosage||'')+(p.timing?' — '+p.timing:'') })),
+      astuces: nut0.raison ? [nut0.raison] : []
+    }
+    renderInstructions('apres_midi', amRecette)
+  }
+
+  // Section Routine
+  var r = plan.routine_du_jour || {}
+  if (r.matin) setText('routine-matin', r.matin)
+  else if (routines[0]) setText('routine-matin', routines[0].nom + (routines[0].duree ? ' — '+routines[0].duree : ''))
+  if (r.complement_phare) setText('routine-complement', r.complement_phare)
+  else if (nut0) setText('routine-complement', nut0.nom + ' — ' + (nut0.dosage||''))
+  if (r.aromatherapie) setText('routine-aroma', r.aromatherapie)
+  else if (aroma[0]) setText('routine-aroma', aroma[0].nom + ' — ' + (aroma[0].dosage||''))
+  if (r.soir) setText('routine-soir', r.soir)
+  else if (routines[1]) setText('routine-soir', routines[1].nom + (routines[1].duree ? ' — '+routines[1].duree : ''))
+
+  // Conseil du jour
+  var conseil = plan.conseil_du_jour || (plan.conseils_generaux && plan.conseils_generaux[0]) || ''
+  if (conseil) setText('conseilText', conseil)
+
   loggerPlanVu(plan)
   mettreAJourAllies()
-  var fb=document.getElementById('feedbackBar')
-  if(fb){fb.style.display='flex';document.querySelectorAll('.feedback-star').forEach(function(s){s.classList.remove('lit')});var s=document.getElementById('feedbackSent');if(s)s.classList.remove('show');document.getElementById('feedbackStars').style.display='flex'}
+  var fb = document.getElementById('feedbackBar')
+  if (fb) {
+    fb.style.display = 'flex'
+    document.querySelectorAll('.feedback-star').forEach(function(s){ s.classList.remove('lit') })
+    var sent = document.getElementById('feedbackSent'); if(sent) sent.classList.remove('show')
+    document.getElementById('feedbackStars').style.display = 'flex'
+  }
 }
 
 function setText(id,val){var e=document.getElementById(id);if(e)e.textContent=val}
 
-function renderInstructions(moment,data) {
+function renderInstructions(moment, recette) {
   var el = document.getElementById(moment+'-instructions'); if(!el) return
-  var ingHtml='',stepsHtml='',tipHtml=''
-  if (data&&typeof data==='object'&&!Array.isArray(data)&&data.steps) {
-    if(data.ingredients&&data.ingredients.length)
-      ingHtml='<div class="instructions-section-label">Ingrédients</div><div class="instructions-ingredients" id="ing-'+moment+'">'+data.ingredients.map(function(i){return'<span class="ingredient-tag">'+i+'</span>'}).join('')+'</div>'
-    stepsHtml='<div class="instructions-section-label">Préparation</div><div class="instructions-steps">'+data.steps.map(function(s,n){return'<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>'}).join('')+'</div>'
-    tipHtml=data.tip?'<div class="instructions-tip"><strong>Astuce :</strong> '+data.tip+'</div>':''
-  } else if(typeof data==='string'&&data.trim()) {
-    var t=data.trim(),lines=t.indexOf('\n')>=0?t.split('\n'):t.split('. ').map(function(s,i,a){return i<a.length-1?s+'.':s})
+  var ingHtml='', stepsHtml='', tipHtml=''
+
+  // Détecte si recette est un objet complet (new format) ou les instructions seules (legacy)
+  var instructions, ingredients, astuces
+  if (recette && recette.nom !== undefined) {
+    instructions = recette.instructions || []
+    ingredients  = recette.ingredients  || []
+    astuces      = recette.astuces      || []
+  } else {
+    instructions = recette
+    ingredients  = []
+    astuces      = []
+  }
+
+  // Ingrédients
+  if (Array.isArray(ingredients) && ingredients.length) {
+    var ingTags = ingredients.map(function(i){
+      if (typeof i === 'string') return '<span class="ingredient-tag">'+i+'</span>'
+      var label = (i.quantite ? i.quantite+(i.unite?i.unite+' ':' ') : '') + (i.nom||'')
+      return '<span class="ingredient-tag">'+label.trim()+'</span>'
+    }).join('')
+    ingHtml = '<div class="instructions-section-label">Ingrédients</div><div class="instructions-ingredients" id="ing-'+moment+'">'+ingTags+'</div>'
+  }
+
+  // Étapes
+  if (Array.isArray(instructions) && instructions.length) {
+    stepsHtml = '<div class="instructions-section-label">Préparation</div><div class="instructions-steps">'+
+      instructions.map(function(s,n){ return '<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>' }).join('')+
+      '</div>'
+  } else if (instructions && typeof instructions==='object' && !Array.isArray(instructions) && instructions.steps) {
+    // Legacy {steps, ingredients, tip}
+    if (instructions.ingredients && instructions.ingredients.length)
+      ingHtml = '<div class="instructions-section-label">Ingrédients</div><div class="instructions-ingredients" id="ing-'+moment+'">'+instructions.ingredients.map(function(i){return'<span class="ingredient-tag">'+i+'</span>'}).join('')+'</div>'
+    stepsHtml = '<div class="instructions-section-label">Préparation</div><div class="instructions-steps">'+instructions.steps.map(function(s,n){return'<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>'}).join('')+'</div>'
+    if (instructions.tip) tipHtml = '<div class="instructions-tip"><strong>Astuce :</strong> '+instructions.tip+'</div>'
+  } else if (typeof instructions==='string' && instructions.trim()) {
+    var t=instructions.trim(), lines=t.indexOf('\n')>=0?t.split('\n'):t.split('. ').map(function(s,i,a){return i<a.length-1?s+'.':s})
     var steps=lines.map(function(l){return l.replace(/^\d+[.)]\s*/,'').trim()}).filter(function(l){return l.length>10})
     stepsHtml='<div class="instructions-section-label">Préparation</div><div class="instructions-steps">'+(steps.length>=2?steps:[t]).map(function(s,n){return'<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>'}).join('')+'</div>'
-  } else if(data) stepsHtml='<div class="step-text">'+String(data)+'</div>'
+  } else if (instructions) {
+    stepsHtml='<div class="step-text">'+String(instructions)+'</div>'
+  }
 
-  el.innerHTML='<div class="instructions-content">'+ingHtml+stepsHtml+tipHtml+'</div>'
-  // Ajout actions bar
+  // Astuce depuis astuces[]
+  if (!tipHtml && Array.isArray(astuces) && astuces.length)
+    tipHtml = '<div class="instructions-tip"><strong>Astuce :</strong> '+astuces[0]+'</div>'
+
+  el.innerHTML = '<div class="instructions-content">'+ingHtml+stepsHtml+tipHtml+'</div>'
   var content=el.querySelector('.instructions-content')
   if(content){var bar=document.createElement('div');bar.innerHTML=buildActionsBar(moment);content.appendChild(bar.firstChild)}
   var ingEl=el.querySelector('.instructions-ingredients'); if(ingEl) recipeBaseIng[moment]=ingEl.innerHTML
@@ -862,7 +956,7 @@ function ajusterQuantite(text,portions){
 
 async function noterRecette(m,note){
   var c=document.getElementById('stars-'+m); if(c) c.querySelectorAll('.recipe-star').forEach(function(s,i){s.classList.toggle('lit',i<note)})
-  var titre=currentPlan&&currentPlan[m]?currentPlan[m].titre:''
+  var titre=currentPlan&&currentPlan[m]?(currentPlan[m].nom||currentPlan[m].titre):''
   var ex=savedRecipes.find(function(r){return r.moment===m&&r.titre===titre})
   if(ex){
     ex.note=note; sauvegarderLocal()
@@ -882,7 +976,7 @@ async function noterRecette(m,note){
 }
 
 async function sauvegarderRecette(m){
-  var titre=currentPlan&&currentPlan[m]?currentPlan[m].titre:(document.getElementById(m+'-titre')||{}).textContent||'Recette'
+  var titre=currentPlan&&currentPlan[m]?(currentPlan[m].nom||currentPlan[m].titre):(document.getElementById(m+'-titre')||{}).textContent||'Recette'
   var idx=savedRecipes.findIndex(function(r){return r.moment===m&&r.titre===titre})
   var btn=document.getElementById('save-btn-'+m)
   if(idx>=0){
@@ -1202,6 +1296,9 @@ function ouvrirProfil(){
   var allaitEl = document.getElementById('pp-allaitement')
   if (allaitEl) allaitEl.checked = !!p.allaitement
 
+  var gsEl = document.getElementById('pp-groupe-sanguin')
+  if (gsEl) gsEl.value = p.groupe_sanguin || ''
+
   document.querySelectorAll('#pp-besoins-chips .config-chip').forEach(function(el){
     var m = el.getAttribute('onclick').match(/'([^']+)'/)
     if (m) el.classList.toggle('selected', ppBesoins.includes(m[1]))
@@ -1251,7 +1348,8 @@ async function sauvegarderProfil(){
     pathologies_chroniques: parseList('pp-pathologies'),
     medications_actuelles:  parseList('pp-medicaments'),
     enceinte:               document.getElementById('pp-enceinte').checked,
-    allaitement:            document.getElementById('pp-allaitement').checked
+    allaitement:            document.getElementById('pp-allaitement').checked,
+    groupe_sanguin:         document.getElementById('pp-groupe-sanguin').value || null
   }
 
   try {
