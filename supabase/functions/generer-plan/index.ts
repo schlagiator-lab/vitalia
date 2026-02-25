@@ -29,7 +29,6 @@ import {
   enregistrerPlanGenere,
   enregistrerItemsVus,
   chercherRecetteCache,
-  sauvegarderRecetteGeneree,
   validerProfil,
   formaterReponseAPI,
   formaterErreurAPI
@@ -106,7 +105,8 @@ function genererRecetteParDefaut(typeRepas: string, ingredients: string[]): any 
   };
 }
 
-// Génération recette avec cascade : cache → LLM → BDD → défaut
+// Génération recette avec cascade : (cache) → LLM → BDD → défaut
+// force_regeneration=true : ignore le cache, toujours appeler le LLM
 async function genererRecetteAvecFallback(
   supabase: any,
   typeRepas: string,
@@ -114,16 +114,21 @@ async function genererRecetteAvecFallback(
   ingredientsObligatoires: string[],
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
-  historique: any
+  historique: any,
+  forceRegeneration: boolean = false
 ): Promise<any> {
 
-  // 1. Cache
-  const recetteCache = await chercherRecetteCache(
-    supabase, ingredientsObligatoires, styleCulinaire, typeRepas
-  );
-  if (recetteCache) {
-    console.log(`[CACHE] Recette ${typeRepas} depuis cache`);
-    return transformerRecetteBDD(recetteCache);
+  // 1. Cache — skippé si force_regeneration
+  if (!forceRegeneration) {
+    const recetteCache = await chercherRecetteCache(
+      supabase, ingredientsObligatoires, styleCulinaire, typeRepas, profil.id
+    );
+    if (recetteCache) {
+      console.log(`[CACHE] Recette ${typeRepas} depuis cache profil`);
+      return transformerRecetteBDD(recetteCache);
+    }
+  } else {
+    console.log(`[FORCE] Régénération forcée — cache ignoré pour ${typeRepas}`);
   }
 
   // 2. LLM
@@ -303,10 +308,11 @@ serve(async (req) => {
 
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
 
+    const forceRegen = force_regeneration === true;
     const [recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
-      genererRecetteAvecFallback(supabase, 'petit-dejeuner', styleCulinaire, ingredientsObligatoires, profil, contexte, historique),
-      genererRecetteAvecFallback(supabase, 'dejeuner',       styleCulinaire, ingredientsObligatoires, profil, contexte, historique),
-      genererRecetteAvecFallback(supabase, 'diner',          styleCulinaire, ingredientsObligatoires, profil, contexte, historique)
+      genererRecetteAvecFallback(supabase, 'petit-dejeuner', styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen),
+      genererRecetteAvecFallback(supabase, 'dejeuner',       styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen),
+      genererRecetteAvecFallback(supabase, 'diner',          styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen)
     ]);
 
     const messageMotivation = await genererMessageMotivation(contexte, {});
@@ -407,11 +413,8 @@ serve(async (req) => {
       await enregistrerItemsVus(supabase, profil_id, planId, itemsVus);
     }
 
-    await Promise.all([
-      sauvegarderRecetteGeneree(supabase, recettePetitDej, profil_id),
-      sauvegarderRecetteGeneree(supabase, recetteDejeuner, profil_id),
-      sauvegarderRecetteGeneree(supabase, recetteDiner,    profil_id)
-    ]);
+    // Note: sauvegarderRecetteGeneree supprimé — évite de polluer recettes_sauvegardees
+    // avec des recettes LLM non évaluées qui seraient servies comme "cache" aux autres profils
 
     console.log('\n[SUCCESS] Plan généré avec succès\n');
 

@@ -222,6 +222,25 @@
 
   .scroll-pad { height: 100px; }
   @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* PROFILE PANEL */
+  .profile-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; max-width: 95vw; background: var(--warm-white); z-index: 60; transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); box-shadow: -8px 0 40px rgba(61,43,31,0.12); display: flex; flex-direction: column; }
+  .profile-panel.open { transform: translateX(0); }
+  .profile-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 20px 16px; border-bottom: 1px solid rgba(196,113,74,0.12); flex-shrink: 0; }
+  .profile-panel-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--deep-brown); }
+  .profile-panel-close { width: 32px; height: 32px; background: var(--cream); border: none; border-radius: 10px; cursor: pointer; font-size: 16px; color: var(--mid-brown); }
+  .profile-panel-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .profile-panel-footer { padding: 16px 20px; border-top: 1px solid rgba(196,113,74,0.12); flex-shrink: 0; }
+  .profile-save-btn { width: 100%; background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose)); color: white; border: none; border-radius: 14px; padding: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .profile-save-btn:hover { opacity: 0.9; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+  .toggle-label { font-size: 14px; color: var(--mid-brown); font-weight: 500; }
+  .pp-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .pp-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .pp-toggle-track { position: absolute; inset: 0; background: rgba(196,113,74,0.2); border-radius: 24px; cursor: pointer; transition: background 0.2s; }
+  .pp-toggle input:checked + .pp-toggle-track { background: var(--terracotta); }
+  .pp-toggle-track::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .pp-toggle input:checked + .pp-toggle-track::before { transform: translateX(20px); }
 </style>
 </head>
 <body>
@@ -308,6 +327,87 @@
   </div>
 </div>
 
+<!-- PROFILE PANEL -->
+<div class="profile-panel" id="profilePanel">
+  <div class="profile-panel-header">
+    <div class="profile-panel-title">👤 Mon profil</div>
+    <button class="profile-panel-close" onclick="fermerProfil()">✕</button>
+  </div>
+  <div class="profile-panel-body">
+    <div class="config-field">
+      <label class="config-label">Prénom</label>
+      <input type="text" class="config-input" id="pp-prenom" placeholder="Ton prénom">
+    </div>
+    <div class="config-field">
+      <label class="config-label">Tes besoins prioritaires</label>
+      <div class="config-chips" id="pp-besoins-chips">
+        <div class="config-chip" onclick="togglePPChip(this,'vitalite','besoin')">⚡ Fatigue & Vitalité</div>
+        <div class="config-chip" onclick="togglePPChip(this,'serenite','besoin')">🧘 Stress & Sérénité</div>
+        <div class="config-chip" onclick="togglePPChip(this,'digestion','besoin')">🫃 Digestion & Métabolisme</div>
+        <div class="config-chip" onclick="togglePPChip(this,'sommeil','besoin')">🌙 Sommeil & Récupération</div>
+        <div class="config-chip" onclick="togglePPChip(this,'mobilite','besoin')">🫀 Mobilité & Santé Cardiaque</div>
+        <div class="config-chip" onclick="togglePPChip(this,'hormones','besoin')">🌸 Hormones & Longévité</div>
+      </div>
+    </div>
+    <div class="config-field">
+      <label class="config-label">Régimes alimentaires</label>
+      <div class="config-chips" id="pp-regimes-chips">
+        <div class="config-chip" onclick="togglePPChip(this,'sans_gluten','regime')">🌾 Sans gluten</div>
+        <div class="config-chip" onclick="togglePPChip(this,'vegan','regime')">🌱 Végan</div>
+        <div class="config-chip" onclick="togglePPChip(this,'vegetarien','regime')">🥗 Végétarien</div>
+        <div class="config-chip" onclick="togglePPChip(this,'sans_lactose','regime')">🥛 Sans lactose</div>
+        <div class="config-chip" onclick="togglePPChip(this,'keto','regime')">🥑 Kéto</div>
+        <div class="config-chip" onclick="togglePPChip(this,'halal','regime')">☪️ Halal</div>
+        <div class="config-chip" onclick="togglePPChip(this,'casher','regime')">✡️ Casher</div>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-field">
+        <label class="config-label">Budget compléments</label>
+        <select class="config-input" id="pp-budget">
+          <option value="economique">Économique</option>
+          <option value="moyen">Moyen</option>
+          <option value="premium">Premium</option>
+        </select>
+      </div>
+      <div class="config-field">
+        <label class="config-label">Temps cuisine max</label>
+        <select class="config-input" id="pp-temps">
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">1h</option>
+        </select>
+      </div>
+    </div>
+    <div class="config-field">
+      <label class="config-label">Allergies (séparées par virgules)</label>
+      <input type="text" class="config-input" id="pp-allergies" placeholder="ex: noix, lait, œufs">
+    </div>
+    <div class="config-field">
+      <label class="config-label">Pathologies chroniques</label>
+      <input type="text" class="config-input" id="pp-pathologies" placeholder="ex: diabète, hypertension">
+    </div>
+    <div class="config-field">
+      <label class="config-label">Médicaments actuels</label>
+      <input type="text" class="config-input" id="pp-medicaments" placeholder="ex: metformine, lévothyrox">
+    </div>
+    <div style="background:var(--cream);border-radius:14px;padding:2px 14px;">
+      <div class="toggle-row">
+        <span class="toggle-label">🤰 Enceinte</span>
+        <label class="pp-toggle"><input type="checkbox" id="pp-enceinte"><span class="pp-toggle-track"></span></label>
+      </div>
+      <div class="toggle-row" style="border-top:1px solid rgba(196,113,74,0.1)">
+        <span class="toggle-label">🤱 Allaitement</span>
+        <label class="pp-toggle"><input type="checkbox" id="pp-allaitement"><span class="pp-toggle-track"></span></label>
+      </div>
+    </div>
+  </div>
+  <div class="profile-panel-footer">
+    <button class="profile-save-btn" onclick="sauvegarderProfil()">💾 Sauvegarder le profil</button>
+  </div>
+</div>
+
 <!-- CONFIG PANEL -->
 <div class="config-panel" id="configPanel">
   <div class="config-handle"></div>
@@ -315,12 +415,12 @@
   <div class="config-field">
     <label class="config-label">Tes besoins du moment</label>
     <div class="config-chips" id="symptomsChips">
-      <div class="config-chip selected" onclick="toggleChip(this,'vitalite')">⚡ Vitalité</div>
-      <div class="config-chip selected" onclick="toggleChip(this,'serenite')">🧘 Sérénité</div>
-      <div class="config-chip" onclick="toggleChip(this,'digestion')">🌿 Digestion</div>
-      <div class="config-chip" onclick="toggleChip(this,'sommeil')">🌙 Sommeil</div>
-      <div class="config-chip" onclick="toggleChip(this,'mobilite')">💪 Mobilité</div>
-      <div class="config-chip" onclick="toggleChip(this,'hormones')">🌸 Hormones</div>
+      <div class="config-chip selected" onclick="toggleChip(this,'vitalite')">⚡ Fatigue & Vitalité</div>
+      <div class="config-chip selected" onclick="toggleChip(this,'serenite')">🧘 Stress & Sérénité</div>
+      <div class="config-chip" onclick="toggleChip(this,'digestion')">🫃 Digestion & Métabolisme</div>
+      <div class="config-chip" onclick="toggleChip(this,'sommeil')">🌙 Sommeil & Récupération</div>
+      <div class="config-chip" onclick="toggleChip(this,'mobilite')">🫀 Mobilité & Santé Cardiaque</div>
+      <div class="config-chip" onclick="toggleChip(this,'hormones')">🌸 Hormones & Longévité</div>
     </div>
   </div>
   <div class="config-row">
@@ -526,6 +626,8 @@ var currentHistoriqueId = null
 var recipeServings = {matin:1,midi:1,apres_midi:1,soir:1}
 var recipeBaseIng = {}
 var savedRecipes = []
+var ppBesoins = []
+var ppRegimes = []
 
 document.addEventListener('DOMContentLoaded', function() {
   var opts = {weekday:'long',day:'numeric',month:'short'}
@@ -1069,12 +1171,105 @@ function mettreAJourAllies(){
   if(el) el.classList.add('active')
 }
 
-function fermerTout(){fermerConfig();fermerSauvegardees()}
+function fermerTout(){fermerConfig();fermerSauvegardees();fermerProfil()}
 
 function ouvrirProfil(){
+  var p = profilUtilisateur || {}
+  ppBesoins = (p.objectifs_generaux || []).slice()
+  ppRegimes = (p.regimes_alimentaires || []).slice()
+
+  var prenomEl = document.getElementById('pp-prenom')
+  if (prenomEl) prenomEl.value = p.prenom || ''
+
+  var budgetEl = document.getElementById('pp-budget')
+  if (budgetEl) budgetEl.value = p.budget_complements || 'moyen'
+
+  var tempsEl = document.getElementById('pp-temps')
+  if (tempsEl) tempsEl.value = String(p.temps_cuisine_max || 30)
+
+  var allEl = document.getElementById('pp-allergies')
+  if (allEl) allEl.value = (p.allergies || []).join(', ')
+
+  var pathoEl = document.getElementById('pp-pathologies')
+  if (pathoEl) pathoEl.value = (p.pathologies_chroniques || []).join(', ')
+
+  var medEl = document.getElementById('pp-medicaments')
+  if (medEl) medEl.value = (p.medications_actuelles || []).join(', ')
+
+  var encEl = document.getElementById('pp-enceinte')
+  if (encEl) encEl.checked = !!p.enceinte
+
+  var allaitEl = document.getElementById('pp-allaitement')
+  if (allaitEl) allaitEl.checked = !!p.allaitement
+
+  document.querySelectorAll('#pp-besoins-chips .config-chip').forEach(function(el){
+    var m = el.getAttribute('onclick').match(/'([^']+)'/)
+    if (m) el.classList.toggle('selected', ppBesoins.includes(m[1]))
+  })
+  document.querySelectorAll('#pp-regimes-chips .config-chip').forEach(function(el){
+    var m = el.getAttribute('onclick').match(/'([^']+)'/)
+    if (m) el.classList.toggle('selected', ppRegimes.includes(m[1]))
+  })
+
+  document.getElementById('profilePanel').classList.add('open')
+  document.getElementById('overlay').classList.add('active')
+}
+
+function fermerProfil(){
+  document.getElementById('profilePanel').classList.remove('open')
+  document.getElementById('overlay').classList.remove('active')
+}
+
+function togglePPChip(el, val, type){
+  el.classList.toggle('selected')
+  if (type === 'besoin') {
+    if (el.classList.contains('selected')) { if (!ppBesoins.includes(val)) ppBesoins.push(val) }
+    else ppBesoins = ppBesoins.filter(function(b){ return b !== val })
+  } else {
+    if (el.classList.contains('selected')) { if (!ppRegimes.includes(val)) ppRegimes.push(val) }
+    else ppRegimes = ppRegimes.filter(function(r){ return r !== val })
+  }
+}
+
+async function sauvegarderProfil(){
   var profilId = localStorage.getItem('vitalia_profil_id')
-  if (profilId) {
-    window.location.href = 'onboarding.html?edit=true'
+  if (!profilId || profilId === 'new') { afficherToast('Erreur : profil non trouvé'); return }
+
+  function parseList(id){
+    var el = document.getElementById(id)
+    if (!el || !el.value.trim()) return []
+    return el.value.split(',').map(function(s){ return s.trim() }).filter(function(s){ return s.length > 0 })
+  }
+
+  var updates = {
+    prenom:                 (document.getElementById('pp-prenom').value || '').trim(),
+    objectifs_generaux:     ppBesoins,
+    regimes_alimentaires:   ppRegimes,
+    budget_complements:     document.getElementById('pp-budget').value,
+    temps_cuisine_max:      parseInt(document.getElementById('pp-temps').value),
+    allergies:              parseList('pp-allergies'),
+    pathologies_chroniques: parseList('pp-pathologies'),
+    medications_actuelles:  parseList('pp-medicaments'),
+    enceinte:               document.getElementById('pp-enceinte').checked,
+    allaitement:            document.getElementById('pp-allaitement').checked
+  }
+
+  try {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profilId, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+      body: JSON.stringify(updates)
+    })
+    if (!r.ok) throw new Error('HTTP ' + r.status)
+    // Mise à jour locale
+    profilUtilisateur = Object.assign(profilUtilisateur || {}, updates)
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+    // Sync chip état config panel + hero
+    appliquerProfil(profilUtilisateur)
+    fermerProfil()
+    afficherToast('Profil mis à jour ! ✅')
+  } catch(e) {
+    afficherToast('Erreur sauvegarde : ' + e.message)
   }
 }
 

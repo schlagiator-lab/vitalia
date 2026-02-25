@@ -106,15 +106,17 @@ export async function chercherRecetteCache(
   supabase: SupabaseClient,
   ingredientsIds: string[],
   styleCulinaire: string,
-  typeRepas: string
+  typeRepas: string,
+  profilId: string
 ): Promise<any | null> {
-  
+
   console.log('[CACHE] Recherche recette en cache...');
-  
+
   try {
     const { data, error } = await supabase
       .from('recettes_sauvegardees')
       .select('*')
+      .eq('profil_id', profilId)
       .eq('type_repas', typeRepas)
       .eq('style_culinaire', styleCulinaire)
       .gte('note_moyenne', 3)
