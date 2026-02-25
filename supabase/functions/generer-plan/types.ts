@@ -83,10 +83,11 @@ export interface PlanGenere {
   profil_id: string;
   objectif: string;
   symptomes: string[];
-  
+
   petit_dejeuner: RecetteGeneree;
   dejeuner: RecetteGeneree;
   diner: RecetteGeneree;
+  pause?: any; // Collation 15h30 — recette simple sans compléments
   collations?: RecetteGeneree[];
   
   nutraceutiques: ProduitRecommande[];

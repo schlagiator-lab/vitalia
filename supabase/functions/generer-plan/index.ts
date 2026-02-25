@@ -52,23 +52,49 @@ const CORS_HEADERS = {
 // HELPERS STATIQUES
 // ============================================================================
 
-// FIX P1 BIS : Remplace les ingrédients codés en dur
-function selectionnerIngredientsParObjectif(objectif: string): string[] {
-  // Mappé sur les besoins_utilisateurs : vitalite, serenite, sommeil, digestion, mobilite, hormones
-  const pool: Record<string, string[]> = {
-    'vitalite':          ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
-    'serenite':          ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
-    'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
-    'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'noix', 'graines de courge', 'kiwi', 'riz complet', 'lentilles'],
-    'mobilite':          ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
-    'hormones':          ['avocat', 'graines de lin', 'saumon', 'noix', 'brocoli', 'patate douce', 'quinoa', 'légumineuses', 'graines de courge', 'huile d\'olive'],
-    // Rétrocompatibilité
-    'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
-    'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
-    'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
+// Pool d'ingrédients par besoin
+const INGREDIENTS_POOL: Record<string, string[]> = {
+  'vitalite':          ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
+  'serenite':          ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
+  'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
+  'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'noix', 'graines de courge', 'kiwi', 'riz complet', 'lentilles'],
+  'mobilite':          ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
+  'hormones':          ['avocat', 'graines de lin', 'saumon', 'noix', 'brocoli', 'patate douce', 'quinoa', 'légumineuses', 'graines de courge', 'huile d\'olive'],
+  'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
+  'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
+  'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
+};
+
+// FIX P1 BIS : Ingrédients différents pour chaque repas de la journée
+// Retourne 3 listes non-chevauchantes (petit-dej, déjeuner, dîner)
+function selectionnerIngredientsTroisRepas(
+  objectif: string,
+  besoinsActifs: string[]
+): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
+  // Combiner les pools de tous les besoins actifs pour plus de diversité
+  const tous = [...new Set(
+    besoinsActifs.flatMap(b => INGREDIENTS_POOL[b] || [])
+    .concat(INGREDIENTS_POOL[objectif] || INGREDIENTS_POOL['vitalite'])
+  )];
+
+  // Shuffle Fisher-Yates unique pour garantir des ingrédients non répétés entre repas
+  const shuffled = [...tous];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  // Partitionner en 3 groupes distincts (3 ingrédients chacun)
+  return {
+    petitDej: shuffled.slice(0, 3),
+    dejeuner: shuffled.slice(3, 6),
+    diner:    shuffled.slice(6, 9)
   };
-  const ingredients = pool[objectif] || pool['vitalite'];
-  // Mélange Fisher-Yates puis sélection des 4 premiers pour varier à chaque appel
+}
+
+// Rétrocompatibilité (utilisé pour fallback)
+function selectionnerIngredientsParObjectif(objectif: string): string[] {
+  const ingredients = INGREDIENTS_POOL[objectif] || INGREDIENTS_POOL['vitalite'];
   const shuffled = [...ingredients];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -153,6 +179,87 @@ async function genererRecetteAvecFallback(
   // 4. Défaut absolu
   console.log(`[DEFAULT] Recette ${typeRepas} par défaut`);
   return genererRecetteParDefaut(typeRepas, ingredientsObligatoires);
+}
+
+// Recettes de pause fixes par besoin (fallback si LLM indisponible)
+// Ces recettes sont simples, rapides, sans aucun complément alimentaire
+function recettePauseParDefaut(objectif: string): any {
+  const pauses: Record<string, any> = {
+    'vitalite': {
+      nom: 'Mix Énergie Banane & Noix de Cajou',
+      ingredients: [{nom:'banane',quantite:1,unite:''},{ nom:'noix de cajou',quantite:30,unite:'g'},{nom:'datte medjool',quantite:2,unite:''}],
+      instructions: ['Éplucher la banane et la couper en rondelles.','Disposer dans un bol avec les noix de cajou et les dattes.','Déguster lentement pour une énergie stable.'],
+      astuces: ['Le sucre naturel de la banane offre une énergie rapide, les graisses des noix de cajou la prolongent.'],
+      valeurs_nutritionnelles: {calories:200,proteines:5,glucides:30,lipides:8},
+      temps_preparation: 2, temps_cuisson: 0, portions: 1
+    },
+    'serenite': {
+      nom: 'Carré de Chocolat Noir & Tisane Camomille',
+      ingredients: [{nom:'chocolat noir 70%+',quantite:2,unite:'carrés'},{nom:'camomille bio',quantite:1,unite:'sachet'},{nom:'miel',quantite:1,unite:'c.a.c'}],
+      instructions: ['Infuser la camomille 5 min dans 250ml d\'eau bouillante.','Ajouter une cuillère de miel.','Déguster avec les carrés de chocolat noir en les laissant fondre lentement.'],
+      astuces: ['La camomille calme le système nerveux. Le cacao contient de la théobromine, douce et apaisante.'],
+      valeurs_nutritionnelles: {calories:130,proteines:2,glucides:15,lipides:7},
+      temps_preparation: 5, temps_cuisson: 0, portions: 1
+    },
+    'digestion': {
+      nom: 'Pomme & Beurre d\'Amande au Gingembre',
+      ingredients: [{nom:'pomme',quantite:1,unite:''},{nom:'beurre d\'amande',quantite:1,unite:'c.a.s'},{nom:'gingembre frais',quantite:1,unite:'pincée râpée'}],
+      instructions: ['Laver et trancher la pomme en quartiers.','Mélanger le beurre d\'amande avec le gingembre râpé.','Tremper les quartiers de pomme dans le beurre d\'amande épicé.'],
+      astuces: ['Les enzymes de la pomme et le gingembre stimulent doucement la digestion en milieu d\'après-midi.'],
+      valeurs_nutritionnelles: {calories:180,proteines:4,glucides:22,lipides:9},
+      temps_preparation: 3, temps_cuisson: 0, portions: 1
+    },
+    'sommeil': {
+      nom: 'Poignée de Cerises & Amandes',
+      ingredients: [{nom:'cerises fraîches ou séchées',quantite:80,unite:'g'},{nom:'amandes',quantite:15,unite:'g'},{nom:'tisane valériane',quantite:1,unite:'sachet (optionnel)'}],
+      instructions: ['Laver les cerises si fraîches.','Disposer cerises et amandes dans un petit bol.','Déguster tranquillement, idéalement en s\'éloignant des écrans.'],
+      astuces: ['Les cerises sont l\'une des rares sources alimentaires de mélatonine naturelle. Les amandes apportent du magnésium.'],
+      valeurs_nutritionnelles: {calories:150,proteines:4,glucides:18,lipides:7},
+      temps_preparation: 2, temps_cuisson: 0, portions: 1
+    },
+    'mobilite': {
+      nom: 'Smoothie Anti-Inflammatoire Myrtilles & Curcuma',
+      ingredients: [{nom:'myrtilles',quantite:100,unite:'g'},{nom:'banane',quantite:0.5,unite:''},{nom:'lait d\'amande',quantite:150,unite:'ml'},{nom:'curcuma',quantite:0.25,unite:'c.a.c'}],
+      instructions: ['Mixer tous les ingrédients jusqu\'à consistance lisse.','Verser dans un verre.','Boire immédiatement pour profiter des antioxydants.'],
+      astuces: ['Les myrtilles et le curcuma sont de puissants anti-inflammatoires naturels qui soulagent les articulations.'],
+      valeurs_nutritionnelles: {calories:160,proteines:3,glucides:28,lipides:4},
+      temps_preparation: 4, temps_cuisson: 0, portions: 1
+    },
+    'hormones': {
+      nom: 'Avocat Toast Complet & Graines de Lin',
+      ingredients: [{nom:'pain complet sans gluten',quantite:1,unite:'tranche'},{nom:'avocat',quantite:0.5,unite:''},{nom:'graines de lin',quantite:1,unite:'c.a.c'},{nom:'jus de citron',quantite:1,unite:'trait'}],
+      instructions: ['Toaster le pain.','Écraser l\'avocat avec le jus de citron et une pincée de sel.','Tartiner et parsemer de graines de lin.'],
+      astuces: ['Les acides gras essentiels de l\'avocat et les lignanes du lin soutiennent l\'équilibre hormonal.'],
+      valeurs_nutritionnelles: {calories:210,proteines:4,glucides:18,lipides:14},
+      temps_preparation: 5, temps_cuisson: 2, portions: 1
+    }
+  };
+  return pauses[objectif] || pauses['vitalite'];
+}
+
+// Pause 15h30 : toujours une recette alimentaire simple et garantie sans NAC.
+// Le LLM est intentionnellement exclu ici car il tend à inclure des compléments
+// (spiruline, ashwagandha, etc.) malgré les consignes. Les recettes fixes ci-dessus
+// sont saines, rapides et 100% alimentaires.
+function genererPauseAvecFallback(
+  profil: ProfilUtilisateur,
+  contexte: ContexteUtilisateur
+): any {
+  const objectif = contexte.objectif_principal || 'vitalite';
+  console.log(`[PAUSE] Recette alimentaire fixe pour objectif : ${objectif}`);
+
+  // Adapter selon les contraintes alimentaires
+  const recette = recettePauseParDefaut(objectif);
+
+  // Si végane : retirer le miel de la recette sérénité si présent
+  if (profil.regime_alimentaire?.includes('vegan')) {
+    recette.ingredients = recette.ingredients.map((i: any) => {
+      if (i.nom === 'miel') return { ...i, nom: 'sirop d\'agave' };
+      return i;
+    });
+  }
+
+  return recette;
 }
 
 // ============================================================================
@@ -293,14 +400,36 @@ serve(async (req) => {
       3
     );
 
-    // FIX P1 BIS : Ingrédients dynamiques basés sur les produits scorés
+    // FIX P1 BIS : Ingrédients différents pour chaque repas
     const produitsAlimentaires = produitsScores.filter(p => p.type === 'aliment');
-    const ingredientsObligatoires = produitsAlimentaires.length >= 2
-      ? produitsAlimentaires.slice(0, 4).map(p => p.nom)
-      : selectionnerIngredientsParObjectif(contexte.objectif_principal || 'bien-etre-general');
+
+    let ingPetitDej: string[], ingDejeuner: string[], ingDiner: string[];
+
+    if (produitsAlimentaires.length >= 6) {
+      // Assez de produits BDD pour partitionner en 3 groupes distincts
+      const shuffledAliments = [...produitsAlimentaires];
+      for (let i = shuffledAliments.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledAliments[i], shuffledAliments[j]] = [shuffledAliments[j], shuffledAliments[i]];
+      }
+      ingPetitDej = shuffledAliments.slice(0, 2).map(p => p.nom);
+      ingDejeuner = shuffledAliments.slice(2, 4).map(p => p.nom);
+      ingDiner    = shuffledAliments.slice(4, 6).map(p => p.nom);
+    } else {
+      // Fallback : sélection depuis les pools de besoins, non-chevauchante
+      const troisRepas = selectionnerIngredientsTroisRepas(
+        contexte.objectif_principal || 'bien-etre-general',
+        besoinsUtilises
+      );
+      ingPetitDej = troisRepas.petitDej;
+      ingDejeuner = troisRepas.dejeuner;
+      ingDiner    = troisRepas.diner;
+    }
 
     console.log(`[NIVEAU 2] Style: ${styleCulinaire}`);
-    console.log(`[NIVEAU 2] Ingrédients: ${ingredientsObligatoires.join(', ')}`);
+    console.log(`[NIVEAU 2] Ingrédients Petit-dej : ${ingPetitDej.join(', ')}`);
+    console.log(`[NIVEAU 2] Ingrédients Déjeuner  : ${ingDejeuner.join(', ')}`);
+    console.log(`[NIVEAU 2] Ingrédients Dîner     : ${ingDiner.join(', ')}`);
 
     // ========================================================================
     // NIVEAU 3 : GENERATION CREATIVE (LLM)
@@ -309,10 +438,12 @@ serve(async (req) => {
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
 
     const forceRegen = force_regeneration === true;
+    // La pause est synchrone (recette alimentaire fixe garantie sans NAC)
+    const recettePause = genererPauseAvecFallback(profil, contexte);
     const [recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
-      genererRecetteAvecFallback(supabase, 'petit-dejeuner', styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen),
-      genererRecetteAvecFallback(supabase, 'dejeuner',       styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen),
-      genererRecetteAvecFallback(supabase, 'diner',          styleCulinaire, ingredientsObligatoires, profil, contexte, historique, forceRegen)
+      genererRecetteAvecFallback(supabase, 'petit-dejeuner', styleCulinaire, ingPetitDej, profil, contexte, historique, forceRegen),
+      genererRecetteAvecFallback(supabase, 'dejeuner',       styleCulinaire, ingDejeuner, profil, contexte, historique, forceRegen),
+      genererRecetteAvecFallback(supabase, 'diner',          styleCulinaire, ingDiner,    profil, contexte, historique, forceRegen)
     ]);
 
     const messageMotivation = await genererMessageMotivation(contexte, {});
@@ -329,6 +460,7 @@ serve(async (req) => {
       petit_dejeuner: recettePetitDej,
       dejeuner:       recetteDejeuner,
       diner:          recetteDiner,
+      pause:          recettePause,
 
       nutraceutiques: nutraceutiquesSelectionnes.map(p => ({
         id:             p.id,
