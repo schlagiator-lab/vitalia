@@ -181,18 +181,21 @@ function construirePromptRecette(
                : profil.budget === 'eleve'   ? '12-20 euros/portion'
                : '8-12 euros/portion';
   
+  // Mapping besoins_utilisateurs → objectif nutritionnel
   const objectifNutri: Record<string, string> = {
-    'energie':           "Riche en protéines et glucides complexes pour booster l'énergie",
-    'fatigue':           'Riche en fer, vitamine B12 et magnésium pour combattre la fatigue',
-    'digestion':         'Facile à digérer, riche en fibres solubles et prébiotiques',
-    'sommeil':           'Riche en tryptophane et magnésium pour favoriser le sommeil',
-    'immunite':          'Riche en vitamines C, D, zinc pour renforcer l\'immunité',
-    'inflammation':      'Anti-inflammatoire, riche en oméga-3 et antioxydants',
+    'vitalite':          'Riche en fer, vitamines B et magnésium pour booster la vitalité et l\'énergie',
+    'serenite':          'Riche en magnésium, tryptophane et adaptogènes pour la sérénité et la gestion du stress',
+    'digestion':         'Facile à digérer, riche en fibres solubles, prébiotiques et probiotiques',
+    'sommeil':           'Riche en tryptophane, mélatonine et magnésium pour favoriser le sommeil réparateur',
+    'mobilite':          'Anti-inflammatoire, riche en oméga-3, curcumine et antioxydants pour la mobilité',
+    'hormones':          'Riche en acides gras essentiels, phytoestrogènes et zinc pour l\'équilibre hormonal',
+    // Rétrocompatibilité
+    'energie':           'Riche en protéines et glucides complexes pour booster l\'énergie',
     'stress':            'Riche en magnésium et adaptogènes pour réduire le stress',
     'bien-etre-general': 'Équilibré, varié et nutritif'
   };
-  
-  const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'Équilibré et nutritif';
+
+  const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'Équilibré, varié et nutritif';
   
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.
 

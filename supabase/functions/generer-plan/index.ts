@@ -1,10 +1,8 @@
 // supabase/functions/generer-plan/index.ts
-// VERSION CORRIGÉE V2 :
-// - FIX P1 : Charge le profil complet depuis profil_id (fix mismatch body/fonction)
-// - FIX P1 BIS : Ingrédients dynamiques selon objectif (suppression hard-code)
-// - FIX P2 : Model string Anthropic corrigé dans niveau3-llm.ts
-// - FIX P3 : Filtrage aromathérapie dans niveau1-securite.ts
-// - FIX P5 : Fallback robuste sans dépendance aux vues SQL
+// VERSION V3 :
+// - Utilise les tables junction besoins pour filtrage et scoring produits
+// - Passe les besoins de l'utilisateur aux fonctions de niveau1
+// - Ingrédients dynamiques selon objectif / alimentation_besoins
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -57,17 +55,20 @@ const CORS_HEADERS = {
 
 // FIX P1 BIS : Remplace les ingrédients codés en dur
 function selectionnerIngredientsParObjectif(objectif: string): string[] {
+  // Mappé sur les besoins_utilisateurs : vitalite, serenite, sommeil, digestion, mobilite, hormones
   const pool: Record<string, string[]> = {
-    'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
-    'fatigue':           ['lentilles corail', 'épinards', 'betterave', 'patate douce', 'foie de volaille', 'graines de sésame', 'noix de cajou', 'spiruline', 'amandes', 'œufs'],
+    'vitalite':          ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
+    'serenite':          ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
     'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
     'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'noix', 'graines de courge', 'kiwi', 'riz complet', 'lentilles'],
-    'immunite':          ['curcuma', 'gingembre', 'ail', 'brocoli', 'poivron rouge', 'épinards', 'agrumes', 'myrtilles', 'kiwi', 'grenade'],
-    'inflammation':      ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
+    'mobilite':          ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
+    'hormones':          ['avocat', 'graines de lin', 'saumon', 'noix', 'brocoli', 'patate douce', 'quinoa', 'légumineuses', 'graines de courge', 'huile d\'olive'],
+    // Rétrocompatibilité
+    'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
     'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
     'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
   };
-  const ingredients = pool[objectif] || pool['bien-etre-general'];
+  const ingredients = pool[objectif] || pool['vitalite'];
   // Mélange Fisher-Yates puis sélection des 4 premiers pour varier à chaque appel
   const shuffled = [...ingredients];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -217,21 +218,27 @@ serve(async (req) => {
     };
 
     // ── Construire le contexte ───────────────────────────────────────────────
-    // Les symptômes du frontend priment sur les objectifs BDD
-    const symptomesActifs: string[] = (symptomes && symptomes.length > 0)
+    // Les besoins du frontend priment sur les objectifs BDD
+    // Les valeurs sont des besoin_id : vitalite, serenite, sommeil, digestion, mobilite, hormones
+    const besoinsActifs: string[] = (symptomes && symptomes.length > 0)
       ? symptomes
       : (profilBDD.objectifs_generaux || []);
 
+    // Fallback si aucun besoin défini
+    const besoinsUtilises = besoinsActifs.length > 0
+      ? besoinsActifs
+      : ['vitalite', 'serenite'];
+
     const contexte: ContexteUtilisateur = {
-      symptomes_declares: symptomesActifs,
-      objectif_principal: (symptomesActifs[0] as any) || 'bien-etre-general',
+      symptomes_declares: besoinsUtilises,
+      objectif_principal: besoinsUtilises[0] || 'vitalite',
       duree_symptomes:    'quelques-jours'
     };
 
     console.log(`[P1] Profil OK : ${profilBDD.prenom || 'Utilisateur'}`);
     console.log(`[P1] Régimes   : ${profil.regime_alimentaire?.join(', ') || 'aucun'}`);
     console.log(`[P1] Allergènes: ${profil.allergenes?.join(', ')        || 'aucun'}`);
-    console.log(`[P1] Symptômes : ${symptomesActifs.join(', ')           || 'bien-être général'}`);
+    console.log(`[P1] Besoins   : ${besoinsUtilises.join(', ')}`);
 
     if (!validerProfil(profil)) {
       return new Response(
@@ -247,9 +254,9 @@ serve(async (req) => {
     console.log('\n[NIVEAU 1] === FILTRAGE SECURITE ===');
 
     const [produitsSurs, recettesSures, routinesSures] = await Promise.all([
-      filtrerProduitsSecurite(supabase, profil),
+      filtrerProduitsSecurite(supabase, profil, besoinsUtilises),
       filtrerRecettesSecurite(supabase, profil),
-      filtrerRoutinesSecurite(supabase, profil)
+      filtrerRoutinesSecurite(supabase, profil, besoinsUtilises)
     ]);
 
     console.log(`[NIVEAU 1] ${produitsSurs.length} produits | ${recettesSures.length} recettes | ${routinesSures.length} routines sûrs`);
@@ -262,6 +269,7 @@ serve(async (req) => {
 
     const historique = await recupererHistoriqueRotation(supabase, profil_id);
     const produitsScores = scorerProduits(produitsSurs, contexte, historique);
+    // Note: scorerProduits utilise maintenant le besoin_score des tables junction
 
     const nutraceutiquesSelectionnes = produitsScores
       .filter(p => p.type === 'nutraceutique')

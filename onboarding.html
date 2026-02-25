@@ -619,51 +619,33 @@ ALTER TABLE profils_utilisateurs
   </div>
 
   <!-- ═══════════════════════════════════════════ -->
-  <!-- ÉTAPE 2 : OBJECTIFS                        -->
+  <!-- ÉTAPE 2 : BESOINS                          -->
   <!-- ═══════════════════════════════════════════ -->
   <div class="step-card" id="step2" style="display:none">
     <div class="step-header">
       <div class="step-number">Étape 2 sur 4</div>
-      <div class="step-title">Tes objectifs bien-être 🎯</div>
-      <div class="step-desc">Choisis jusqu'à 4 objectifs. Tu pourras les modifier plus tard.</div>
+      <div class="step-title">Tes besoins prioritaires 🎯</div>
+      <div class="step-desc">Choisis jusqu'à 3 besoins. Tu pourras les modifier plus tard.</div>
     </div>
 
     <div class="chips-grid" id="objectifsChips">
-      <div class="chip" data-value="energie" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">⚡</span> Énergie
+      <div class="chip" data-value="vitalite" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">⚡</span> Vitalité & Énergie
       </div>
-      <div class="chip" data-value="stress" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🧘</span> Stress & anxiété
+      <div class="chip" data-value="serenite" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🧘</span> Sérénité & Stress
       </div>
-      <div class="chip" data-value="sommeil" onclick="toggleChip(this, 'objectifs', 4)">
+      <div class="chip" data-value="sommeil" onclick="toggleChip(this, 'objectifs', 3)">
         <span class="chip-icon">🌙</span> Sommeil
       </div>
-      <div class="chip" data-value="digestion" onclick="toggleChip(this, 'objectifs', 4)">
+      <div class="chip" data-value="digestion" onclick="toggleChip(this, 'objectifs', 3)">
         <span class="chip-icon">🌿</span> Digestion
       </div>
-      <div class="chip" data-value="immunite" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🛡️</span> Immunité
+      <div class="chip" data-value="mobilite" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">💪</span> Mobilité & Douleurs
       </div>
-      <div class="chip" data-value="douleurs" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">💪</span> Douleurs
-      </div>
-      <div class="chip" data-value="peau" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">✨</span> Peau & éclat
-      </div>
-      <div class="chip" data-value="poids" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">⚖️</span> Équilibre poids
-      </div>
-      <div class="chip" data-value="hormones" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🌸</span> Équilibre hormonal
-      </div>
-      <div class="chip" data-value="concentration" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🧠</span> Concentration
-      </div>
-      <div class="chip" data-value="inflammation" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🔥</span> Anti-inflammation
-      </div>
-      <div class="chip" data-value="detox" onclick="toggleChip(this, 'objectifs', 4)">
-        <span class="chip-icon">🫧</span> Détox & foie
+      <div class="chip" data-value="hormones" onclick="toggleChip(this, 'objectifs', 3)">
+        <span class="chip-icon">🌸</span> Équilibre Hormonal
       </div>
     </div>
 
@@ -949,6 +931,33 @@ window.addEventListener('load', async () => {
   window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   console.log('✅ Supabase client initialisé')
 
+  // ── Mode édition profil ──────────────────────────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search)
+  if (urlParams.get('edit') === 'true') {
+    // Adapter le label du bouton terminer
+    const btnT = document.getElementById('btnTerminer')
+    if (btnT) btnT.textContent = 'Enregistrer les modifications 💾'
+
+    const profilStr = localStorage.getItem('vitalia_profil')
+    if (profilStr) {
+      try {
+        const profil = JSON.parse(profilStr)
+        preRemplirFormulaire(profil)
+        afficherProgressBar()
+        allerStep(1)
+        return
+      } catch(_) {}
+    }
+    // Si pas de profil local, vérifier session
+    const { data: { session } } = await window._sb.auth.getSession()
+    if (session) {
+      await gererSessionUtilisateur(session.user)
+    } else {
+      afficherEtape('Email')
+    }
+    return
+  }
+
   // ── Vérifier session Supabase EN PREMIER (source de vérité) ──
   const { data: { session } } = await window._sb.auth.getSession()
 
@@ -968,6 +977,103 @@ window.addEventListener('load', async () => {
 
   afficherEtape('Email')
 })
+
+// ═══════════════════════════════════════════════════════
+// PRÉ-REMPLISSAGE FORMULAIRE (mode édition profil)
+// ═══════════════════════════════════════════════════════
+function preRemplirFormulaire(profil) {
+  // Prénom
+  if (profil.prenom) {
+    state.prenom = profil.prenom
+    const el = document.getElementById('prenomInput')
+    if (el) el.value = profil.prenom
+  }
+  // Âge
+  if (profil.age_tranche) {
+    state.age = profil.age_tranche
+    const el = document.getElementById('ageInput')
+    if (el) el.value = profil.age_tranche
+  }
+  // Sexe
+  if (profil.sexe) {
+    state.sexe = profil.sexe
+    document.querySelectorAll('[data-value="' + profil.sexe + '"]').forEach(function(btn) {
+      if (btn.closest && btn.closest('.toggle-group')) {
+        btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(function(b) { b.classList.remove('selected') })
+        btn.classList.add('selected')
+      }
+    })
+  }
+  // Besoins / objectifs
+  if (profil.objectifs_generaux && profil.objectifs_generaux.length) {
+    state.objectifs = profil.objectifs_generaux.slice()
+    setTimeout(function() {
+      document.querySelectorAll('#objectifsChips .chip').forEach(function(chip) {
+        chip.classList.toggle('selected', state.objectifs.includes(chip.dataset.value))
+      })
+    }, 50)
+  }
+  // Régimes
+  if (profil.regimes_alimentaires && profil.regimes_alimentaires.length) {
+    state.regimes = profil.regimes_alimentaires.slice()
+    setTimeout(function() {
+      document.querySelectorAll('[data-value]').forEach(function(chip) {
+        if (chip.getAttribute('onclick') && chip.getAttribute('onclick').includes("'regimes'")) {
+          chip.classList.toggle('selected', state.regimes.includes(chip.dataset.value))
+        }
+      })
+    }, 50)
+  }
+  // Allergies
+  if (profil.allergies && profil.allergies.length) {
+    state.allergies = profil.allergies.slice()
+    setTimeout(function() {
+      document.querySelectorAll('[data-value]').forEach(function(chip) {
+        if (chip.getAttribute('onclick') && chip.getAttribute('onclick').includes("'allergies'")) {
+          chip.classList.toggle('selected', state.allergies.includes(chip.dataset.value))
+        }
+      })
+    }, 50)
+  }
+  // Grossesse
+  if (profil.enceinte) { state.grossesse = 'enceinte' }
+  else if (profil.allaitement) { state.grossesse = 'allaitement' }
+  else { state.grossesse = 'non' }
+  setTimeout(function() {
+    document.querySelectorAll('[data-value="' + state.grossesse + '"]').forEach(function(btn) {
+      if (btn.closest && btn.closest('[id]') && btn.closest('.toggle-group')) {
+        const parentToggle = btn.parentElement
+        if (parentToggle) {
+          parentToggle.querySelectorAll('.toggle-btn').forEach(function(b) {
+            b.classList.toggle('selected', b.dataset.value === state.grossesse)
+          })
+        }
+      }
+    })
+  }, 50)
+  // Médicaments
+  if (profil.medications_actuelles && profil.medications_actuelles.length) {
+    state.medicaments = profil.medications_actuelles.slice()
+    const el = document.getElementById('medicamentsInput')
+    if (el) el.value = state.medicaments.join(', ')
+  }
+  // Pathologies
+  if (profil.pathologies_chroniques && profil.pathologies_chroniques.length) {
+    state.pathologies = profil.pathologies_chroniques.slice()
+    setTimeout(function() {
+      document.querySelectorAll('[data-value]').forEach(function(chip) {
+        if (chip.getAttribute('onclick') && chip.getAttribute('onclick').includes("'pathologies'")) {
+          chip.classList.toggle('selected', state.pathologies.includes(chip.dataset.value))
+        }
+      })
+    }, 50)
+  }
+  // Étape 5
+  if (profil.groupe_sanguin) { state.groupe_sanguin = profil.groupe_sanguin }
+  if (profil.niveau_activite) { state.niveau_activite = profil.niveau_activite }
+  if (profil.temps_cuisine_max) { state.temps_cuisine = String(profil.temps_cuisine_max) }
+  if (profil.budget_complements) { state.budget_mensuel = profil.budget_complements }
+}
 
 // ═══════════════════════════════════════════════════════
 // GESTION SESSION UTILISATEUR CONNECTÉ
@@ -1212,14 +1318,15 @@ async function terminerOnboarding() {
   afficherLoading('Création de ton profil...')
 
   // Récupérer userId via localStorage ou session SDK (compatible email+password)
-  let userId = localStorage.getItem('vitalia_user_id')
-  let email  = state.email || localStorage.getItem('vitalia_email')
+  let userId  = localStorage.getItem('vitalia_user_id')
+  let email   = state.email || localStorage.getItem('vitalia_email')
+  const isEditMode = new URLSearchParams(window.location.search).get('edit') === 'true'
 
   if (!userId) {
     const { data: { session } } = await window._sb.auth.getSession()
     if (!session) {
       masquerLoading()
-      if (btn) { btn.disabled = false; btn.textContent = 'Créer mon profil Vitalia 🌿' }
+      if (btn) { btn.disabled = false; btn.textContent = isEditMode ? 'Enregistrer les modifications 💾' : 'Créer mon profil Vitalia 🌿' }
       afficherErreur('step4Error', 'Session expirée. Recharge la page et reconnecte-toi.')
       return
     }
@@ -1281,8 +1388,13 @@ async function terminerOnboarding() {
 
     masquerLoading()
 
-    // 🎉 Rediriger vers l'app avec le profil créé
-    window.location.href = 'index.html?profil_id=' + profilId
+    // 🎉 Rediriger vers l'app
+    if (isEditMode) {
+      afficherToastOnboarding('Profil mis à jour ! 🌿')
+      setTimeout(function() { window.location.href = 'index.html?profil_id=' + profilId }, 1000)
+    } else {
+      window.location.href = 'index.html?profil_id=' + profilId
+    }
 
   } catch (err) {
     console.error('Erreur création profil:', err)
@@ -1294,6 +1406,14 @@ async function terminerOnboarding() {
 // ═══════════════════════════════════════════════════════
 // UTILITAIRES
 // ═══════════════════════════════════════════════════════
+function afficherToastOnboarding(msg) {
+  var t = document.createElement('div')
+  t.textContent = msg
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#3D2B1F;color:white;border-radius:14px;padding:12px 20px;font-size:14px;box-shadow:0 8px 24px rgba(61,43,31,0.25);z-index:200;white-space:nowrap;font-family:DM Sans,sans-serif'
+  document.body.appendChild(t)
+  setTimeout(function() { t.remove() }, 3000)
+}
+
 function afficherLoading(texte) {
   document.getElementById('loadingText').textContent = texte || 'Chargement...'
   document.getElementById('loadingOverlay').classList.add('visible')

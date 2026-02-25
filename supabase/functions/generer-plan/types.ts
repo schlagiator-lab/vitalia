@@ -27,10 +27,10 @@ export interface ProfilUtilisateur {
 }
 
 export interface ContexteUtilisateur {
-  symptomes_declares?: string[]; // ['fatigue', 'stress']
-  intensites?: Record<string, number>; // {fatigue: 7, stress: 5}
-  objectif_principal?: 'energie' | 'digestion' | 'sommeil' | 'immunite' | 'bien-etre-general';
-  duree_symptomes?: string; // 'quelques-jours', '1-2-semaines', 'chronique'
+  symptomes_declares?: string[]; // besoins IDs: ['vitalite', 'serenite', ...]
+  intensites?: Record<string, number>;
+  objectif_principal?: string; // besoin principal
+  duree_symptomes?: string;
 }
 
 export interface ProduitFiltre {
@@ -43,6 +43,8 @@ export interface ProduitFiltre {
   efficacite_estimee: number;
   score_pertinence?: number;
   score_rotation?: number;
+  besoin_score?: number;  // score issu de la table junction (1-5)
+  besoin_id?: string;     // besoin principal ciblé
 }
 
 export interface RecetteCandidate {

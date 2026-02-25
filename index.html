@@ -313,14 +313,14 @@
   <div class="config-handle"></div>
   <div class="config-title">🌿 Personnalise ton plan</div>
   <div class="config-field">
-    <label class="config-label">Comment tu te sens ?</label>
+    <label class="config-label">Tes besoins du moment</label>
     <div class="config-chips" id="symptomsChips">
-      <div class="config-chip selected" onclick="toggleChip(this,'fatigue')">😴 Fatigue</div>
-      <div class="config-chip selected" onclick="toggleChip(this,'stress')">😰 Stress</div>
-      <div class="config-chip" onclick="toggleChip(this,'digestion')">🌀 Digestion</div>
+      <div class="config-chip selected" onclick="toggleChip(this,'vitalite')">⚡ Vitalité</div>
+      <div class="config-chip selected" onclick="toggleChip(this,'serenite')">🧘 Sérénité</div>
+      <div class="config-chip" onclick="toggleChip(this,'digestion')">🌿 Digestion</div>
       <div class="config-chip" onclick="toggleChip(this,'sommeil')">🌙 Sommeil</div>
-      <div class="config-chip" onclick="toggleChip(this,'inflammation')">🔥 Inflammation</div>
-      <div class="config-chip" onclick="toggleChip(this,'energie')">⚡ Énergie</div>
+      <div class="config-chip" onclick="toggleChip(this,'mobilite')">💪 Mobilité</div>
+      <div class="config-chip" onclick="toggleChip(this,'hormones')">🌸 Hormones</div>
     </div>
   </div>
   <div class="config-row">
@@ -518,7 +518,7 @@
 var SUPABASE_URL = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDY1NjUsImV4cCI6MjA4NTYyMjU2NX0.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4'
 
-var selectedSymptoms = ['fatigue','stress']
+var selectedSymptoms = ['vitalite','serenite']
 var selectedRegimes = ['sans_gluten']
 var currentPlan = null
 var profilUtilisateur = null
@@ -613,10 +613,10 @@ function appliquerProfil(p) {
   if (!p) return
   if (p.objectifs_generaux&&p.objectifs_generaux.length) {
     selectedSymptoms=p.objectifs_generaux
-    // Sync chip states with profile symptoms
+    // Sync chip states with profile besoins
     document.querySelectorAll('#symptomsChips .config-chip').forEach(function(el){
-      var val=el.getAttribute('onclick').match(/'([^']+)'\)/)[1]
-      el.classList.toggle('selected', selectedSymptoms.includes(val))
+      var match=el.getAttribute('onclick').match(/'([^']+)'\)/)
+      if(match){el.classList.toggle('selected', selectedSymptoms.includes(match[1]))}
     })
   }
   if (p.regimes_alimentaires&&p.regimes_alimentaires.length) {
@@ -1045,13 +1045,13 @@ async function supprimerSauvegardee(id){
 
 // ── Allié actif selon symptôme principal ──
 var ALLY_MAP = {
-  fatigue:      'goji',       // Goji = énergie/vitalité
-  energie:      'goji',
-  inflammation: 'curcuma',    // Curcuma = anti-inflammatoire
-  digestion:    'gingembre',  // Gingembre = digestion
-  stress:       'myrtille',   // Myrtille = antioxydant/stress
-  sommeil:      'myrtille',
-  _default:     'avocat'      // Avocat = bien-être général
+  vitalite:  'goji',        // Goji = énergie/vitalité
+  serenite:  'myrtille',    // Myrtille = antioxydant/stress
+  digestion: 'gingembre',   // Gingembre = digestion
+  sommeil:   'myrtille',    // Myrtille = relaxation
+  mobilite:  'curcuma',     // Curcuma = anti-inflammatoire
+  hormones:  'avocat',      // Avocat = hormones/bien-être
+  _default:  'goji'
 }
 
 function mettreAJourAllies(){
@@ -1072,13 +1072,9 @@ function mettreAJourAllies(){
 function fermerTout(){fermerConfig();fermerSauvegardees()}
 
 function ouvrirProfil(){
-  // Rediriger vers onboarding avec le profil_id pour modification
   var profilId = localStorage.getItem('vitalia_profil_id')
   if (profilId) {
-    if (confirm('Modifier ton profil ?\n\nTu seras redirigé vers le formulaire de configuration.')) {
-      localStorage.removeItem('vitalia_profil_complet')
-      window.location.href = 'onboarding.html'
-    }
+    window.location.href = 'onboarding.html?edit=true'
   }
 }
 

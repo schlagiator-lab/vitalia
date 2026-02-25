@@ -1,8 +1,7 @@
 // supabase/functions/generer-plan/niveau2-selection.ts
-// VERSION CORRIGÉE V2 :
-// - FIX P5 : Fallback robuste quand vue_items_frequents / vue_styles_recents
-//            n'existent pas en BDD (requêtes échouent silencieusement)
-// - Algorithme Fisher-Yates pour mélange aléatoire garanti (variété sans vues)
+// VERSION V3 :
+// - Scoring via besoin_score (tables junction) — plus fiable que matching string
+// - Fallback Fisher-Yates si pas d'historique styles
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { 
@@ -122,6 +121,7 @@ export async function recupererHistoriqueRotation(
 
 // ============================================================================
 // SCORING PRODUITS
+// Utilise le besoin_score des tables junction (plus fiable que le matching string)
 // ============================================================================
 
 export function scorerProduits(
@@ -129,32 +129,23 @@ export function scorerProduits(
   contexte: ContexteUtilisateur,
   historique: HistoriqueRotation
 ): ProduitFiltre[] {
-  
+
   console.log(`[NIVEAU 2] Scoring de ${produits.length} produits...`);
-  
+
   if (produits.length === 0) return [];
-  
+
   return produits.map(p => {
-    // 1. Score pertinence symptômes (40%)
-    const symptomesCibles = Array.isArray(p.symptomes_cibles)
-      ? p.symptomes_cibles
-      : [];
-    
-    const symptomesUtilisateur = contexte.symptomes_declares || [];
-    const symptomsMatch = symptomesUtilisateur.filter(s =>
-      symptomesCibles.some(sc => sc.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(sc.toLowerCase()))
-    ).length;
-    
-    const scorePertinence = symptomsMatch > 0
-      ? (symptomsMatch / Math.max(symptomesUtilisateur.length, 1)) * 40
-      : 10; // Score de base même sans correspondance exacte
-    
+    // 1. Score besoin (junction table) — 50% du score total
+    // besoin_score est sur 5 → normalisé sur 50
+    const besoinScore = p.besoin_score || 3;
+    const scorePertinence = (besoinScore / 5) * 50;
+
     // 2. Score niveau de preuve (20%)
     const scorePreuve = ((p.niveau_preuve || 1) / 5) * 20;
-    
-    // 3. Score efficacité estimée (20%)
-    const scoreEfficacite = ((p.efficacite_estimee || 5) / 10) * 20;
-    
+
+    // 3. Score efficacité estimée (10%)
+    const scoreEfficacite = ((p.efficacite_estimee || 5) / 10) * 10;
+
     // 4. Score rotation anti-répétition (20%)
     const itemHistorique = historique.items_frequents.find(
       item => item.item_id === p.id
@@ -162,9 +153,9 @@ export function scorerProduits(
     const scoreRotation = itemHistorique
       ? (itemHistorique.score_rotation_simple || 0.5) * 20
       : 20; // Jamais vu = score max
-    
+
     const scoreTotal = scorePertinence + scorePreuve + scoreEfficacite + scoreRotation;
-    
+
     return {
       ...p,
       score_pertinence: scorePertinence,
@@ -298,22 +289,15 @@ export function selectionnerRoutines(
   if (routines.length === 0) return [];
   
   const routinesScores = routines.map(r => {
-    const symptomesCibles = Array.isArray(r.symptomes_cibles) ? r.symptomes_cibles : [];
-    const symptomesUtil = contexte.symptomes_declares || [];
-    
-    const symptomsMatch = symptomesUtil.filter(s =>
-      symptomesCibles.some(sc => sc.toLowerCase().includes(s.toLowerCase()))
-    ).length;
-    
-    const scorePertinence = symptomsMatch > 0
-      ? (symptomsMatch / Math.max(symptomesUtil.length, 1)) * 50
-      : 10;
-    
+    // Score besoin depuis la table junction (si disponible)
+    const besoinScore = (r as any).besoin_score || 3;
+    const scorePertinence = (besoinScore / 5) * 50;
+
     const itemHistorique = historique.items_frequents.find(item => item.item_id === r.id);
     const scoreRotation = itemHistorique
       ? (itemHistorique.score_rotation_simple || 0.5) * 50
       : 50;
-    
+
     return {
       ...r,
       score_pertinence: scorePertinence,
