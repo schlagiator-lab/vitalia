@@ -248,6 +248,38 @@
   .pp-toggle input:checked + .pp-toggle-track { background: var(--terracotta); }
   .pp-toggle-track::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
   .pp-toggle input:checked + .pp-toggle-track::before { transform: translateX(20px); }
+
+  /* TAG INPUT - Profile Panel */
+  .pp-tag-container { display:flex; flex-wrap:wrap; gap:6px; background:var(--cream); border:1.5px solid rgba(196,113,74,0.15); border-radius:14px; padding:8px 12px; cursor:text; min-height:44px; align-items:center; transition:border-color 0.2s; }
+  .pp-tag-container:focus-within { border-color:var(--terracotta); }
+  .pp-tag { display:inline-flex; align-items:center; gap:4px; background:rgba(196,113,74,0.15); color:var(--terracotta); border-radius:20px; padding:2px 8px 2px 10px; font-size:12px; font-weight:500; }
+  .pp-tag-remove { cursor:pointer; font-size:16px; line-height:1; opacity:0.6; font-weight:400; display:flex; align-items:center; }
+  .pp-tag-remove:hover { opacity:1; }
+  .pp-tag-input { border:none; outline:none; background:transparent; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--deep-brown); min-width:80px; flex:1; }
+  .pp-tag-input::placeholder { color:var(--text-light); }
+  .pp-preset-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .pp-preset-chip { display:inline-flex; align-items:center; gap:4px; background:var(--cream); border:1.5px solid rgba(196,113,74,0.15); border-radius:20px; padding:4px 10px; font-size:12px; color:var(--mid-brown); cursor:pointer; transition:all 0.15s; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+  .pp-preset-chip:hover { border-color:var(--terracotta-light); color:var(--terracotta); }
+  .pp-preset-chip.selected { background:rgba(196,113,74,0.12); border-color:var(--terracotta); color:var(--terracotta); }
+  .config-field-help { font-size:11px; color:var(--text-light); margin-top:4px; line-height:1.4; }
+
+  /* ALLY MODAL */
+  .ally-modal { position:fixed; inset:0; z-index:80; display:flex; align-items:flex-end; justify-content:center; background:rgba(61,43,31,0.38); backdrop-filter:blur(3px); }
+  .ally-modal-card { position:relative; background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px 40px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
+  @keyframes slideUpModal { from { transform:translateY(30px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .ally-modal-drag { width:36px; height:4px; background:var(--peach); border-radius:2px; margin:0 auto 18px; }
+  .ally-modal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+  .ally-modal-avatar { width:72px; height:72px; border-radius:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ally-modal-close { width:32px; height:32px; background:var(--cream); border:none; border-radius:10px; cursor:pointer; font-size:18px; color:var(--mid-brown); display:flex; align-items:center; justify-content:center; }
+  .ally-modal-name { font-family:'Fraunces',serif; font-size:22px; font-weight:700; color:var(--deep-brown); margin-bottom:4px; }
+  .ally-modal-subtitle { font-size:13px; color:var(--text-light); font-style:italic; margin-bottom:16px; }
+  .ally-section-label { font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-light); font-weight:600; margin-bottom:8px; }
+  .ally-benefits { list-style:none; display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .ally-benefits li { display:flex; align-items:flex-start; gap:8px; font-size:13.5px; color:var(--mid-brown); line-height:1.4; }
+  .ally-benefits li::before { content:'✓'; color:var(--sage); font-weight:700; flex-shrink:0; }
+  .ally-detail { font-size:13.5px; color:var(--mid-brown); line-height:1.6; margin-bottom:14px; }
+  .ally-tip { background:rgba(232,184,75,0.12); border-left:3px solid var(--golden); border-radius:0 8px 8px 0; padding:10px 14px; font-size:13px; color:var(--mid-brown); font-style:italic; margin-bottom:14px; }
+  .ally-present-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(122,158,126,0.12); border:1px solid rgba(122,158,126,0.3); border-radius:20px; padding:6px 14px; font-size:12px; color:var(--sage); font-weight:500; }
 </style>
 </head>
 <body>
@@ -350,9 +382,9 @@
       <div class="config-chips" id="pp-besoins-chips">
         <div class="config-chip" onclick="togglePPChip(this,'vitalite','besoin')">⚡ Fatigue & Vitalité</div>
         <div class="config-chip" onclick="togglePPChip(this,'serenite','besoin')">🧘 Stress & Sérénité</div>
-        <div class="config-chip" onclick="togglePPChip(this,'digestion','besoin')">🌀 Digestion & Métabolisme</div>
+        <div class="config-chip" onclick="togglePPChip(this,'digestion','besoin')">🌿 Digestion & Métabolisme</div>
         <div class="config-chip" onclick="togglePPChip(this,'sommeil','besoin')">🌙 Sommeil & Récupération</div>
-        <div class="config-chip" onclick="togglePPChip(this,'mobilite','besoin')">🔥 Mobilité & Santé Cardiaque</div>
+        <div class="config-chip" onclick="togglePPChip(this,'mobilite','besoin')">💪 Mobilité & Santé Cardiaque</div>
         <div class="config-chip" onclick="togglePPChip(this,'hormones','besoin')">🌸 Hormones & Longévité</div>
       </div>
     </div>
@@ -370,12 +402,13 @@
     </div>
     <div class="config-row">
       <div class="config-field">
-        <label class="config-label">Budget compléments</label>
+        <label class="config-label">Budget compléments 💊</label>
         <select class="config-input" id="pp-budget">
           <option value="economique">Économique</option>
           <option value="moyen">Moyen</option>
           <option value="premium">Premium</option>
         </select>
+        <div class="config-field-help">Budget mensuel pour tes compléments alimentaires (vitamines, minéraux, adaptogènes).</div>
       </div>
       <div class="config-field">
         <label class="config-label">Temps cuisine max</label>
@@ -402,16 +435,38 @@
       </select>
     </div>
     <div class="config-field">
-      <label class="config-label">Allergies (séparées par virgules)</label>
-      <input type="text" class="config-input" id="pp-allergies" placeholder="ex: noix, lait, œufs">
+      <label class="config-label">Allergies alimentaires</label>
+      <div class="pp-preset-chips" id="pp-allergy-presets">
+        <div class="pp-preset-chip" data-value="arachides" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🥜 Arachides</div>
+        <div class="pp-preset-chip" data-value="noix" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🌰 Noix</div>
+        <div class="pp-preset-chip" data-value="gluten" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🌾 Gluten</div>
+        <div class="pp-preset-chip" data-value="lactose" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🥛 Lactose</div>
+        <div class="pp-preset-chip" data-value="poisson" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🐟 Poisson</div>
+        <div class="pp-preset-chip" data-value="soja" onclick="togglePresetTag(this,'ppAllergiesPresets','pp-allergies-tags')">🫘 Soja</div>
+      </div>
+      <div class="pp-tag-container" id="pp-allergies-tags" onclick="this.querySelector('.pp-tag-input').focus()">
+        <input type="text" class="pp-tag-input" id="pp-allergies-input" placeholder="Autre allergie, Entrée pour ajouter…" onkeydown="handleTagKey(event,'ppAllergiesCustom','pp-allergies-tags','pp-allergies-input')">
+      </div>
     </div>
     <div class="config-field">
       <label class="config-label">Pathologies chroniques</label>
-      <input type="text" class="config-input" id="pp-pathologies" placeholder="ex: diabète, hypertension">
+      <div class="pp-preset-chips" id="pp-patho-presets">
+        <div class="pp-preset-chip" data-value="diabete" onclick="togglePresetTag(this,'ppPathologiesPresets','pp-patho-tags')">🩸 Diabète</div>
+        <div class="pp-preset-chip" data-value="hypertension" onclick="togglePresetTag(this,'ppPathologiesPresets','pp-patho-tags')">❤️ Hypertension</div>
+        <div class="pp-preset-chip" data-value="hypothyroidie" onclick="togglePresetTag(this,'ppPathologiesPresets','pp-patho-tags')">🦋 Hypothyroïdie</div>
+        <div class="pp-preset-chip" data-value="sibo_ibs" onclick="togglePresetTag(this,'ppPathologiesPresets','pp-patho-tags')">🫁 SIBO / SII</div>
+        <div class="pp-preset-chip" data-value="endometriose" onclick="togglePresetTag(this,'ppPathologiesPresets','pp-patho-tags')">🌸 Endométriose</div>
+      </div>
+      <div class="pp-tag-container" id="pp-patho-tags" onclick="this.querySelector('.pp-tag-input').focus()">
+        <input type="text" class="pp-tag-input" id="pp-patho-input" placeholder="Autre condition…" onkeydown="handleTagKey(event,'ppPathologiesCustom','pp-patho-tags','pp-patho-input')">
+      </div>
     </div>
     <div class="config-field">
       <label class="config-label">Médicaments actuels</label>
-      <input type="text" class="config-input" id="pp-medicaments" placeholder="ex: metformine, lévothyrox">
+      <div class="config-field-help" style="margin-bottom:6px">Tape un médicament et appuie sur Entrée pour l'ajouter.</div>
+      <div class="pp-tag-container" id="pp-meds-tags" onclick="this.querySelector('.pp-tag-input').focus()">
+        <input type="text" class="pp-tag-input" id="pp-meds-input" placeholder="ex: Levothyrox…" onkeydown="handleTagKey(event,'ppMedicaments','pp-meds-tags','pp-meds-input')">
+      </div>
     </div>
     <div style="background:var(--cream);border-radius:14px;padding:2px 14px;">
       <div class="toggle-row">
@@ -438,9 +493,9 @@
     <div class="config-chips" id="symptomsChips">
       <div class="config-chip selected" onclick="toggleChip(this,'vitalite')">⚡ Fatigue & Vitalité</div>
       <div class="config-chip selected" onclick="toggleChip(this,'serenite')">🧘 Stress & Sérénité</div>
-      <div class="config-chip" onclick="toggleChip(this,'digestion')">🫃 Digestion & Métabolisme</div>
+      <div class="config-chip" onclick="toggleChip(this,'digestion')">🌿 Digestion & Métabolisme</div>
       <div class="config-chip" onclick="toggleChip(this,'sommeil')">🌙 Sommeil & Récupération</div>
-      <div class="config-chip" onclick="toggleChip(this,'mobilite')">🫀 Mobilité & Santé Cardiaque</div>
+      <div class="config-chip" onclick="toggleChip(this,'mobilite')">💪 Mobilité & Santé Cardiaque</div>
       <div class="config-chip" onclick="toggleChip(this,'hormones')">🌸 Hormones & Longévité</div>
     </div>
   </div>
@@ -451,7 +506,7 @@
     </div>
     <div class="config-field">
       <label class="config-label">Budget/jour</label>
-      <select class="config-input" id="budgetMax"><option value="15" selected>15 CHF</option><option value="25">25 CHF</option><option value="40">40 CHF</option></select>
+      <select class="config-input" id="budgetMax"><option value="15" selected>Petit</option><option value="25">Moyen</option><option value="40">Grand</option></select>
     </div>
   </div>
   <div class="config-field">
@@ -467,6 +522,29 @@
     </div>
   </div>
   <button class="config-submit" onclick="genererPlan()">✨ Générer mon plan</button>
+</div>
+
+<!-- ALLY MODAL -->
+<div id="allyModal" class="ally-modal" style="display:none" onclick="if(event.target===this)fermerAlly()">
+  <div class="ally-modal-card">
+    <div class="ally-modal-drag"></div>
+    <div class="ally-modal-header">
+      <div class="ally-modal-avatar" id="allyModalAvatar">
+        <svg width="56" height="56"><use id="allyModalSvg" href="#mascot-goji"/></svg>
+      </div>
+      <button class="ally-modal-close" onclick="fermerAlly()">✕</button>
+    </div>
+    <div class="ally-modal-name" id="allyModalName"></div>
+    <div class="ally-modal-subtitle" id="allyModalSubtitle"></div>
+    <div class="ally-section-label">Bénéfices clés</div>
+    <ul class="ally-benefits" id="allyModalBenefits"></ul>
+    <div class="ally-section-label">Pourquoi cet allié ?</div>
+    <div class="ally-detail" id="allyModalDetail"></div>
+    <div class="ally-tip" id="allyModalTip"></div>
+    <div id="allyModalFooter" style="display:none">
+      <span class="ally-present-badge">✓ Présent dans ton plan d'aujourd'hui</span>
+    </div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -505,11 +583,11 @@
   <div class="companions-section">
     <div class="section-label">Tes alliés du jour</div>
     <div class="companions-scroll">
-      <div class="companion-chip"><div class="companion-avatar" id="ally-goji" data-ally="goji" style="background:linear-gradient(135deg,#FEE2E2,#FECACA)"><svg><use href="#mascot-goji"/></svg></div><div class="companion-name">Goji</div></div>
-      <div class="companion-chip"><div class="companion-avatar" id="ally-curcuma" data-ally="curcuma" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"><svg><use href="#mascot-curcuma"/></svg></div><div class="companion-name">Curcuma</div></div>
-      <div class="companion-chip"><div class="companion-avatar" id="ally-gingembre" data-ally="gingembre" style="background:linear-gradient(135deg,#FFF7ED,#FED7AA)"><svg><use href="#mascot-gingembre"/></svg></div><div class="companion-name">Gingembre</div></div>
-      <div class="companion-chip"><div class="companion-avatar" id="ally-myrtille" data-ally="myrtille" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE)"><svg><use href="#mascot-myrtille"/></svg></div><div class="companion-name">Myrtille</div></div>
-      <div class="companion-chip"><div class="companion-avatar" id="ally-avocat" data-ally="avocat" style="background:linear-gradient(135deg,#DCFCE7,#BBF7D0)"><svg><use href="#mascot-avocat"/></svg></div><div class="companion-name">Avocat</div></div>
+      <div class="companion-chip" onclick="ouvrirAlly('goji')"><div class="companion-avatar" id="ally-goji" data-ally="goji" style="background:linear-gradient(135deg,#FEE2E2,#FECACA)"><svg><use href="#mascot-goji"/></svg></div><div class="companion-name">Goji</div></div>
+      <div class="companion-chip" onclick="ouvrirAlly('curcuma')"><div class="companion-avatar" id="ally-curcuma" data-ally="curcuma" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"><svg><use href="#mascot-curcuma"/></svg></div><div class="companion-name">Curcuma</div></div>
+      <div class="companion-chip" onclick="ouvrirAlly('gingembre')"><div class="companion-avatar" id="ally-gingembre" data-ally="gingembre" style="background:linear-gradient(135deg,#FFF7ED,#FED7AA)"><svg><use href="#mascot-gingembre"/></svg></div><div class="companion-name">Gingembre</div></div>
+      <div class="companion-chip" onclick="ouvrirAlly('myrtille')"><div class="companion-avatar" id="ally-myrtille" data-ally="myrtille" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE)"><svg><use href="#mascot-myrtille"/></svg></div><div class="companion-name">Myrtille</div></div>
+      <div class="companion-chip" onclick="ouvrirAlly('avocat')"><div class="companion-avatar" id="ally-avocat" data-ally="avocat" style="background:linear-gradient(135deg,#DCFCE7,#BBF7D0)"><svg><use href="#mascot-avocat"/></svg></div><div class="companion-name">Avocat</div></div>
     </div>
   </div>
 
@@ -649,6 +727,122 @@ var recipeBaseIng = {}
 var savedRecipes = []
 var ppBesoins = []
 var ppRegimes = []
+var ppAllergiesPresets = []
+var ppAllergiesCustom = []
+var ppPathologiesPresets = []
+var ppPathologiesCustom = []
+var ppMedicaments = []
+var currentActiveAllies = []
+
+// ── Tag input system ──
+var TAG_ARRAYS = {
+  ppAllergiesPresets: function(v){ ppAllergiesPresets=v },
+  ppAllergiesCustom:  function(v){ ppAllergiesCustom=v },
+  ppPathologiesPresets: function(v){ ppPathologiesPresets=v },
+  ppPathologiesCustom:  function(v){ ppPathologiesCustom=v },
+  ppMedicaments:      function(v){ ppMedicaments=v }
+}
+function getTagArr(name){
+  if(name==='ppAllergiesPresets') return ppAllergiesPresets
+  if(name==='ppAllergiesCustom')  return ppAllergiesCustom
+  if(name==='ppPathologiesPresets') return ppPathologiesPresets
+  if(name==='ppPathologiesCustom')  return ppPathologiesCustom
+  if(name==='ppMedicaments')      return ppMedicaments
+  return []
+}
+function setTagArr(name,val){ if(TAG_ARRAYS[name]) TAG_ARRAYS[name](val) }
+
+function handleTagKey(event,arrName,containerId,inputId){
+  if(event.key==='Enter'||event.key===','){
+    event.preventDefault()
+    var input=document.getElementById(inputId)
+    if(!input) return
+    var val=input.value.trim().replace(/,+$/,'')
+    if(val){ addCustomTag(arrName,val,containerId); input.value='' }
+  } else if(event.key==='Backspace'){
+    var input=document.getElementById(inputId)
+    if(input&&!input.value){
+      var arr=getTagArr(arrName)
+      if(arr.length) removeCustomTag(arrName,arr[arr.length-1],containerId)
+    }
+  }
+}
+
+function addCustomTag(arrName,val,containerId){
+  var arr=getTagArr(arrName)
+  if(!val||arr.includes(val)) return
+  arr.push(val); setTagArr(arrName,arr)
+  renderCustomTags(arrName,containerId)
+}
+
+function removeCustomTag(arrName,val,containerId){
+  setTagArr(arrName,getTagArr(arrName).filter(function(v){return v!==val}))
+  renderCustomTags(arrName,containerId)
+}
+
+function renderCustomTags(arrName,containerId){
+  var container=document.getElementById(containerId); if(!container) return
+  container.querySelectorAll('.pp-tag').forEach(function(t){t.remove()})
+  var input=container.querySelector('.pp-tag-input')
+  getTagArr(arrName).forEach(function(val){
+    var tag=document.createElement('span'); tag.className='pp-tag'
+    var txt=document.createTextNode(val); tag.appendChild(txt)
+    var rm=document.createElement('span'); rm.className='pp-tag-remove'; rm.textContent='×'
+    ;(function(n,v,c){rm.addEventListener('click',function(){removeCustomTag(n,v,c)})})(arrName,val,containerId)
+    tag.appendChild(rm)
+    container.insertBefore(tag,input)
+  })
+}
+
+function togglePresetTag(el,arrName,containerId){
+  var val=el.dataset.value
+  el.classList.toggle('selected')
+  var arr=getTagArr(arrName)
+  if(el.classList.contains('selected')){ if(!arr.includes(val)) arr.push(val); setTagArr(arrName,arr) }
+  else { setTagArr(arrName,arr.filter(function(v){return v!==val})) }
+}
+
+function getAllAllergies(){ return ppAllergiesPresets.concat(ppAllergiesCustom.filter(function(v){return !ppAllergiesPresets.includes(v)})) }
+function getAllPathologies(){ return ppPathologiesPresets.concat(ppPathologiesCustom.filter(function(v){return !ppPathologiesPresets.includes(v)})) }
+
+// ── Ally info data ──
+var ALLY_INFO = {
+  goji: {
+    name:'Baies de Goji', subtitle:'La superfruta de la vitalité',
+    bg:'linear-gradient(135deg,#FEE2E2,#FECACA)',
+    benefits:['Source exceptionnelle d\'antioxydants (zéaxanthine)','Boostent l\'énergie et réduisent la fatigue','Soutiennent le système immunitaire et la vue'],
+    detail:'Les baies de Goji contiennent 18 acides aminés essentiels et 21 minéraux dont zinc et fer. Leurs polysaccharides (LBP) stimulent la production d\'énergie cellulaire et protègent les cellules des radicaux libres.',
+    tip:'💡 Consommer 15-30g par jour, idéalement le matin. Excellentes en infusion (10 min dans de l\'eau chaude) pour un effet vitaminant durable.'
+  },
+  curcuma: {
+    name:'Curcuma', subtitle:'L\'or anti-inflammatoire',
+    bg:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+    benefits:['Puissant anti-inflammatoire naturel (curcumine)','Soutient la mobilité et le confort articulaire','Protège le foie et favorise la digestion'],
+    detail:'La curcumine inhibe les enzymes pro-inflammatoires COX-2 et NF-κB. Son absorption est multipliée par 20 en présence de pipérine (poivre noir) et de matières grasses. Des études cliniques confirment son efficacité pour les douleurs articulaires.',
+    tip:'💡 Toujours associer avec une pincée de poivre noir et une matière grasse (huile, beurre) pour maximiser l\'absorption de la curcumine.'
+  },
+  gingembre: {
+    name:'Gingembre', subtitle:'La racine digestive & tonifiante',
+    bg:'linear-gradient(135deg,#FFF7ED,#FED7AA)',
+    benefits:['Stimule les enzymes digestives naturellement','Anti-nauséeux et anti-spasmodique reconnu','Propriétés anti-inflammatoires et réchauffantes'],
+    detail:'Les gingérols et shogaols du gingembre stimulent la production d\'enzymes digestives et accélèrent la vidange gastrique. Des méta-analyses montrent une réduction des nausées de 40% et des effets anti-inflammatoires comparables à l\'ibuprofène, sans effets secondaires.',
+    tip:'💡 En infusion fraîche : 3-4 tranches de gingembre frais dans 250ml d\'eau chaude, 10 min. Ajouter du citron et du miel pour décupler les bienfaits.'
+  },
+  myrtille: {
+    name:'Myrtille', subtitle:'La baie de la clarté mentale',
+    bg:'linear-gradient(135deg,#EDE9FE,#DDD6FE)',
+    benefits:['Protège le cerveau et améliore la mémoire','Régule la glycémie et le stress oxydatif','Riche en anthocyanes aux effets anti-âge'],
+    detail:'Les anthocyanes des myrtilles traversent la barrière hémato-encéphalique et protègent les neurones du stress oxydatif. Une étude de l\'Université du Michigan montre une amélioration de la mémoire à court terme de 5% après 12 semaines de consommation régulière.',
+    tip:'💡 Fraîches ou surgelées, leur valeur nutritive est identique. 80-100g par jour suffisent pour bénéficier de leurs effets neuroprotecteurs.'
+  },
+  avocat: {
+    name:'Avocat', subtitle:'Le fruit des hormones équilibrées',
+    bg:'linear-gradient(135deg,#DCFCE7,#BBF7D0)',
+    benefits:['Riche en acides gras mono-insaturés (oméga-9)','Multiplie l\'absorption des vitamines liposolubles (A,D,E,K)','Soutient l\'équilibre hormonal naturellement'],
+    detail:'L\'avocat est l\'un des seuls fruits riches en graisses saines. Son gras mono-insaturé facilite l\'absorption des vitamines A, D, E, K des autres aliments du repas — multipliant leur biodisponibilité par 4. Ses phytostérols contribuent à l\'équilibre des hormones.',
+    tip:'💡 Ne pas jeter la couche verte sous la peau : c\'est là que se concentrent la plupart des polyphénols antioxydants.'
+  }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
   var opts = {weekday:'long',day:'numeric',month:'short'}
@@ -899,7 +1093,7 @@ function afficherPlan(plan) {
   if (conseil) setText('conseilText', conseil)
 
   loggerPlanVu(plan)
-  mettreAJourAllies()
+  updateAlliesFromPlan(plan)
   var fb = document.getElementById('feedbackBar')
   if (fb) {
     fb.style.display = 'flex'
@@ -1293,35 +1487,110 @@ async function supprimerSauvegardee(id){
 
 // ── Allié actif selon symptôme principal ──
 var ALLY_MAP = {
-  vitalite:  'goji',        // Goji = énergie/vitalité
-  serenite:  'myrtille',    // Myrtille = antioxydant/stress
-  digestion: 'gingembre',   // Gingembre = digestion
-  sommeil:   'myrtille',    // Myrtille = relaxation
-  mobilite:  'curcuma',     // Curcuma = anti-inflammatoire
-  hormones:  'avocat',      // Avocat = hormones/bien-être
+  vitalite:  'goji',
+  serenite:  'myrtille',
+  digestion: 'gingembre',
+  sommeil:   'myrtille',
+  mobilite:  'curcuma',
+  hormones:  'avocat',
   _default:  'goji'
 }
 
+var ALLY_KEYWORDS = {
+  goji:      ['goji'],
+  curcuma:   ['curcuma','curry'],
+  gingembre: ['gingembre'],
+  myrtille:  ['myrtille','myrtilles','bleuet','fruits rouges'],
+  avocat:    ['avocat']
+}
+
+// Affichage initial (avant plan généré) : un seul allié actif selon symptôme
 function mettreAJourAllies(){
-  // Trouver le 1er symptôme sélectionné
   var actif = ALLY_MAP._default
   for(var i=0;i<selectedSymptoms.length;i++){
     if(ALLY_MAP[selectedSymptoms[i]]){actif=ALLY_MAP[selectedSymptoms[i]];break}
   }
-  // Réinitialiser tous les avatars
-  document.querySelectorAll('.companion-avatar[data-ally]').forEach(function(el){
-    el.classList.remove('active')
-  })
-  // Activer le bon
-  var el=document.getElementById('ally-'+actif)
-  if(el) el.classList.add('active')
+  // Rendre tous les alliés visibles et réinitialiser actif
+  document.querySelectorAll('.companion-chip').forEach(function(chip){ chip.style.display='flex' })
+  document.querySelectorAll('.companion-avatar[data-ally]').forEach(function(el){ el.classList.remove('active') })
+  var el=document.getElementById('ally-'+actif); if(el) el.classList.add('active')
+  currentActiveAllies = [actif]
 }
 
-function fermerTout(){fermerConfig();fermerSauvegardees();fermerProfil()}
+// Après génération plan : afficher seulement les alliés présents dans les recettes
+function updateAlliesFromPlan(plan){
+  var allIngredients = []
+  ;['matin','midi','soir','apres_midi'].forEach(function(m){
+    var recette = plan[m]; if(!recette) return
+    ;(recette.ingredients||[]).forEach(function(ing){
+      var nom = (typeof ing==='string' ? ing : (ing.nom||'')).toLowerCase()
+      if(nom) allIngredients.push(nom)
+    })
+  })
+
+  // Matcher aux alliés
+  var matched = []
+  Object.keys(ALLY_KEYWORDS).forEach(function(ally){
+    var found = allIngredients.some(function(ing){
+      return ALLY_KEYWORDS[ally].some(function(kw){ return ing.includes(kw) })
+    })
+    if(found) matched.push(ally)
+  })
+
+  // Fallback : au moins 1 allié basé sur le symptôme principal
+  if(matched.length===0){
+    var fallback = ALLY_MAP[selectedSymptoms[0]] || ALLY_MAP._default
+    matched = [fallback]
+  }
+
+  currentActiveAllies = matched
+
+  // Show/hide + highlight
+  document.querySelectorAll('.companion-chip').forEach(function(chip){
+    var avatarEl = chip.querySelector('.companion-avatar[data-ally]'); if(!avatarEl) return
+    var allyName = avatarEl.getAttribute('data-ally')
+    var visible = matched.includes(allyName)
+    chip.style.display = visible ? 'flex' : 'none'
+    avatarEl.classList.toggle('active', visible && matched[0]===allyName)
+  })
+}
+
+// ── Modal allié ──
+function ouvrirAlly(allyName){
+  var info = ALLY_INFO[allyName]; if(!info) return
+  var modal = document.getElementById('allyModal'); if(!modal) return
+
+  var avatarEl = document.getElementById('allyModalAvatar')
+  if(avatarEl) avatarEl.style.background = info.bg
+
+  var svgUse = document.getElementById('allyModalSvg')
+  if(svgUse) svgUse.setAttribute('href','#mascot-'+allyName)
+
+  var nameEl = document.getElementById('allyModalName'); if(nameEl) nameEl.textContent = info.name
+  var subEl  = document.getElementById('allyModalSubtitle'); if(subEl) subEl.textContent = info.subtitle
+
+  var benEl = document.getElementById('allyModalBenefits')
+  if(benEl) benEl.innerHTML = info.benefits.map(function(b){ return '<li>'+b+'</li>' }).join('')
+
+  var detailEl = document.getElementById('allyModalDetail'); if(detailEl) detailEl.textContent = info.detail
+  var tipEl    = document.getElementById('allyModalTip');    if(tipEl)    tipEl.textContent    = info.tip
+
+  var footerEl = document.getElementById('allyModalFooter')
+  if(footerEl) footerEl.style.display = currentActiveAllies.includes(allyName) ? 'block' : 'none'
+
+  modal.style.display = 'flex'
+}
+
+function fermerAlly(){
+  var modal = document.getElementById('allyModal'); if(modal) modal.style.display='none'
+}
+
+function fermerTout(){fermerConfig();fermerSauvegardees();fermerProfil();fermerAlly()}
 
 function ouvrirProfil(){
   var p = profilUtilisateur || {}
-  ppBesoins = (p.objectifs_generaux || []).slice()
+  // Sync besoins depuis selectedSymptoms (plan actif) en priorité
+  ppBesoins = selectedSymptoms.length ? selectedSymptoms.slice() : (p.objectifs_generaux || []).slice()
   ppRegimes = (p.regimes_alimentaires || []).slice()
 
   var prenomEl = document.getElementById('pp-prenom')
@@ -1333,14 +1602,33 @@ function ouvrirProfil(){
   var tempsEl = document.getElementById('pp-temps')
   if (tempsEl) tempsEl.value = String(p.temps_cuisine_max || 30)
 
-  var allEl = document.getElementById('pp-allergies')
-  if (allEl) allEl.value = (p.allergies || []).join(', ')
+  // Load allergies (presets + custom)
+  var PRESET_ALLERGIES = ['arachides','noix','gluten','lactose','poisson','soja']
+  ppAllergiesPresets = []; ppAllergiesCustom = []
+  ;(p.allergies || []).forEach(function(a){
+    if(PRESET_ALLERGIES.includes(a)) ppAllergiesPresets.push(a)
+    else ppAllergiesCustom.push(a)
+  })
+  document.querySelectorAll('#pp-allergy-presets .pp-preset-chip').forEach(function(el){
+    el.classList.toggle('selected', ppAllergiesPresets.includes(el.dataset.value))
+  })
+  renderCustomTags('ppAllergiesCustom','pp-allergies-tags')
 
-  var pathoEl = document.getElementById('pp-pathologies')
-  if (pathoEl) pathoEl.value = (p.pathologies_chroniques || []).join(', ')
+  // Load pathologies (presets + custom)
+  var PRESET_PATHO = ['diabete','hypertension','hypothyroidie','sibo_ibs','endometriose']
+  ppPathologiesPresets = []; ppPathologiesCustom = []
+  ;(p.pathologies_chroniques || []).forEach(function(pt){
+    if(PRESET_PATHO.includes(pt)) ppPathologiesPresets.push(pt)
+    else ppPathologiesCustom.push(pt)
+  })
+  document.querySelectorAll('#pp-patho-presets .pp-preset-chip').forEach(function(el){
+    el.classList.toggle('selected', ppPathologiesPresets.includes(el.dataset.value))
+  })
+  renderCustomTags('ppPathologiesCustom','pp-patho-tags')
 
-  var medEl = document.getElementById('pp-medicaments')
-  if (medEl) medEl.value = (p.medications_actuelles || []).join(', ')
+  // Load medications
+  ppMedicaments = (p.medications_actuelles || []).slice()
+  renderCustomTags('ppMedicaments','pp-meds-tags')
 
   var encEl = document.getElementById('pp-enceinte')
   if (encEl) encEl.checked = !!p.enceinte
@@ -1396,9 +1684,9 @@ async function sauvegarderProfil(){
     regimes_alimentaires:   ppRegimes,
     budget_complements:     document.getElementById('pp-budget').value,
     temps_cuisine_max:      parseInt(document.getElementById('pp-temps').value),
-    allergies:              parseList('pp-allergies'),
-    pathologies_chroniques: parseList('pp-pathologies'),
-    medications_actuelles:  parseList('pp-medicaments'),
+    allergies:              getAllAllergies(),
+    pathologies_chroniques: getAllPathologies(),
+    medications_actuelles:  ppMedicaments.slice(),
     enceinte:               document.getElementById('pp-enceinte').checked,
     allaitement:            document.getElementById('pp-allaitement').checked,
     groupe_sanguin:         document.getElementById('pp-groupe-sanguin').value || null
