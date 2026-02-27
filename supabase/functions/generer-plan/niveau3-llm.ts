@@ -456,6 +456,82 @@ Règles :
 }
 
 // ============================================================================
+// GENERATION CONSEIL "LE SAVIEZ-VOUS ?" VIA LLM
+// ============================================================================
+
+export async function genererConseilDuJour(
+  contexte: ContexteUtilisateur
+): Promise<string> {
+
+  console.log('[NIVEAU 3] Génération conseil du jour...');
+
+  const fallbacks: Record<string, string> = {
+    'vitalite':  'Le magnésium intervient dans plus de 300 réactions enzymatiques dont la production d\'énergie cellulaire.',
+    'serenite':  'Le tryptophane, précurseur de la sérotonine, se trouve dans la banane, la dinde et le chocolat noir à 70%+.',
+    'digestion': 'Mâcher lentement (20 fois par bouchée) divise par deux la charge digestive de l\'estomac.',
+    'sommeil':   'Les cerises acidulées sont l\'une des rares sources alimentaires naturelles de mélatonine.',
+    'mobilite':  'La curcumine du curcuma est à consommer avec du poivre noir pour une absorption 20× supérieure.',
+    'hormones':  'Les lignanes du lin (graines moulues) ont une action phytoestrogénique douce qui aide à réguler le cycle hormonal.',
+  };
+  const fallback = fallbacks[contexte.objectif_principal || '']
+    || 'Une alimentation colorée et variée est la base d\'une bonne santé — chaque couleur apporte des nutriments uniques.';
+
+  if (!ANTHROPIC_API_KEY) return fallback;
+
+  const objectifsLabel: Record<string, string> = {
+    'vitalite':  'vitalité et énergie',
+    'serenite':  'stress et sérénité',
+    'digestion': 'digestion et microbiome',
+    'sommeil':   'sommeil et récupération',
+    'mobilite':  'mobilité et inflammation',
+    'hormones':  'équilibre hormonal',
+    'energie':   'énergie et métabolisme',
+    'stress':    'gestion du stress',
+  };
+  const sujet = contexte.symptomes_declares?.map(s => objectifsLabel[s] || s).join(', ')
+    || objectifsLabel[contexte.objectif_principal || '']
+    || 'bien-être général';
+
+  const prompt = `Tu es un nutritionniste expert. Génère UN SEUL fait scientifique surprenant et utile sur l'alimentation ou la nutrition, en lien avec : ${sujet}.
+
+Règles STRICTES :
+- 1 à 2 phrases maximum, percutantes et mémorables
+- Basé sur des données scientifiques réelles (pas de pseudo-science)
+- Donner un chiffre ou un mécanisme concret quand c'est possible
+- Jamais de conseil général bateau ("mangez varié", "buvez de l'eau")
+- Pas de guillemets, pas d'introduction, pas de titre
+- Réponds UNIQUEMENT avec le fait, rien d'autre`;
+
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 120,
+        temperature: 1.0,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) return fallback;
+
+    const data = await response.json();
+    const conseil = data.content?.[0]?.text?.trim() || fallback;
+    console.log(`[NIVEAU 3] Conseil du jour : ${conseil}`);
+    return conseil;
+
+  } catch (error) {
+    console.error('[ERROR] Erreur génération conseil:', error);
+    return fallback;
+  }
+}
+
+// ============================================================================
 // FALLBACK : Transformer recette BDD → interface RecetteGeneree
 // ============================================================================
 

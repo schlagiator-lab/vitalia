@@ -27,6 +27,7 @@ import {
   genererRecetteLLM,
   genererPauseLLM,
   genererMessageMotivation,
+  genererConseilDuJour,
   transformerRecetteBDD
 } from './niveau3-llm.ts';
 import {
@@ -69,89 +70,6 @@ const INGREDIENTS_POOL: Record<string, string[]> = {
   'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
 };
 
-// ============================================================================
-// POOL DE CONSEILS "LE SAVIEZ-VOUS ?" PAR OBJECTIF
-// Sélection aléatoire à chaque génération pour renouveler le conseil affiché
-// ============================================================================
-
-const CONSEILS_POOL: Record<string, string[]> = {
-  'vitalite': [
-    "Le fer non-héminique des légumineuses est jusqu'à 3× mieux absorbé en présence de vitamine C — presse un citron sur tes lentilles !",
-    "La vitamine B12 est indispensable à la production d'énergie cellulaire. Si tu es végétalien·ne, une supplémentation est recommandée.",
-    "Le magnésium intervient dans plus de 300 réactions enzymatiques dont la fabrication d'ATP, ton carburant cellulaire.",
-    "Boire 500 ml d'eau dès le réveil relance ton métabolisme et améliore la clarté mentale dès le matin.",
-    "Les graines de courge sont l'une des meilleures sources végétales de zinc, minéral clé pour l'immunité et la vitalité."
-  ],
-  'serenite': [
-    "Le magnésium est surnommé le 'minéral anti-stress' : il régule le cortisol et favorise la détente musculaire.",
-    "Le tryptophane, précurseur de la sérotonine, se trouve dans la banane, la dinde et le chocolat noir à 70%+.",
-    "La cohérence cardiaque (5 min de respiration 5-5) réduit le cortisol de 20 à 30% en quelques semaines.",
-    "Le cacao cru contient de la théobromine et des flavanoïdes qui améliorent l'humeur sans pic de caféine.",
-    "Les probiotiques du yaourt fermenté soutiennent l'axe intestin-cerveau, influençant directement ton niveau de stress."
-  ],
-  'digestion': [
-    "Le gingembre stimule la production d'enzymes digestives et réduit les nausées — une tisane après le repas fait des merveilles.",
-    "Les fibres prébiotiques (ail, oignon, banane verte, asperge) nourrissent tes bonnes bactéries intestinales.",
-    "Mâcher lentement (20 fois par bouchée) divise par deux la charge digestive de ton estomac.",
-    "Le kéfir contient jusqu'à 30 souches de probiotiques différentes — bien plus que les yaourts classiques.",
-    "La papaye contient de la papaïne, une enzyme qui améliore la digestion des protéines animales."
-  ],
-  'sommeil': [
-    "Les cerises acidulées sont l'une des rares sources alimentaires naturelles de mélatonine. Un verre de jus le soir peut améliorer la durée du sommeil.",
-    "La température idéale pour dormir est entre 16 et 19°C — ton corps doit baisser sa température pour s'endormir.",
-    "Le magnésium glycinate pris le soir est reconnu pour améliorer la qualité du sommeil sans somnolence.",
-    "Éviter les écrans 1h avant le coucher réduit la suppression de mélatonine induite par la lumière bleue.",
-    "Le kiwi consommé le soir (2 kiwis) a montré dans des études une amélioration de 13% de la durée du sommeil."
-  ],
-  'mobilite': [
-    "La curcumine du curcuma inhibe NF-κB, une voie d'inflammation majeure — à consommer avec du poivre noir pour une absorption 20× supérieure.",
-    "Les oméga-3 EPA/DHA (saumon, sardines, maquereau) réduisent les marqueurs d'inflammation articulaire en 4 à 8 semaines.",
-    "Les myrtilles contiennent des anthocyanes qui protègent le cartilage de l'oxydation et réduisent les douleurs articulaires.",
-    "La vitamine D est essentielle à la santé osseuse et musculaire — une carence touche plus de 70% des Français en hiver.",
-    "Le collagène de type II, présent dans le bouillon d'os, aide à maintenir l'intégrité du cartilage articulaire."
-  ],
-  'hormones': [
-    "Les lignanes du lin (graines moulues) ont une action phytoestrogénique douce qui aide à réguler le cycle hormonal.",
-    "Le zinc est essentiel à la production de testostérone chez l'homme et à la santé ovarienne chez la femme.",
-    "Le sucre raffiné perturbe l'insuline, qui est une hormone — stabiliser ta glycémie stabilise aussi tes autres hormones.",
-    "L'avocat est riche en acides gras monoinsaturés qui sont les précurseurs directs des hormones stéroïdiennes.",
-    "Le brocoli contient du DIM (diindolylméthane) qui favorise le métabolisme des œstrogènes en formes protectrices."
-  ],
-  'energie': [
-    "Les glucides complexes (avoine, patate douce, quinoa) libèrent leur énergie progressivement, évitant les pics de glycémie.",
-    "La CoQ10 est essentielle à la production d'énergie dans les mitochondries — les sardines en sont une bonne source alimentaire.",
-    "Une déshydratation de seulement 2% réduit les performances cognitives et physiques de manière significative.",
-    "Le fer est le composant clé de l'hémoglobine qui transporte l'oxygène vers tes cellules — une carence = fatigue chronique.",
-    "Les dattes medjool combinent fer, potassium et sucres naturels pour un boost d'énergie rapide et durable."
-  ],
-  'stress': [
-    "L'ashwagandha est un adaptogène cliniquement validé pour réduire le cortisol de 20 à 30% en 8 semaines.",
-    "Le magnésium est épuisé par le stress chronique — et son manque amplifie la réponse au stress. Un cercle vicieux à briser.",
-    "La L-théanine du thé vert (sans caféine) induit un état de calme alerte, idéal pour la concentration sereine.",
-    "15 minutes de marche en nature réduisent l'activité de l'amygdale (centre de la peur) mesurée par IRM.",
-    "La respiration diaphragmatique active le nerf vague et bascule ton système nerveux en mode parasympathique (repos)."
-  ],
-  'bien-etre-general': [
-    "Une assiette colorée (5 couleurs) garantit une diversité de phytonutriments protecteurs — mange l'arc-en-ciel !",
-    "Manger en pleine conscience, sans écran, améliore la digestion et la satiété en réduisant les signaux de stress.",
-    "Les polyphénols de l'huile d'olive extra-vierge ont des effets anti-inflammatoires comparables à l'ibuprofène à faible dose.",
-    "Le jeûne intermittent 12/12 (manger sur 12h, jeûner 12h) permet à ton microbiome de se régénérer chaque nuit.",
-    "Cuisiner soi-même 5 repas par semaine est associé à une meilleure santé cardiovasculaire et un IMC plus stable."
-  ]
-};
-
-function selectionnerConseilDuJour(objectif: string, besoinsActifs: string[]): string {
-  // Essayer l'objectif principal d'abord, puis les besoins actifs, puis fallback
-  const cles = [objectif, ...besoinsActifs, 'bien-etre-general'];
-  for (const cle of cles) {
-    const pool = CONSEILS_POOL[cle];
-    if (pool && pool.length > 0) {
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-  }
-  return "Une alimentation variée et colorée est la base d'une bonne santé — chaque couleur apporte des nutriments uniques.";
-}
-
 // FIX P1 BIS : Ingrédients différents pour chaque repas de la journée
 // Retourne 3 listes non-chevauchantes (petit-dej, déjeuner, dîner)
 // ingredientsBanis : ingrédients vus < 7j, exclus du pool (Faille 4)
@@ -186,16 +104,6 @@ function selectionnerIngredientsTroisRepas(
   };
 }
 
-// Rétrocompatibilité (utilisé pour fallback)
-function selectionnerIngredientsParObjectif(objectif: string): string[] {
-  const ingredients = INGREDIENTS_POOL[objectif] || INGREDIENTS_POOL['vitalite'];
-  const shuffled = [...ingredients];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, 4);
-}
 
 // Recette de dernier recours si LLM + BDD échouent tous les deux
 function genererRecetteParDefaut(typeRepas: string, ingredients: string[]): any {
@@ -489,7 +397,7 @@ serve(async (req) => {
     // → On charge le profil complet depuis Supabase via profil_id
     // =========================================================================
     const body = await req.json();
-    const { profil_id, symptomes, preferences_moment, force_regeneration, meme_theme } = body;
+    const { profil_id, symptomes, force_regeneration, meme_theme } = body;
 
     if (!profil_id) {
       return new Response(
@@ -646,7 +554,7 @@ serve(async (req) => {
       ingDiner    = troisRepas.diner;
     }
 
-    console.log(`[NIVEAU 2] Style: ${styleCulinaire}`);
+    console.log(`[NIVEAU 2] Styles: ${stylePetitDej} / ${styleDejeuner} / ${styleDiner}`);
     console.log(`[NIVEAU 2] Ingrédients Petit-dej : ${ingPetitDej.join(', ')}`);
     console.log(`[NIVEAU 2] Ingrédients Déjeuner  : ${ingDejeuner.join(', ')}`);
     console.log(`[NIVEAU 2] Ingrédients Dîner     : ${ingDiner.join(', ')}`);
@@ -658,14 +566,14 @@ serve(async (req) => {
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
 
     const forceRegen = force_regeneration === true;
-    const [recettePause, recettePetitDej, recetteDejeuner, recetteDiner] = await Promise.all([
+    const [recettePause, recettePetitDej, recetteDejeuner, recetteDiner, messageMotivation, conseilDuJour] = await Promise.all([
       genererPauseAvecFallback(profil, contexte),
       genererRecetteAvecFallback(supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej, profil, contexte, historique, forceRegen),
       genererRecetteAvecFallback(supabase, 'dejeuner',       styleDejeuner, ingDejeuner, profil, contexte, historique, forceRegen),
-      genererRecetteAvecFallback(supabase, 'diner',          styleDiner,    ingDiner,    profil, contexte, historique, forceRegen)
+      genererRecetteAvecFallback(supabase, 'diner',          styleDiner,    ingDiner,    profil, contexte, historique, forceRegen),
+      genererMessageMotivation(contexte, {}),
+      genererConseilDuJour(contexte)
     ]);
-
-    const messageMotivation = await genererMessageMotivation(contexte, {});
 
     // ========================================================================
     // COMPOSITION PLAN FINAL
@@ -714,8 +622,8 @@ serve(async (req) => {
       })),
 
       message_motivation: messageMotivation,
-      conseil_du_jour: selectionnerConseilDuJour(contexte.objectif_principal || 'bien-etre-general', besoinsUtilises),
-      conseils_generaux: [selectionnerConseilDuJour(contexte.objectif_principal || 'bien-etre-general', besoinsUtilises)],
+      conseil_du_jour: conseilDuJour,
+      conseils_generaux: [conseilDuJour],
 
       genere_le: new Date().toISOString(),
       expire_le: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
