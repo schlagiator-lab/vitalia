@@ -450,6 +450,7 @@
     <div class="config-field">
       <label class="config-label">Régimes alimentaires</label>
       <div class="config-chips" id="pp-regimes-chips">
+        <div class="config-chip" onclick="togglePPChip(this,'omnivore','regime')">🥩 Omnivore</div>
         <div class="config-chip" onclick="togglePPChip(this,'sans_gluten','regime')">🌾 Sans gluten</div>
         <div class="config-chip" onclick="togglePPChip(this,'vegan','regime')">🌱 Végan</div>
         <div class="config-chip" onclick="togglePPChip(this,'vegetarien','regime')">🥗 Végétarien</div>
@@ -571,6 +572,7 @@
   <div class="config-field">
     <label class="config-label">Régimes</label>
     <div class="config-chips">
+      <div class="config-chip" onclick="toggleChip(this,'omnivore')" data-regime="omnivore">🥩 Omnivore</div>
       <div class="config-chip selected" onclick="toggleChip(this,'sans_gluten')" data-regime="sans_gluten">🌾 Sans gluten</div>
       <div class="config-chip" onclick="toggleChip(this,'vegan')" data-regime="vegan">🌱 Végan</div>
       <div class="config-chip" onclick="toggleChip(this,'vegetarien')" data-regime="vegetarien">🥗 Végétarien</div>
@@ -579,6 +581,13 @@
       <div class="config-chip" onclick="toggleChip(this,'halal')" data-regime="halal">☪️ Halal</div>
       <div class="config-chip" onclick="toggleChip(this,'casher')" data-regime="casher">✡️ Casher</div>
     </div>
+  </div>
+  <div class="toggle-row" style="margin-top:12px;padding:4px 0;">
+    <span class="toggle-label" style="font-size:13px;">Même thème culinaire pour les 3 repas</span>
+    <label class="pp-toggle">
+      <input type="checkbox" id="memeThemeToggle">
+      <span class="pp-toggle-track"></span>
+    </label>
   </div>
   <button class="config-submit" onclick="genererPlan()">✨ Générer mon plan</button>
 </div>
@@ -1081,7 +1090,8 @@ async function genererPlan() {
   document.getElementById('app').style.opacity='0'
 
   try {
-    var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(document.getElementById('tempsMax').value),budget_max:parseInt(document.getElementById('budgetMax').value)},force_regeneration:true}
+    var memeThemeToggle = document.getElementById('memeThemeToggle')
+    var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(document.getElementById('tempsMax').value),budget_max:parseInt(document.getElementById('budgetMax').value)},force_regeneration:true,meme_theme:memeThemeToggle?memeThemeToggle.checked:false}
 
     var r = await fetch(SUPABASE_URL+'/functions/v1/generer-plan',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify(body)})
     if (!r.ok) throw new Error('Erreur serveur '+r.status)

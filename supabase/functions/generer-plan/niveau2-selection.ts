@@ -254,7 +254,8 @@ export function getIngredientsBanis(historique: HistoriqueRotation): Set<string>
 
 export function selectionnerStyleCulinaire(
   profil: ProfilUtilisateur,
-  historique: HistoriqueRotation
+  historique: HistoriqueRotation,
+  stylesDejaUtilises: string[] = []
 ): string {
 
   const stylesFavoris = profil.styles_cuisines_favoris?.length
@@ -274,9 +275,16 @@ export function selectionnerStyleCulinaire(
       .map((sr: any) => sr.style_culinaire)
   );
 
-  let stylesDisponibles = stylesFavoris.filter(s => !stylesExclus.includes(s) && !stylesRecentsIds.has(s));
+  let stylesDisponibles = stylesFavoris.filter(s =>
+    !stylesExclus.includes(s) &&
+    !stylesRecentsIds.has(s) &&
+    !stylesDejaUtilises.includes(s)   // exclure les styles déjà choisis dans cette génération
+  );
 
-  // Fallback si tous les styles sont récents
+  // Fallback progressif si trop peu de styles disponibles
+  if (stylesDisponibles.length === 0) {
+    stylesDisponibles = stylesFavoris.filter(s => !stylesExclus.includes(s) && !stylesDejaUtilises.includes(s));
+  }
   if (stylesDisponibles.length === 0) {
     stylesDisponibles = stylesFavoris.filter(s => !stylesExclus.includes(s));
   }
@@ -293,7 +301,7 @@ export function selectionnerStyleCulinaire(
 
   const [styleChoisi] = selectionnerPondere(stylesScores, 1);
   const resultat = styleChoisi?.style || 'mediterraneen';
-  console.log(`[NIVEAU 2] Style culinaire sélectionné : ${resultat}`);
+  console.log(`[NIVEAU 2] Style culinaire sélectionné : ${resultat} (exclus: [${stylesDejaUtilises.join(', ')}])`);
   return resultat;
 }
 

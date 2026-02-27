@@ -95,6 +95,7 @@ export interface PlanGenere {
   routines: RoutineRecommandee[];
   
   message_motivation?: string;
+  conseil_du_jour?: string;
   conseils_generaux?: string[];
   
   genere_le: string;

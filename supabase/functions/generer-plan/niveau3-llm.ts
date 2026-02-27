@@ -180,7 +180,10 @@ function construirePromptRecette(
   const budget = profil.budget === 'faible'  ? '5-8 euros/portion'
                : profil.budget === 'eleve'   ? '12-20 euros/portion'
                : '8-12 euros/portion';
-  
+
+  // Contraintes spécifiques petit-déjeuner
+  const estPetitDej = typeRepas === 'petit-dejeuner';
+
   // Mapping besoins_utilisateurs → objectif nutritionnel
   const objectifNutri: Record<string, string> = {
     'vitalite':          'Riche en fer, vitamines B et magnésium pour booster la vitalité et l\'énergie',
@@ -196,31 +199,54 @@ function construirePromptRecette(
   };
 
   const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'Équilibré, varié et nutritif';
-  
+
+  // Contrainte protéines animales si profil omnivore (non vegan, non végétarien)
+  const estOmnivore = profil.regime_alimentaire?.includes('omnivore')
+    && !profil.regime_alimentaire?.includes('vegan')
+    && !profil.regime_alimentaire?.includes('vegetarien');
+
+  const proteineAnimaleConsigne = estOmnivore
+    ? (profil.budget === 'faible'
+        ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure œufs, sardines en boîte, thon en boîte, poulet, jambon ou fromage (budget accessible).'
+        : profil.budget === 'eleve'
+        ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure saumon sauvage, crevettes, bœuf de qualité, filet de volaille bio ou œufs bio (budget premium).'
+        : '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure poulet, dinde, saumon, thon, œufs, fromage ou viande maigre dans chaque repas.')
+    : '';
+
+  // Contraintes spéciales petit-déjeuner
+  const contraintesPetitDej = estPetitDej ? `
+## CONTRAINTES SUPPLÉMENTAIRES PETIT-DÉJEUNER (OBLIGATOIRES)
+- **Maximum 5 ingrédients** (hors sel/poivre/huile)
+- **Maximum 5 étapes** dans les instructions
+- **Temps total ≤ 15 minutes** (préparation + cuisson)
+- **Pas de cuisson longue** : favoriser cru, toast, bol, smoothie, yaourt, œufs rapides (≤ 5 min)
+- Recette simple, rapide, adaptée au matin — pas un plat élaboré
+` : '';
+
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.
 
 ## CONTRAINTES STRICTES (NON NÉGOCIABLES)
 
 **Type de repas** : ${typeRepas}
 **Style culinaire** : ${styleCulinaire}
-**Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
+**Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
 
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
-**Temps max** : ${tempsMax} minutes (préparation + cuisson combinés)
+**Temps max** : ${estPetitDej ? 15 : tempsMax} minutes (préparation + cuisson combinés)
 **Budget** : ${budget}
 **Objectif nutritionnel** : ${objectifTexte}
 **Portions** : 2
-
+${contraintesPetitDej}
 ## RÈGLES CRÉATIVES
 
 1. **Nom accrocheur** : Sois créatif, évite les noms génériques.
    Mauvais : "Salade de quinoa"
    Bon : "Buddha Bowl Arc-en-Ciel Énergisant"
 
-2. **Instructions CLAIRES** : Étape par étape, précis, facile à suivre
+2. **Instructions CLAIRES** : Étape par étape, précis, facile à suivre${estPetitDej ? ' (5 étapes MAX)' : ''}
 
 3. **Astuces nutritionnelles** : Explique POURQUOI cette recette aide pour : ${contexte.symptomes_declares?.join(', ') || 'bien-être général'}
 
@@ -239,14 +265,14 @@ Réponds UNIQUEMENT avec cet objet JSON exact, sans texte avant ou après :
     "Étape 1 détaillée...",
     "Étape 2 détaillée..."
   ],
-  "temps_preparation": 15,
-  "temps_cuisson": 20,
+  "temps_preparation": ${estPetitDej ? 10 : 15},
+  "temps_cuisson": ${estPetitDej ? 5 : 20},
   "portions": 2,
   "valeurs_nutritionnelles": {
-    "calories": 450,
-    "proteines": 18,
-    "glucides": 55,
-    "lipides": 12
+    "calories": ${estPetitDej ? 350 : 450},
+    "proteines": ${estPetitDej ? 12 : 18},
+    "glucides": ${estPetitDej ? 40 : 55},
+    "lipides": ${estPetitDej ? 10 : 12}
   },
   "astuces": [
     "Astuce nutritionnelle 1"
