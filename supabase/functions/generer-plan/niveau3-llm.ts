@@ -126,8 +126,12 @@ export async function genererRecetteLLM(
         unite:    ing.unite    || ing.unit || 'g'
       })),
       instructions:    recetteJSON.instructions || [],
-      temps_preparation: recetteJSON.temps_preparation || 15,
-      temps_cuisson:   recetteJSON.temps_cuisson || 20,
+      temps_preparation: recetteJSON.temps_preparation ?? 15,
+      // ?? au lieu de || : 0 est une valeur valide (recette sans cuisson)
+      // || écrasait 0 par 20 car 0 est falsy en JS
+      temps_cuisson:   typeRepas === 'petit-dejeuner'
+        ? Math.min(recetteJSON.temps_cuisson ?? 0, 2)  // petit-dej : 0 ou max 2 min (grille-pain/micro-ondes)
+        : (recetteJSON.temps_cuisson ?? 20),
       portions:        recetteJSON.portions || 2,
       valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles || undefined,
       astuces:         recetteJSON.astuces || [],
@@ -558,8 +562,8 @@ export function transformerRecetteBDD(recetteBDD: any): RecetteGeneree {
     style_culinaire: recetteBDD.categorie || recetteBDD.style_culinaire || 'autre',
     ingredients:     parseIngredients(recetteBDD.ingredients_ids, recetteBDD.quantites),
     instructions:    parseInstructions(recetteBDD.instructions),
-    temps_preparation: recetteBDD.temps_preparation || 15,
-    temps_cuisson:   recetteBDD.temps_cuisson || 20,
+    temps_preparation: recetteBDD.temps_preparation ?? 15,
+    temps_cuisson:   recetteBDD.temps_cuisson ?? 0,
     portions:        recetteBDD.nb_portions || 2,
     valeurs_nutritionnelles: {
       calories:   recetteBDD.calories_totales || 0,
