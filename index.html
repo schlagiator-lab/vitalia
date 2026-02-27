@@ -1139,6 +1139,7 @@ async function syncBesoinsVersProfit(profilId) {
 function afficherPlan(plan) {
   currentPlan = plan
   window.scrollTo({ top: 0, behavior: 'smooth' })
+  document.querySelectorAll('.moment-instructions.open').forEach(function(el){ el.classList.remove('open') })
 
   // Normalise les clés edge function → clés frontend
   plan.matin     = plan.petit_dejeuner || plan.matin
