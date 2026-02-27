@@ -215,12 +215,15 @@ function construirePromptRecette(
 
   // Contraintes spéciales petit-déjeuner
   const contraintesPetitDej = estPetitDej ? `
-## CONTRAINTES SUPPLÉMENTAIRES PETIT-DÉJEUNER (OBLIGATOIRES)
-- **Maximum 5 ingrédients** (hors sel/poivre/huile)
+## CONTRAINTES SUPPLÉMENTAIRES PETIT-DÉJEUNER (TOUTES OBLIGATOIRES)
+- **Saveur SUCRÉE** : fruits frais, compote, miel, sirop d'érable, yaourt sucré — PAS de recette salée au petit-déjeuner
+- **Base FRUITS ou CÉRÉALES** : favoriser fruits frais, flocons d'avoine, granola, smoothie, yaourt, pain complet avec confiture/miel — PAS de légumes, pas de tomate, pas de courgette
+- **ZÉRO cuisson longue** : pas de poêle, pas de four, pas de casserole — uniquement cru, blender, micro-ondes max 2 min, ou toast grille-pain
+- **Maximum 5 ingrédients** (hors sel/cannelle/vanille)
 - **Maximum 5 étapes** dans les instructions
-- **Temps total ≤ 15 minutes** (préparation + cuisson)
-- **Pas de cuisson longue** : favoriser cru, toast, bol, smoothie, yaourt, œufs rapides (≤ 5 min)
-- Recette simple, rapide, adaptée au matin — pas un plat élaboré
+- **Temps total ≤ 10 minutes**
+- Exemples acceptables : bol de fruits + yaourt + granola, smoothie bowl, overnight oats, tartine fruits + ricotta, açaï bowl
+- Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe
 ` : '';
 
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.

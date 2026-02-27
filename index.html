@@ -582,12 +582,12 @@
       <div class="config-chip" onclick="toggleChip(this,'casher')" data-regime="casher">✡️ Casher</div>
     </div>
   </div>
-  <div class="toggle-row" style="margin-top:12px;padding:4px 0;">
-    <span class="toggle-label" style="font-size:13px;">Même thème culinaire pour les 3 repas</span>
-    <label class="pp-toggle">
+  <div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:4px 0;">
+    <label class="pp-toggle" style="flex-shrink:0;">
       <input type="checkbox" id="memeThemeToggle">
       <span class="pp-toggle-track"></span>
     </label>
+    <span class="toggle-label" style="font-size:13px;">Même thème culinaire pour les 3 repas</span>
   </div>
   <button class="config-submit" onclick="genererPlan()">✨ Générer mon plan</button>
 </div>
@@ -1653,21 +1653,20 @@ function updateAlliesFromPlan(plan){
     if(found) matched.push(ally)
   })
 
-  // Fallback : au moins 1 allié basé sur le symptôme principal
-  if(matched.length===0){
-    var fallback = ALLY_MAP[selectedSymptoms[0]] || ALLY_MAP._default
-    matched = [fallback]
-  }
+  // Fallback : aucun allié trouvé dans les recettes → goji, curcuma, gingembre (sans badge "présent")
+  var inPlan = matched.slice() // alliés vraiment dans le plan (pour le badge)
+  var displayed = matched.length > 0 ? matched : ['goji','curcuma','gingembre']
 
-  currentActiveAllies = matched
+  // currentActiveAllies = alliés réellement présents dans les recettes (badge uniquement pour eux)
+  currentActiveAllies = inPlan
 
   // Show/hide + highlight
   document.querySelectorAll('.companion-chip').forEach(function(chip){
     var avatarEl = chip.querySelector('.companion-avatar[data-ally]'); if(!avatarEl) return
     var allyName = avatarEl.getAttribute('data-ally')
-    var visible = matched.includes(allyName)
+    var visible = displayed.includes(allyName)
     chip.style.display = visible ? 'flex' : 'none'
-    avatarEl.classList.toggle('active', visible && matched[0]===allyName)
+    avatarEl.classList.toggle('active', inPlan.length > 0 && inPlan[0]===allyName)
   })
 }
 
