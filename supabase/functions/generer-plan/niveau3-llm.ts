@@ -26,7 +26,8 @@ export async function genererRecetteLLM(
   styleCulinaire: string,
   ingredientsObligatoires: string[],
   profil: ProfilUtilisateur,
-  contexte: ContexteUtilisateur
+  contexte: ContexteUtilisateur,
+  ingredientsAEviter: string[] = []
 ): Promise<RecetteGeneree | null> {
   
   console.log(`[NIVEAU 3] Génération recette Claude AI (${typeRepas}, ${styleCulinaire})...`);
@@ -42,7 +43,8 @@ export async function genererRecetteLLM(
       styleCulinaire,
       ingredientsObligatoires,
       profil,
-      contexte
+      contexte,
+      ingredientsAEviter
     );
     
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -151,7 +153,8 @@ function construirePromptRecette(
   styleCulinaire: string,
   ingredientsObligatoires: string[],
   profil: ProfilUtilisateur,
-  contexte: ContexteUtilisateur
+  contexte: ContexteUtilisateur,
+  ingredientsAEviter: string[] = []
 ): string {
   
   const contraintesRegime: string[] = [];
@@ -224,8 +227,15 @@ function construirePromptRecette(
 - **Maximum 5 ingrédients** (hors sel/cannelle/vanille)
 - **Maximum 5 étapes** dans les instructions
 - **Temps total ≤ 10 minutes**
+- **temps_cuisson = 0** si smoothie/bowl/overnight oats/tartine/açaï bowl (pas de cuisson réelle)
 - Exemples acceptables : bol de fruits + yaourt + granola, smoothie bowl, overnight oats, tartine fruits + ricotta, açaï bowl
 - Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe
+` : '';
+
+  // Ingrédients déjà utilisés dans les autres repas du plan (éviter la répétition)
+  const consigneEviter = ingredientsAEviter.length > 0 ? `
+**Ingrédients à ÉVITER ABSOLUMENT** (déjà utilisés dans d'autres repas du plan — ne pas répéter) :
+${ingredientsAEviter.map(i => `- ${i}`).join('\n')}
 ` : '';
 
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.
@@ -236,7 +246,7 @@ function construirePromptRecette(
 **Style culinaire** : ${styleCulinaire}
 **Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
-
+${consigneEviter}
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
@@ -270,8 +280,8 @@ Réponds UNIQUEMENT avec cet objet JSON exact, sans texte avant ou après :
     "Étape 1 détaillée...",
     "Étape 2 détaillée..."
   ],
-  "temps_preparation": ${estPetitDej ? 10 : 15},
-  "temps_cuisson": ${estPetitDej ? 5 : 20},
+  "temps_preparation": ${estPetitDej ? 8 : 15},
+  "temps_cuisson": ${estPetitDej ? 0 : 20},
   "portions": 2,
   "valeurs_nutritionnelles": {
     "calories": ${estPetitDej ? 350 : 450},

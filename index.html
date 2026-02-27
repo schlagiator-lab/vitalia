@@ -1608,12 +1608,12 @@ var ALLY_MAP = {
 // Chaque allié représente une famille nutritionnelle.
 // Mots-clés couvrent les ingrédients réellement générés par le LLM.
 var ALLY_KEYWORDS = {
-  goji:      ['goji','quinoa','lentilles','pois chiches','flocons d\'avoine','riz brun','sarrasin','œufs'],
+  goji:      ['goji','quinoa','lentilles','pois chiches','flocons d\'avoine','riz brun','sarrasin','œufs','graines de chia','chia'],
   curcuma:   ['curcuma','curry','saumon','brocoli','cerises','framboises'],
-  gingembre: ['gingembre','fenouil','yaourt','papaye','céleri','carotte','pomme','courgette','artichaut','riz complet'],
-  myrtille:  ['myrtille','myrtilles','bleuet','cacao','chocolat','fruits rouges','fraises','cassis','kiwi','graines de courge'],
-  avocat:    ['avocat','huile d\'olive','légumineuses','courge','graines de lin'],
-  banane:    ['banane','bananes','mangue','abricot','dattes'],
+  gingembre: ['gingembre','fenouil','yaourt','papaye','céleri','carotte','pomme','courgette','artichaut','riz complet','fromage blanc','ricotta'],
+  myrtille:  ['myrtille','myrtilles','bleuet','cacao','chocolat','fruits rouges','fraises','cassis','kiwi','graines de courge','granola'],
+  avocat:    ['avocat','huile d\'olive','légumineuses','courge','graines de lin','noix de coco','coco'],
+  banane:    ['banane','bananes','mangue','abricot','dattes','raisins secs','abricots secs'],
   patate:    ['patate douce','patate','potiron','butternut','citrouille'],
   miel:      ['miel','sirop d\'érable','sirop d\'agave'],
   epinards:  ['épinards','épinard','blettes','roquette','mâche','cresson'],
@@ -1653,11 +1653,17 @@ function updateAlliesFromPlan(plan){
     if(found) matched.push(ally)
   })
 
-  // Fallback : aucun allié trouvé dans les recettes → goji, curcuma, gingembre (sans badge "présent")
-  var inPlan = matched.slice() // alliés vraiment dans le plan (pour le badge)
-  var displayed = matched.length > 0 ? matched : ['goji','curcuma','gingembre']
+  // Shuffle Fisher-Yates des alliés trouvés → varier l'affichage à chaque génération
+  for(var i=matched.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1)); var tmp=matched[i]; matched[i]=matched[j]; matched[j]=tmp
+  }
+  // Limiter à 4 alliés max pour plus de variété visible
+  var inPlan = matched.slice(0, 4)
 
-  // currentActiveAllies = alliés réellement présents dans les recettes (badge uniquement pour eux)
+  // Fallback : aucun allié trouvé → goji, curcuma, gingembre sans badge "présent"
+  var displayed = inPlan.length > 0 ? inPlan : ['goji','curcuma','gingembre']
+  var hasBadge = inPlan.length > 0
+
   currentActiveAllies = inPlan
 
   // Show/hide + highlight
@@ -1666,7 +1672,7 @@ function updateAlliesFromPlan(plan){
     var allyName = avatarEl.getAttribute('data-ally')
     var visible = displayed.includes(allyName)
     chip.style.display = visible ? 'flex' : 'none'
-    avatarEl.classList.toggle('active', inPlan.length > 0 && inPlan[0]===allyName)
+    avatarEl.classList.toggle('active', hasBadge && displayed[0]===allyName)
   })
 }
 

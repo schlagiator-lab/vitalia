@@ -152,7 +152,8 @@ async function genererRecetteAvecFallback(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
   historique: any,
-  forceRegeneration: boolean = false
+  forceRegeneration: boolean = false,
+  ingredientsAEviter: string[] = []
 ): Promise<any> {
 
   // 1. Cache — skippé si force_regeneration
@@ -170,7 +171,7 @@ async function genererRecetteAvecFallback(
 
   // 2. LLM
   const recetteLLM = await genererRecetteLLM(
-    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte
+    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter
   );
   if (recetteLLM) {
     console.log(`[LLM] Recette ${typeRepas} générée`);
@@ -582,9 +583,9 @@ serve(async (req) => {
     const forceRegen = force_regeneration === true;
     const [recettePause, recettePetitDej, recetteDejeuner, recetteDiner, messageMotivation, conseilDuJour] = await Promise.all([
       genererPauseAvecFallback(profil, contexte),
-      genererRecetteAvecFallback(supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej, profil, contexte, historique, forceRegen),
-      genererRecetteAvecFallback(supabase, 'dejeuner',       styleDejeuner, ingDejeuner, profil, contexte, historique, forceRegen),
-      genererRecetteAvecFallback(supabase, 'diner',          styleDiner,    ingDiner,    profil, contexte, historique, forceRegen),
+      genererRecetteAvecFallback(supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej, profil, contexte, historique, forceRegen, [...ingDejeuner, ...ingDiner]),
+      genererRecetteAvecFallback(supabase, 'dejeuner',       styleDejeuner, ingDejeuner, profil, contexte, historique, forceRegen, [...ingPetitDej, ...ingDiner]),
+      genererRecetteAvecFallback(supabase, 'diner',          styleDiner,    ingDiner,    profil, contexte, historique, forceRegen, [...ingPetitDej, ...ingDejeuner]),
       genererMessageMotivation(contexte, {}),
       genererConseilDuJour(contexte)
     ]);
