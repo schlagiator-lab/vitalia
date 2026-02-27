@@ -70,6 +70,15 @@ const INGREDIENTS_POOL: Record<string, string[]> = {
   'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
 };
 
+// Pool EXCLUSIF petit-déjeuner : uniquement fruits, céréales, laitage — jamais de légumes/savoureux
+// Utilisé pour remplacer les ingPetitDej issus du pool wellness (qui contiennent des légumes)
+const PETIT_DEJ_POOL: string[] = [
+  "flocons d'avoine", "banane", "myrtilles", "fraises", "framboises",
+  "granola", "miel", "graines de chia", "mangue", "kiwi", "pomme",
+  "noix de coco râpée", "beurre d'amande", "compote de pommes", "dattes",
+  "yaourt grec", "fromage blanc", "ricotta", "abricots secs", "raisins secs"
+];
+
 // FIX P1 BIS : Ingrédients différents pour chaque repas de la journée
 // Retourne 3 listes non-chevauchantes (petit-dej, déjeuner, dîner)
 // ingredientsBanis : ingrédients vus < 7j, exclus du pool (Faille 4)
@@ -553,6 +562,11 @@ serve(async (req) => {
       ingDejeuner = troisRepas.dejeuner;
       ingDiner    = troisRepas.diner;
     }
+
+    // Petit-déjeuner : toujours remplacé par des ingrédients sucrés/fruits
+    // (le pool wellness contient des légumes incompatibles avec la contrainte "sucré")
+    const shuffledPetitDej = [...PETIT_DEJ_POOL].sort(() => Math.random() - 0.5);
+    ingPetitDej = shuffledPetitDej.slice(0, 3);
 
     console.log(`[NIVEAU 2] Styles: ${stylePetitDej} / ${styleDejeuner} / ${styleDiner}`);
     console.log(`[NIVEAU 2] Ingrédients Petit-dej : ${ingPetitDej.join(', ')}`);

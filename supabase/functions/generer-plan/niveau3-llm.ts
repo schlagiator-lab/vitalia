@@ -200,12 +200,14 @@ function construirePromptRecette(
 
   const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'Équilibré, varié et nutritif';
 
-  // Contrainte protéines animales si profil omnivore (non vegan, non végétarien)
-  const estOmnivore = profil.regime_alimentaire?.includes('omnivore')
-    && !profil.regime_alimentaire?.includes('vegan')
-    && !profil.regime_alimentaire?.includes('vegetarien');
+  // Omnivore = défaut dès qu'il n'y a pas de restriction végétale explicite.
+  // L'ancien check includes('omnivore') échouait si le profil avait un tableau vide.
+  const estVegan      = profil.regime_alimentaire?.some(r => ['vegan', 'végétalien'].includes(r.toLowerCase())) ?? false;
+  const estVegetarien = profil.regime_alimentaire?.some(r => ['vegetarien', 'végétarien'].includes(r.toLowerCase())) ?? false;
+  const estOmnivore   = !estVegan && !estVegetarien;
 
-  const proteineAnimaleConsigne = estOmnivore
+  // Protéine animale : uniquement déjeuner & dîner (pas petit-dej → conflit avec contrainte sucrée)
+  const proteineAnimaleConsigne = (estOmnivore && !estPetitDej)
     ? (profil.budget === 'faible'
         ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure œufs, sardines en boîte, thon en boîte, poulet, jambon ou fromage (budget accessible).'
         : profil.budget === 'eleve'
