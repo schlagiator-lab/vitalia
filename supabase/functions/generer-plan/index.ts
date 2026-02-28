@@ -605,25 +605,27 @@ serve(async (req) => {
       pause:          recettePause,
 
       nutraceutiques: nutraceutiquesSelectionnes.map(p => ({
-        id:             p.id,
-        nom:            p.nom,
-        type:           p.type,
-        dosage:         (p as any).posologie || '1 gélule/jour',
-        timing:         (p as any).timing    || 'Matin avec petit-déjeuner',
-        moment_optimal: 'matin',
-        raison:         `Aide pour ${p.symptomes_cibles?.[0] || 'bien-être'}`,
-        niveau_preuve:  p.niveau_preuve
+        id:                 p.id,
+        nom:                p.nom,
+        type:               p.type,
+        dosage:             (p as any).posologie || '1 gélule/jour',
+        timing:             (p as any).timing    || 'Matin avec petit-déjeuner',
+        moment_optimal:     'matin',
+        raison:             `Aide pour ${p.symptomes_cibles?.[0] || 'bien-être'}`,
+        niveau_preuve:      p.niveau_preuve,
+        contre_indications: (p as any).contre_indications || []
       })),
 
       aromatherapie: aromatherapieSelectionnee.map(p => ({
-        id:             p.id,
-        nom:            p.nom,
-        type:           p.type,
-        dosage:         (p as any).dosage_standard || '2-3 gouttes',
-        timing:         (p as any).timing || 'Soir avant coucher',
-        moment_optimal: 'soir',
-        raison:         `Favorise ${p.symptomes_cibles?.[0] || 'détente'}`,
-        niveau_preuve:  p.niveau_preuve
+        id:                 p.id,
+        nom:                p.nom,
+        type:               p.type,
+        dosage:             (p as any).dosage_standard || '2-3 gouttes',
+        timing:             (p as any).timing || 'Soir avant coucher',
+        moment_optimal:     'soir',
+        raison:             `Favorise ${p.symptomes_cibles?.[0] || 'détente'}`,
+        niveau_preuve:      p.niveau_preuve,
+        contre_indications: (p as any).contre_indications || (p as any).contre_indications_majeures || []
       })),
 
       routines: routinesSelectionnees.map(r => ({

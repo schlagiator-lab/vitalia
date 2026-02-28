@@ -222,6 +222,9 @@ function construirePromptRecette(
         : '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure poulet, dinde, saumon, thon, œufs, fromage ou viande maigre dans chaque repas.')
     : '';
 
+  // Nombre d'étapes aléatoire entre 3 et 5 pour le petit-déjeuner
+  const nbEtapesPetitDej = Math.floor(Math.random() * 3) + 3; // 3, 4 ou 5
+
   // Contraintes spéciales petit-déjeuner
   const contraintesPetitDej = estPetitDej ? `
 ## CONTRAINTES SUPPLÉMENTAIRES PETIT-DÉJEUNER (TOUTES OBLIGATOIRES)
@@ -229,7 +232,7 @@ function construirePromptRecette(
 - **Base FRUITS ou CÉRÉALES** : favoriser fruits frais, flocons d'avoine, granola, smoothie, yaourt, pain complet avec confiture/miel — PAS de légumes, pas de tomate, pas de courgette
 - **ZÉRO cuisson longue** : pas de poêle, pas de four, pas de casserole — uniquement cru, blender, micro-ondes max 2 min, ou toast grille-pain
 - **Maximum 5 ingrédients** (hors sel/cannelle/vanille)
-- **Maximum 5 étapes** dans les instructions
+- **EXACTEMENT ${nbEtapesPetitDej} étapes** dans les instructions (ni plus, ni moins — respecter ce nombre précisément)
 - **Temps total ≤ 10 minutes**
 - **temps_cuisson = 0** si smoothie/bowl/overnight oats/tartine/açaï bowl (pas de cuisson réelle)
 - Exemples acceptables : bol de fruits + yaourt + granola, smoothie bowl, overnight oats, tartine fruits + ricotta, açaï bowl
@@ -265,7 +268,7 @@ ${contraintesPetitDej}
    Mauvais : "Salade de quinoa"
    Bon : "Buddha Bowl Arc-en-Ciel Énergisant"
 
-2. **Instructions CLAIRES** : Étape par étape, précis, facile à suivre${estPetitDej ? ' (5 étapes MAX)' : ''}
+2. **Instructions CLAIRES** : Étape par étape, précis, facile à suivre${estPetitDej ? ` (EXACTEMENT ${nbEtapesPetitDej} étapes)` : ''}
 
 3. **Astuces nutritionnelles** : Explique POURQUOI cette recette aide pour : ${contexte.symptomes_declares?.join(', ') || 'bien-être général'}
 

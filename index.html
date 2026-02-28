@@ -166,11 +166,29 @@
   .routine-section { position: relative; z-index: 5; padding: 0 24px 20px; }
   .routine-card { background: linear-gradient(135deg, rgba(122,158,126,0.15) 0%, rgba(168,197,172,0.1) 100%); border: 1.5px solid rgba(122,158,126,0.25); border-radius: 24px; padding: 20px; }
   .routine-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 700; color: var(--deep-brown); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-  .routine-items { display: flex; flex-direction: column; gap: 10px; }
-  .routine-item { display: flex; align-items: flex-start; gap: 10px; }
-  .routine-dot { width: 8px; height: 8px; background: var(--sage); border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-  .routine-text { font-size: 14px; color: var(--mid-brown); line-height: 1.4; }
+  .routine-items { display: flex; flex-direction: column; }
+  .routine-item-card { }
+  .routine-item-card:not(:last-child) { border-bottom: 1px dashed rgba(122,158,126,0.2); }
+  .routine-item-btn { display: flex; align-items: center; gap: 10px; padding: 11px 0; cursor: pointer; user-select: none; }
+  .routine-item-btn:hover .routine-text { color: var(--deep-brown); }
+  .routine-item-content { flex: 1; min-width: 0; }
+  .routine-item-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 2px; }
+  .routine-dot { width: 8px; height: 8px; background: var(--sage); border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .routine-text { font-size: 13.5px; color: var(--mid-brown); line-height: 1.4; }
   .routine-text strong { color: var(--deep-brown); font-weight: 600; }
+  .routine-chevron { font-size: 11px; color: var(--text-light); flex-shrink: 0; transition: transform 0.3s; }
+  .routine-chevron.open { transform: rotate(180deg); }
+  .routine-detail { max-height: 0; overflow: hidden; transition: max-height 0.45s ease; }
+  .routine-detail.open { max-height: 800px; }
+  .routine-detail-inner { padding: 0 0 14px 18px; }
+  .routine-detail-raison { font-size: 12.5px; color: var(--sage); font-weight: 500; line-height: 1.5; margin-bottom: 8px; font-style: italic; }
+  .routine-detail-protocole { font-size: 13px; color: var(--mid-brown); line-height: 1.6; }
+  .routine-detail-steps { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+  .routine-detail-step { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--mid-brown); line-height: 1.45; }
+  .routine-detail-stepnum { width: 18px; height: 18px; background: var(--sage); color: white; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .routine-detail-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .routine-detail-chip { background: rgba(122,158,126,0.1); border: 1px solid rgba(122,158,126,0.25); border-radius: 20px; padding: 3px 10px; font-size: 11.5px; color: var(--sage); font-weight: 500; }
+  .routine-detail-chip-warn { background: rgba(196,113,74,0.08); border-color: rgba(196,113,74,0.25); color: var(--terracotta); }
 
   /* CONSEIL */
   .conseil-section { position: relative; z-index: 5; padding: 0 24px 32px; }
@@ -764,10 +782,50 @@
     <div class="routine-card">
       <div class="routine-title">🧘 Routine du jour</div>
       <div class="routine-items">
-        <div class="routine-item"><div class="routine-dot"></div><div class="routine-text"><strong>Matin :</strong> <span id="routine-matin">5 minutes de cohérence cardiaque</span></div></div>
-        <div class="routine-item"><div class="routine-dot" style="background:var(--terracotta)"></div><div class="routine-text"><strong>Complément phare :</strong> <span id="routine-complement">Vitamine D — 1 goutte ce midi avec ton repas</span></div></div>
-        <div class="routine-item"><div class="routine-dot" style="background:var(--golden)"></div><div class="routine-text"><strong>Aromathérapie :</strong> <span id="routine-aroma">Diffusion lavande le soir pour préparer le sommeil</span></div></div>
-        <div class="routine-item"><div class="routine-dot" style="background:var(--mirtille-purple)"></div><div class="routine-text"><strong>Soir :</strong> <span id="routine-soir">10 min de lecture légère, sans écran</span></div></div>
+        <div class="routine-item-card">
+          <div class="routine-item-btn" onclick="toggleRoutineItem('matin')">
+            <div class="routine-dot"></div>
+            <div class="routine-item-content">
+              <div class="routine-item-label">Matin</div>
+              <div class="routine-text" id="routine-matin">5 minutes de cohérence cardiaque</div>
+            </div>
+            <span class="routine-chevron" id="chevron-matin">▼</span>
+          </div>
+          <div class="routine-detail" id="detail-matin"></div>
+        </div>
+        <div class="routine-item-card">
+          <div class="routine-item-btn" onclick="toggleRoutineItem('complement')">
+            <div class="routine-dot" style="background:var(--terracotta)"></div>
+            <div class="routine-item-content">
+              <div class="routine-item-label">Complément phare</div>
+              <div class="routine-text" id="routine-complement">Vitamine D — 1 goutte ce midi avec ton repas</div>
+            </div>
+            <span class="routine-chevron" id="chevron-complement">▼</span>
+          </div>
+          <div class="routine-detail" id="detail-complement"></div>
+        </div>
+        <div class="routine-item-card">
+          <div class="routine-item-btn" onclick="toggleRoutineItem('aroma')">
+            <div class="routine-dot" style="background:var(--golden)"></div>
+            <div class="routine-item-content">
+              <div class="routine-item-label">Aromathérapie</div>
+              <div class="routine-text" id="routine-aroma">Diffusion lavande le soir pour préparer le sommeil</div>
+            </div>
+            <span class="routine-chevron" id="chevron-aroma">▼</span>
+          </div>
+          <div class="routine-detail" id="detail-aroma"></div>
+        </div>
+        <div class="routine-item-card">
+          <div class="routine-item-btn" onclick="toggleRoutineItem('soir')">
+            <div class="routine-dot" style="background:var(--mirtille-purple)"></div>
+            <div class="routine-item-content">
+              <div class="routine-item-label">Soir</div>
+              <div class="routine-text" id="routine-soir">10 min de lecture légère, sans écran</div>
+            </div>
+            <span class="routine-chevron" id="chevron-soir">▼</span>
+          </div>
+          <div class="routine-detail" id="detail-soir"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1091,7 +1149,13 @@ async function genererPlan() {
 
   try {
     var memeThemeToggle = document.getElementById('memeThemeToggle')
-    var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(document.getElementById('tempsMax').value),budget_max:parseInt(document.getElementById('budgetMax').value)},force_regeneration:true,meme_theme:memeThemeToggle?memeThemeToggle.checked:false}
+    var tempsMaxEl = document.getElementById('tempsMax')
+    var budgetMaxEl = document.getElementById('budgetMax')
+    // Persister les préférences pour les prochains plans
+    if (tempsMaxEl) localStorage.setItem('vitalia_tempsMax', tempsMaxEl.value)
+    if (budgetMaxEl) localStorage.setItem('vitalia_budgetMax', budgetMaxEl.value)
+    if (memeThemeToggle) localStorage.setItem('vitalia_memeTheme', String(memeThemeToggle.checked))
+    var body = {profil_id:profilId,symptomes:selectedSymptoms,preferences_moment:{temps_max:parseInt(tempsMaxEl?tempsMaxEl.value:30),budget_max:parseInt(budgetMaxEl?budgetMaxEl.value:15)},force_regeneration:true,meme_theme:memeThemeToggle?memeThemeToggle.checked:false}
 
     var r = await fetch(SUPABASE_URL+'/functions/v1/generer-plan',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify(body)})
     if (!r.ok) throw new Error('Erreur serveur '+r.status)
@@ -1117,6 +1181,7 @@ async function syncBesoinsVersProfit(profilId) {
   // Mise à jour locale du profil
   if (profilUtilisateur) {
     profilUtilisateur.objectifs_generaux = selectedSymptoms.slice()
+    profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
   // Sync chips du profil panel
@@ -1125,13 +1190,14 @@ async function syncBesoinsVersProfit(profilId) {
     if (m) el.classList.toggle('selected', selectedSymptoms.includes(m[1]))
   })
   ppBesoins = selectedSymptoms.slice()
+  ppRegimes = selectedRegimes.slice()
   // Mise à jour Supabase en arrière-plan
   if (!profilId || profilId === 'new') return
   try {
     await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profilId, {
       method: 'PATCH',
       headers: {'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
-      body: JSON.stringify({ objectifs_generaux: selectedSymptoms })
+      body: JSON.stringify({ objectifs_generaux: selectedSymptoms, regimes_alimentaires: selectedRegimes })
     })
   } catch(e) { console.log('Info: sync besoins non bloquant', e) }
 }
@@ -1188,16 +1254,28 @@ function afficherPlan(plan) {
     recipeServings['apres_midi'] = 1
   }
 
-  // Section Routine
+  // Section Routine — texte résumé + détail dépliable
   var r = plan.routine_du_jour || {}
+  // Fermer les détails précédents à chaque nouveau plan
+  ;['matin','complement','aroma','soir'].forEach(function(k){
+    var d=document.getElementById('detail-'+k); if(d) d.classList.remove('open')
+    var c=document.getElementById('chevron-'+k); if(c) c.classList.remove('open')
+  })
   if (r.matin) setText('routine-matin', r.matin)
   else if (routines[0]) setText('routine-matin', routines[0].nom + (routines[0].duree ? ' — '+routines[0].duree : ''))
+  renderRoutineDetail('matin', routines[0] || null)
+
   if (r.complement_phare) setText('routine-complement', r.complement_phare)
   else if (nut0) setText('routine-complement', nut0.nom + ' — ' + (nut0.dosage||''))
+  renderRoutineDetail('complement', nut0)
+
   if (r.aromatherapie) setText('routine-aroma', r.aromatherapie)
   else if (aroma[0]) setText('routine-aroma', aroma[0].nom + ' — ' + (aroma[0].dosage||''))
+  renderRoutineDetail('aroma', aroma[0] || null)
+
   if (r.soir) setText('routine-soir', r.soir)
   else if (routines[1]) setText('routine-soir', routines[1].nom + (routines[1].duree ? ' — '+routines[1].duree : ''))
+  renderRoutineDetail('soir', routines[1] || null)
 
   // Conseil du jour
   var conseil = plan.conseil_du_jour || (plan.conseils_generaux && plan.conseils_generaux[0]) || ''
@@ -1292,6 +1370,47 @@ function buildActionsBar(m) {
     [1,2,3,4,5].map(function(n){return'<span class="recipe-star" onclick="noterRecette(\''+m+'\','+n+')">&#11088;</span>'}).join('')+'</div></div>' +
     '<button class="save-recipe-btn" id="save-btn-'+m+'" onclick="sauvegarderRecette(\''+m+'\')">&#128278; Sauvegarder</button>' +
   '</div>'
+}
+
+function toggleRoutineItem(key) {
+  var detail = document.getElementById('detail-'+key)
+  var chevron = document.getElementById('chevron-'+key)
+  if (!detail) return
+  var isOpen = detail.classList.contains('open')
+  detail.classList.toggle('open', !isOpen)
+  if (chevron) chevron.classList.toggle('open', !isOpen)
+}
+
+function renderRoutineDetail(key, data) {
+  var el = document.getElementById('detail-'+key)
+  if (!el) return
+  if (!data) { el.innerHTML = ''; return }
+
+  var chips = ''
+  if (data.duree) chips += '<span class="routine-detail-chip">⏱ '+data.duree+'</span>'
+  if (data.timing) chips += '<span class="routine-detail-chip">🕐 '+data.timing+'</span>'
+  else if (data.moment_optimal) chips += '<span class="routine-detail-chip">🕐 '+data.moment_optimal+'</span>'
+  if (data.dosage) chips += '<span class="routine-detail-chip">💊 '+data.dosage+'</span>'
+  if (data.categorie) chips += '<span class="routine-detail-chip">📂 '+data.categorie+'</span>'
+  if (Array.isArray(data.contre_indications) && data.contre_indications.length) {
+    data.contre_indications.forEach(function(ci){ chips += '<span class="routine-detail-chip routine-detail-chip-warn">⚠️ '+ci+'</span>' })
+  }
+
+  var raisonHtml = data.raison ? '<div class="routine-detail-raison">'+data.raison+'</div>' : ''
+
+  var protocoleHtml = ''
+  if (data.protocole && typeof data.protocole === 'string') {
+    // Découpe en étapes numérotées si possible
+    var lignes = data.protocole.split(/\n|\.\s+(?=[A-ZÀÉÈÊÎÙÛÂÔŒ])|(?:\d+[.)]\s+)/).map(function(l){return l.replace(/^\d+[.)]\s*/,'').trim()}).filter(function(l){return l.length > 8})
+    if (lignes.length >= 2) {
+      protocoleHtml = '<div class="routine-detail-steps">'+lignes.map(function(s,n){return '<div class="routine-detail-step"><div class="routine-detail-stepnum">'+(n+1)+'</div><span>'+s+'</span></div>'}).join('')+'</div>'
+    } else {
+      protocoleHtml = '<div class="routine-detail-protocole">'+data.protocole+'</div>'
+    }
+  }
+
+  var chipsHtml = chips ? '<div class="routine-detail-chips">'+chips+'</div>' : ''
+  el.innerHTML = '<div class="routine-detail-inner">'+raisonHtml+protocoleHtml+chipsHtml+'</div>'
 }
 
 function changerPortions(m,delta){
@@ -1610,16 +1729,16 @@ var ALLY_MAP = {
 // Chaque allié représente une famille nutritionnelle.
 // Mots-clés couvrent les ingrédients réellement générés par le LLM.
 var ALLY_KEYWORDS = {
-  goji:      ['goji','quinoa','lentilles','pois chiches','flocons d\'avoine','riz brun','sarrasin','œufs','graines de chia','chia'],
-  curcuma:   ['curcuma','curry','saumon','brocoli','cerises','framboises'],
-  gingembre: ['gingembre','fenouil','yaourt','papaye','céleri','carotte','pomme','courgette','artichaut','riz complet','fromage blanc','ricotta'],
-  myrtille:  ['myrtille','myrtilles','bleuet','cacao','chocolat','fruits rouges','fraises','cassis','kiwi','graines de courge','granola'],
-  avocat:    ['avocat','huile d\'olive','légumineuses','courge','graines de lin','noix de coco','coco'],
-  banane:    ['banane','bananes','mangue','abricot','dattes','raisins secs','abricots secs'],
-  patate:    ['patate douce','patate','potiron','butternut','citrouille'],
-  miel:      ['miel','sirop d\'érable','sirop d\'agave'],
-  epinards:  ['épinards','épinard','blettes','roquette','mâche','cresson'],
-  amandes:   ['amande','amandes','noix de cajou','cajou','beurre d\'amande','noix','noisette','noisettes']
+  goji:      ['goji','baie de goji','baies de goji'],
+  curcuma:   ['curcuma'],
+  gingembre: ['gingembre'],
+  myrtille:  ['myrtille','myrtilles','bleuet'],
+  avocat:    ['avocat'],
+  banane:    ['banane','bananes'],
+  patate:    ['patate douce','patate'],
+  miel:      ['miel'],
+  epinards:  ['épinards','épinard'],
+  amandes:   ['amande','amandes','beurre d\'amande']
 }
 
 // Affichage initial (avant plan généré) : un seul allié actif selon symptôme
@@ -1920,7 +2039,30 @@ function toggleInstructions(m,event){
   if(el.classList.contains('open')&&!recipeBaseIng[m]){var ingEl=el.querySelector('.instructions-ingredients');if(ingEl)recipeBaseIng[m]=ingEl.innerHTML}
 }
 
-function ouvrirConfig(){document.getElementById('configPanel').classList.add('open');document.getElementById('overlay').classList.add('active')}
+function ouvrirConfig(){
+  // Sync chips besoins depuis les sélections actuelles
+  document.querySelectorAll('#symptomsChips .config-chip').forEach(function(el){
+    if (el.dataset.regime) return
+    var m = el.getAttribute('onclick').match(/'([^']+)'/)
+    if (m) el.classList.toggle('selected', selectedSymptoms.includes(m[1]))
+  })
+  // Sync chips régimes
+  document.querySelectorAll('[data-regime]').forEach(function(el){
+    el.classList.toggle('selected', selectedRegimes.includes(el.getAttribute('data-regime')))
+  })
+  // Restaurer tempsMax/budgetMax depuis localStorage
+  var savedTemps = localStorage.getItem('vitalia_tempsMax')
+  var savedBudget = localStorage.getItem('vitalia_budgetMax')
+  var savedTheme = localStorage.getItem('vitalia_memeTheme')
+  var tempsEl = document.getElementById('tempsMax')
+  var budgetEl = document.getElementById('budgetMax')
+  var themeEl = document.getElementById('memeThemeToggle')
+  if (savedTemps && tempsEl) tempsEl.value = savedTemps
+  if (savedBudget && budgetEl) budgetEl.value = savedBudget
+  if (savedTheme !== null && themeEl) themeEl.checked = savedTheme === 'true'
+  document.getElementById('configPanel').classList.add('open')
+  document.getElementById('overlay').classList.add('active')
+}
 function fermerConfig(){document.getElementById('configPanel').classList.remove('open');document.getElementById('overlay').classList.remove('active')}
 
 function toggleChip(el,val){
