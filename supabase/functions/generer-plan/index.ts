@@ -8,10 +8,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { ProfilUtilisateur, ContexteUtilisateur, PlanGenere } from './types.ts';
-import { 
-  filtrerProduitsSecurite, 
+import {
+  filtrerProduitsSecurite,
   filtrerRecettesSecurite,
-  filtrerRoutinesSecurite 
+  filtrerRoutinesSecurite,
+  filtrerAlimentsBesoins
 } from './niveau1-securite.ts';
 import {
   recupererHistoriqueRotation,
@@ -57,18 +58,25 @@ const CORS_HEADERS = {
 // HELPERS STATIQUES
 // ============================================================================
 
-// Pool d'ingrédients par besoin
-const INGREDIENTS_POOL: Record<string, string[]> = {
-  'vitalite':          ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
-  'serenite':          ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
-  'digestion':         ['gingembre', 'fenouil', 'courgette', 'riz complet', 'yaourt', 'artichaut', 'papaye', 'carotte', 'céleri', 'pomme'],
-  'sommeil':           ['patate douce', 'banane', 'amandes', 'avoine', 'cerises', 'noix', 'graines de courge', 'kiwi', 'riz complet', 'lentilles'],
-  'mobilite':          ['curcuma', 'gingembre', 'saumon', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'cerises', 'graines de lin', 'épinards'],
-  'hormones':          ['avocat', 'graines de lin', 'saumon', 'noix', 'brocoli', 'patate douce', 'quinoa', 'légumineuses', 'graines de courge', 'huile d\'olive'],
-  'energie':           ['lentilles corail', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'riz brun', 'œufs', 'banane', 'flocons d\'avoine', 'noix de cajou'],
-  'stress':            ['cacao', 'noix de cajou', 'sarrasin', 'épinards', 'avocat', 'graines de lin', 'banane', 'légumes verts', 'saumon', 'amandes'],
-  'bien-etre-general': ['lentilles corail', 'épinards', 'quinoa', 'avocat', 'patate douce', 'brocoli', 'pois chiches', 'myrtilles', 'noix', 'tomate']
+// Pool de secours (uniquement utilisé si la BDD renvoie 0 aliment)
+const INGREDIENTS_POOL_FALLBACK: Record<string, string[]> = {
+  'vitalite':          ['lentilles', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'œufs', 'flocons d\'avoine', 'noix de cajou'],
+  'serenite':          ['cacao', 'noix de cajou', 'épinards', 'avocat', 'graines de lin', 'banane', 'amandes'],
+  'digestion':         ['gingembre', 'fenouil', 'courgette', 'yaourt', 'artichaut', 'papaye', 'carotte', 'pomme'],
+  'sommeil':           ['banane', 'amandes', 'cerises', 'noix', 'graines de courge', 'kiwi'],
+  'mobilite':          ['curcuma', 'gingembre', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'graines de lin'],
+  'hormones':          ['avocat', 'graines de lin', 'noix', 'brocoli', 'quinoa', 'graines de courge'],
+  'energie':           ['lentilles', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'flocons d\'avoine'],
+  'stress':            ['cacao', 'épinards', 'avocat', 'graines de lin', 'banane', 'amandes'],
+  'bien-etre-general': ['lentilles', 'épinards', 'quinoa', 'avocat', 'brocoli', 'myrtilles', 'noix']
 };
+
+// Détecte si une catégorie correspond à une protéine animale (viande, poisson, crustacé, abats)
+function estProtéineAnimale(categorie: string): boolean {
+  const cat = (categorie || '').toLowerCase();
+  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
+    'abats', 'gibier'].some(m => cat.includes(m));
+}
 
 // Pool EXCLUSIF petit-déjeuner : uniquement fruits, céréales, laitage — jamais de légumes/savoureux
 // Utilisé pour remplacer les ingPetitDej issus du pool wellness (qui contiennent des légumes)
@@ -89,8 +97,8 @@ function selectionnerIngredientsTroisRepas(
 ): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
   // Combiner les pools de tous les besoins actifs pour plus de diversité
   const tous = [...new Set(
-    besoinsActifs.flatMap(b => INGREDIENTS_POOL[b] || [])
-    .concat(INGREDIENTS_POOL[objectif] || INGREDIENTS_POOL['vitalite'])
+    besoinsActifs.flatMap(b => INGREDIENTS_POOL_FALLBACK[b] || [])
+    .concat(INGREDIENTS_POOL_FALLBACK[objectif] || INGREDIENTS_POOL_FALLBACK['vitalite'])
   )];
 
   // Filtrer les ingrédients bannis (vus < 7j)
@@ -492,13 +500,14 @@ serve(async (req) => {
 
     console.log('\n[NIVEAU 1] === FILTRAGE SECURITE ===');
 
-    const [produitsSurs, recettesSures, routinesSures] = await Promise.all([
+    const [produitsSurs, recettesSures, routinesSures, alimentsBesoins] = await Promise.all([
       filtrerProduitsSecurite(supabase, profil, besoinsUtilises),
       filtrerRecettesSecurite(supabase, profil),
-      filtrerRoutinesSecurite(supabase, profil, besoinsUtilises)
+      filtrerRoutinesSecurite(supabase, profil, besoinsUtilises),
+      filtrerAlimentsBesoins(supabase, profil, besoinsUtilises)
     ]);
 
-    console.log(`[NIVEAU 1] ${produitsSurs.length} produits | ${recettesSures.length} recettes | ${routinesSures.length} routines sûrs`);
+    console.log(`[NIVEAU 1] ${produitsSurs.length} produits | ${recettesSures.length} recettes | ${routinesSures.length} routines | ${alimentsBesoins.length} aliments sûrs`);
 
     // ========================================================================
     // NIVEAU 2 : SELECTION INTELLIGENTE
@@ -537,35 +546,71 @@ serve(async (req) => {
       3
     );
 
-    // FIX P1 BIS : Ingrédients différents pour chaque repas
-    const produitsAlimentaires = produitsScores.filter(p => p.type === 'aliment');
+    // ── Sélection ingrédients depuis BDD alimentation_besoins avec rotation anti-répétition ──
+    const estProfilOmnivore = !(profil.regime_alimentaire?.some(r =>
+      ['vegan', 'végétalien', 'vegetarien', 'végétarien'].includes(r.toLowerCase())
+    ));
+
+    // Séparer protéines animales vs autres aliments (déjà filtrés par régime + allergènes dans niveau 1)
+    const proteinesDB = estProfilOmnivore
+      ? alimentsBesoins
+          .filter(a => estProtéineAnimale(a.categorie || ''))
+          .filter(a => !ingredientsBanis.has((a.nom || '').toLowerCase().trim()))
+      : [];
+    const autresAlimentsDB = alimentsBesoins
+      .filter(a => !estProtéineAnimale(a.categorie || ''))
+      .filter(a => !ingredientsBanis.has((a.nom || '').toLowerCase().trim()));
+
+    // Tri par score décroissant + shuffle aléatoire à score égal pour la rotation
+    function shuffleParScore(liste: any[]): any[] {
+      const byScore: Record<number, any[]> = {};
+      for (const a of liste) {
+        const s = a.besoin_score || 1;
+        (byScore[s] = byScore[s] || []).push(a);
+      }
+      return Object.keys(byScore).map(Number).sort((a, b) => b - a)
+        .flatMap(s => {
+          const arr = [...byScore[s]];
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          return arr;
+        });
+    }
+
+    const proteinesSorted = shuffleParScore(proteinesDB);
+    const autresSorted    = shuffleParScore(autresAlimentsDB);
+
+    // Protéines pour déjeuner et dîner (2 protéines différentes si possible)
+    const protDej = proteinesSorted[0]?.nom;
+    const protDin = proteinesSorted[1]?.nom || proteinesSorted[0]?.nom;
+
+    // Aliments complémentaires (sans répéter les protéines choisies)
+    const autresPool = autresSorted.filter(a => a.nom !== protDej && a.nom !== protDin);
+    const autreDej   = autresPool[0]?.nom;
+    const autreDin   = autresPool[1]?.nom || autresPool[0]?.nom;
 
     let ingPetitDej: string[], ingDejeuner: string[], ingDiner: string[];
 
-    if (produitsAlimentaires.length >= 6) {
-      // Assez de produits BDD pour partitionner en 3 groupes distincts
-      const shuffledAliments = [...produitsAlimentaires];
-      for (let i = shuffledAliments.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledAliments[i], shuffledAliments[j]] = [shuffledAliments[j], shuffledAliments[i]];
-      }
-      ingPetitDej = shuffledAliments.slice(0, 2).map(p => p.nom);
-      ingDejeuner = shuffledAliments.slice(2, 4).map(p => p.nom);
-      ingDiner    = shuffledAliments.slice(4, 6).map(p => p.nom);
+    if (protDej && autreDej) {
+      // Déjeuner & dîner depuis BDD : protéine DB + autre aliment DB
+      ingDejeuner = [protDej, autreDej];
+      ingDiner    = (protDin && autreDin) ? [protDin, autreDin] : ingDejeuner;
+      console.log(`[NIVEAU 2] Protéines DB — Déjeuner: ${protDej} | Dîner: ${protDin || protDej}`);
     } else {
-      // Fallback : sélection depuis les pools de besoins, non-chevauchante
+      // Fallback pool statique si pas assez d'aliments BDD
       const troisRepas = selectionnerIngredientsTroisRepas(
         contexte.objectif_principal || 'bien-etre-general',
         besoinsUtilises,
         ingredientsBanis
       );
-      ingPetitDej = troisRepas.petitDej;
       ingDejeuner = troisRepas.dejeuner;
       ingDiner    = troisRepas.diner;
+      console.log(`[NIVEAU 2] Fallback pool statique (proteinesDB=${proteinesDB.length}, autresDB=${autresAlimentsDB.length})`);
     }
 
-    // Petit-déjeuner : toujours remplacé par des ingrédients sucrés/fruits
-    // (le pool wellness contient des légumes incompatibles avec la contrainte "sucré")
+    // Petit-déjeuner : toujours depuis PETIT_DEJ_POOL (fruité/sucré, jamais protéines animales)
     const shuffledPetitDej = [...PETIT_DEJ_POOL].sort(() => Math.random() - 0.5);
     ingPetitDej = shuffledPetitDej.slice(0, 3);
 

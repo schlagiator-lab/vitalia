@@ -214,12 +214,9 @@ function construirePromptRecette(
   const estOmnivore   = !estVegan && !estVegetarien;
 
   // Protéine animale : uniquement déjeuner & dîner (pas petit-dej → conflit avec contrainte sucrée)
+  // La protéine est sélectionnée depuis la BDD et passée via ingredientsObligatoires — ne pas hardcoder.
   const proteineAnimaleConsigne = (estOmnivore && !estPetitDej)
-    ? (profil.budget === 'faible'
-        ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure œufs, sardines en boîte, thon en boîte, poulet, jambon ou fromage (budget accessible).'
-        : profil.budget === 'eleve'
-        ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure saumon sauvage, crevettes, bœuf de qualité, filet de volaille bio ou œufs bio (budget premium).'
-        : '\n**PROTÉINE ANIMALE OBLIGATOIRE** : inclure poulet, dinde, saumon, thon, œufs, fromage ou viande maigre dans chaque repas.')
+    ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : utiliser la protéine animale présente dans les ingrédients obligatoires listés ci-dessus. Ne pas la remplacer par une autre protéine animale.'
     : '';
 
   // Nombre d'étapes aléatoire entre 3 et 5 pour le petit-déjeuner

@@ -310,6 +310,91 @@ export async function filtrerRoutinesSecurite(
 }
 
 // ============================================================================
+// FILTRAGE ALIMENTS via alimentation_besoins
+// ============================================================================
+
+export async function filtrerAlimentsBesoins(
+  supabase: SupabaseClient,
+  profil: ProfilUtilisateur,
+  besoins: string[]
+): Promise<any[]> {
+
+  const besoinsActifs = besoins.length > 0
+    ? besoins
+    : ['vitalite', 'serenite', 'sommeil', 'digestion', 'mobilite', 'hormones'];
+
+  console.log('[NIVEAU 1] Chargement aliments depuis alimentation_besoins pour besoins:', besoinsActifs);
+
+  try {
+    const { data, error } = await supabase
+      .from('alimentation_besoins')
+      .select('besoin_id, score, alimentation(*)')
+      .in('besoin_id', besoinsActifs);
+
+    if (error || !data?.length) {
+      console.warn('[NIVEAU 1] alimentation_besoins vide ou erreur:', error?.message);
+      return [];
+    }
+
+    // Dédupliquer : garder score max par aliment
+    const alimentMap = new Map<string, any>();
+    for (const row of data as any[]) {
+      const a = row.alimentation;
+      if (!a) continue;
+      const existing = alimentMap.get(a.id);
+      if (!existing || (existing.besoin_score || 0) < (row.score || 0)) {
+        alimentMap.set(a.id, { ...a, besoin_score: row.score || 1, besoin_id: row.besoin_id });
+      }
+    }
+
+    let aliments = Array.from(alimentMap.values());
+
+    // Filtrer selon régime alimentaire
+    const estVegan = profil.regime_alimentaire?.some(r =>
+      ['vegan', 'végétalien'].includes(r.toLowerCase())
+    ) ?? false;
+    const estVegetarien = profil.regime_alimentaire?.some(r =>
+      ['vegetarien', 'végétarien'].includes(r.toLowerCase())
+    ) ?? false;
+
+    if (estVegan) {
+      aliments = aliments.filter(a => !estCategorieAnimale(a.categorie || ''));
+    } else if (estVegetarien) {
+      aliments = aliments.filter(a => !estViandePoissonCrustace(a.categorie || ''));
+    }
+
+    // Allergènes basiques
+    if (profil.allergenes?.includes('lactose')) {
+      aliments = aliments.filter(a => {
+        const cat = (a.categorie || '').toLowerCase();
+        return !cat.includes('laitier') && !cat.includes('fromage') && !cat.includes('yaourt') && !cat.includes('lait');
+      });
+    }
+
+    console.log(`[NIVEAU 1] Aliments chargés : ${aliments.length}`);
+    return aliments;
+
+  } catch (err) {
+    console.error('[ERROR] Exception filtrerAlimentsBesoins:', err);
+    return [];
+  }
+}
+
+// Catégories protéines animales complètes (viande + poisson + œufs + laitiers)
+function estCategorieAnimale(categorie: string): boolean {
+  const cat = categorie.toLowerCase();
+  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
+    'abats', 'gibier', 'œuf', 'oeuf', 'produit laitier', 'fromage', 'laitier'].some(m => cat.includes(m));
+}
+
+// Viande + poisson + crustacés seulement (végétariens gardent œufs/laitiers)
+function estViandePoissonCrustace(categorie: string): boolean {
+  const cat = categorie.toLowerCase();
+  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
+    'abats', 'gibier'].some(m => cat.includes(m));
+}
+
+// ============================================================================
 // UTILITAIRE : Normaliser arrays (gère null, string CSV, array PostgreSQL)
 // ============================================================================
 
