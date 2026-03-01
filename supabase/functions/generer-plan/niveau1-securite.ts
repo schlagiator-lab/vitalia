@@ -363,11 +363,15 @@ export async function filtrerAlimentsBesoins(
       aliments = aliments.filter(a => !estViandePoissonCrustace(a.categorie || ''));
     }
 
-    // Allergènes basiques
-    if (profil.allergenes?.includes('lactose')) {
+    // Allergènes basiques — vérifie 'lactose' dans allergenes ET 'sans_lactose'/'sans-lactose' dans regime
+    const estSansLactose = profil.allergenes?.includes('lactose') ||
+      profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
+    if (estSansLactose) {
       aliments = aliments.filter(a => {
         const cat = (a.categorie || '').toLowerCase();
-        return !cat.includes('laitier') && !cat.includes('fromage') && !cat.includes('yaourt') && !cat.includes('lait');
+        const nom = (a.nom || '').toLowerCase();
+        return !cat.includes('laitier') && !cat.includes('fromage') && !cat.includes('yaourt') && !cat.includes('lait')
+          && !nom.includes('yaourt') && !nom.includes('fromage') && !nom.includes('ricotta') && !nom.includes('lait');
       });
     }
 

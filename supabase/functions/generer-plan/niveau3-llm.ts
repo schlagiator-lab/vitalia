@@ -171,7 +171,8 @@ function construirePromptRecette(
   if (profil.allergenes?.includes('gluten') || profil.regime_alimentaire?.includes('sans-gluten')) {
     contraintesRegime.push('SANS GLUTEN');
   }
-  if (profil.allergenes?.includes('lactose')) {
+  if (profil.allergenes?.includes('lactose') ||
+      profil.regime_alimentaire?.some(r => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()))) {
     contraintesRegime.push('SANS LACTOSE');
   }
   if (profil.regime_alimentaire?.includes('paleo')) {
@@ -222,18 +223,21 @@ function construirePromptRecette(
   // Nombre d'étapes aléatoire entre 3 et 5 pour le petit-déjeuner
   const nbEtapesPetitDej = Math.floor(Math.random() * 3) + 3; // 3, 4 ou 5
 
-  // Contraintes spéciales petit-déjeuner
+  const estSansLactose = profil.allergenes?.includes('lactose') ||
+    profil.regime_alimentaire?.some(r => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
+
+  // Contraintes spéciales petit-déjeuner — exemples laitiers retirés si sans lactose
   const contraintesPetitDej = estPetitDej ? `
 ## CONTRAINTES SUPPLÉMENTAIRES PETIT-DÉJEUNER (TOUTES OBLIGATOIRES)
-- **Saveur SUCRÉE** : fruits frais, compote, miel, sirop d'érable, yaourt sucré — PAS de recette salée au petit-déjeuner
-- **Base FRUITS ou CÉRÉALES** : favoriser fruits frais, flocons d'avoine, granola, smoothie, yaourt, pain complet avec confiture/miel — PAS de légumes, pas de tomate, pas de courgette
+- **Saveur SUCRÉE** : fruits frais, compote, miel, sirop d'érable${estSansLactose ? '' : ', yaourt sucré'} — PAS de recette salée au petit-déjeuner
+- **Base FRUITS ou CÉRÉALES** : favoriser fruits frais, flocons d'avoine, granola, smoothie${estSansLactose ? '' : ', yaourt'}, pain complet avec confiture/miel — PAS de légumes, pas de tomate, pas de courgette${estSansLactose ? '\n- **AUCUN produit laitier** : pas de yaourt, pas de fromage blanc, pas de ricotta, pas de lait animal — utiliser uniquement lait végétal si nécessaire' : ''}
 - **ZÉRO cuisson longue** : pas de poêle, pas de four, pas de casserole — uniquement cru, blender, micro-ondes max 2 min, ou toast grille-pain
 - **Maximum 5 ingrédients** (hors sel/cannelle/vanille)
 - **EXACTEMENT ${nbEtapesPetitDej} étapes** dans les instructions (ni plus, ni moins — respecter ce nombre précisément)
 - **Temps total ≤ 10 minutes**
 - **temps_cuisson = 0** si smoothie/bowl/overnight oats/tartine/açaï bowl (pas de cuisson réelle)
-- Exemples acceptables : bol de fruits + yaourt + granola, smoothie bowl, overnight oats, tartine fruits + ricotta, açaï bowl
-- Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe
+- Exemples acceptables : bol de fruits + granola, smoothie bowl, overnight oats${estSansLactose ? ', tartine fruits + beurre d\'amande, açaï bowl' : ', tartine fruits + ricotta, bol de fruits + yaourt + granola, açaï bowl'}
+- Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe${estSansLactose ? ', bol yaourt, tartine ricotta, fromage blanc' : ''}
 ` : '';
 
   // Ingrédients déjà utilisés dans les autres repas du plan (éviter la répétition)
@@ -321,7 +325,9 @@ export async function genererPauseLLM(
   else if (profil.regime_alimentaire?.includes('vegetarien')) contraintesRegime.push('VÉGÉTARIENNE');
   if (profil.allergenes?.includes('gluten') || profil.regime_alimentaire?.includes('sans-gluten'))
     contraintesRegime.push('SANS GLUTEN');
-  if (profil.allergenes?.includes('lactose')) contraintesRegime.push('SANS LACTOSE');
+  if (profil.allergenes?.includes('lactose') ||
+      profil.regime_alimentaire?.some(r => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase())))
+    contraintesRegime.push('SANS LACTOSE');
 
   const objectifNutri: Record<string, string> = {
     'vitalite':  'riche en énergie durable (glucides complexes + bonnes graisses)',

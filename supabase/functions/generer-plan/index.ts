@@ -394,6 +394,20 @@ async function genererPauseAvecFallback(
     });
   }
 
+  // Si sans lactose : remplacer les laitiers des pauses statiques par des alternatives végétales
+  const profilSansLactose = profil.allergenes?.includes('lactose') ||
+    profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
+  if (profilSansLactose) {
+    recette.ingredients = recette.ingredients.map((i: any) => {
+      const nom = (i.nom || '').toLowerCase();
+      if (nom.includes('ricotta'))           return { ...i, nom: 'purée d\'amande' };
+      if (nom.includes('yaourt'))            return { ...i, nom: 'yaourt végétal (coco ou soja)' };
+      if (nom.includes('lait entier'))       return { ...i, nom: 'lait d\'amande' };
+      if (nom.includes('fromage blanc'))     return { ...i, nom: 'yaourt végétal nature' };
+      return i;
+    });
+  }
+
   return recette;
 }
 
@@ -611,7 +625,14 @@ serve(async (req) => {
     }
 
     // Petit-déjeuner : toujours depuis PETIT_DEJ_POOL (fruité/sucré, jamais protéines animales)
-    const shuffledPetitDej = [...PETIT_DEJ_POOL].sort(() => Math.random() - 0.5);
+    // Si sans lactose : retirer les laitiers du pool avant la sélection
+    const estSansLactose = profil.allergenes?.includes('lactose') ||
+      profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
+    const LAITIERS_PETIT_DEJ = new Set(['yaourt grec', 'fromage blanc', 'ricotta']);
+    const poolPetitDej = estSansLactose
+      ? PETIT_DEJ_POOL.filter(item => !LAITIERS_PETIT_DEJ.has(item))
+      : PETIT_DEJ_POOL;
+    const shuffledPetitDej = [...poolPetitDej].sort(() => Math.random() - 0.5);
     ingPetitDej = shuffledPetitDej.slice(0, 3);
 
     console.log(`[NIVEAU 2] Styles: ${stylePetitDej} / ${styleDejeuner} / ${styleDiner}`);
