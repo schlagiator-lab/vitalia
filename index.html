@@ -1018,12 +1018,16 @@ document.addEventListener('DOMContentLoaded', function() {
   chargerSauvegardees()
 
   var urlParams = new URLSearchParams(window.location.search)
-  var profilId = urlParams.get('profil_id') || localStorage.getItem('vitalia_profil_id')
+  var profilIdUrl = urlParams.get('profil_id')
+  var profilId = profilIdUrl || localStorage.getItem('vitalia_profil_id')
   var modeDemo = urlParams.get('demo') === 'true'
 
   if (profilId && profilId !== 'new') {
     // ✅ Utilisateur connu — charger profil et générer plan
     localStorage.setItem('vitalia_profil_id', profilId)
+    // Si le profil_id vient de l'URL (nouveau device), relancer la sync des recettes
+    // car chargerSauvegardees() a été appelé avant que l'id soit en localStorage
+    if (profilIdUrl) syncDepuisSupabase(profilId)
     var pl = localStorage.getItem('vitalia_profil')
     if (pl) { try { profilUtilisateur = JSON.parse(pl); appliquerProfil(profilUtilisateur) } catch(e){} }
     chargerProfilSupabase(profilId)
