@@ -56,7 +56,8 @@
   .saved-item-header { display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; gap: 8px; }
   .saved-item-header:hover .saved-item-title { color: var(--terracotta); }
   .saved-expand-arrow { font-size: 11px; color: var(--text-light); flex-shrink: 0; margin-top: 4px; transition: color 0.2s; }
-  .saved-item-stars { display: flex; gap: 2px; margin-top: 3px; }
+  .saved-item-stars { display: flex; gap: 2px; margin-top: 3px; align-items: center; }
+  .saved-stars-hint { font-size: 10px; color: var(--text-light); margin-left: 4px; font-style: italic; }
   .saved-item-detail { padding-top: 0; }
   .saved-item-ingredients { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
   .saved-ing-tag { background: var(--warm-white); border: 1px solid rgba(196,113,74,0.15); border-radius: 14px; padding: 2px 8px; font-size: 11px; color: var(--mid-brown); }
@@ -1451,6 +1452,71 @@ async function noterRecette(m,note){
   }
 }
 
+async function noterRecetteSauvegardee(id, note){
+  var r=savedRecipes.find(function(x){return String(x.id)===String(id)})
+  if(!r) return
+  r.note=note
+  sauvegarderLocal()
+  // Mise à jour DOM ciblée
+  var starsDiv=document.querySelector('.saved-item-stars[data-recette-id="'+id+'"]')
+  if(starsDiv){
+    starsDiv.querySelectorAll('span[data-val]').forEach(function(s){ s.style.filter=Number(s.dataset.val)<=note?'none':'grayscale(1) opacity(0.3)' })
+    var hint=starsDiv.querySelector('.saved-stars-hint')
+    if(hint) hint.remove()
+  }
+  // Toast différencié
+  if(note>=4) afficherToastFavori('⭐ Recette ajoutée aux favoris !')
+  else afficherToast('Note sauvegardée')
+  // PATCH recettes_sauvegardees
+  if(r.supabase_id){
+    try{
+      await fetch(SUPABASE_URL+'/rest/v1/recettes_sauvegardees?id=eq.'+r.supabase_id,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},
+        body:JSON.stringify({note:note})
+      })
+    }catch(e){}
+  }
+  var profilId=localStorage.getItem('vitalia_profil_id')
+  if(!profilId||profilId==='new') return
+  if(note>=4){
+    // Upsert dans recettes_favorites
+    try{
+      await fetch(SUPABASE_URL+'/rest/v1/recettes_favorites?on_conflict=profil_id,titre',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify({
+          profil_id:profilId,
+          recette_sauvegardee_id:r.supabase_id||null,
+          titre:r.titre,
+          moment:r.moment||null,
+          ingredients:r.ingredients||null,
+          steps:r.steps||null,
+          tip:r.tip||null,
+          note:note,
+          mise_a_jour_le:new Date().toISOString()
+        })
+      })
+    }catch(e){}
+  } else {
+    // Retirer des favoris
+    try{
+      await fetch(SUPABASE_URL+'/rest/v1/recettes_favorites?profil_id=eq.'+profilId+'&titre=eq.'+encodeURIComponent(r.titre),{
+        method:'DELETE',
+        headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}
+      })
+    }catch(e){}
+  }
+}
+
+function afficherToastFavori(msg){
+  var t=document.getElementById('toast'); if(!t) return
+  t.textContent=msg
+  t.style.background='linear-gradient(135deg,#e8b84b,#c4714a)'
+  t.classList.add('show')
+  setTimeout(function(){t.classList.remove('show');t.style.background=''},3000)
+}
+
 async function sauvegarderRecette(m){
   var titre=currentPlan&&currentPlan[m]?(currentPlan[m].nom||currentPlan[m].titre):(document.getElementById(m+'-titre')||{}).textContent||'Recette'
   var idx=savedRecipes.findIndex(function(r){return r.moment===m&&r.titre===titre})
@@ -1626,9 +1692,6 @@ function renderSavedList(){
   var reversed=savedRecipes.slice().reverse()
   l.innerHTML=''
   reversed.forEach(function(r){
-    var starsHtml=r.note
-      ? [1,2,3,4,5].map(function(n){return'<span style="font-size:14px;filter:'+(n<=r.note?'none':'grayscale(1) opacity(0.3)')+'">&#11088;</span>'}).join('')
-      : '<span style="color:var(--text-light);font-size:11px">Non notée</span>'
     var ingHtml=r.ingredients&&r.ingredients.length
       ? '<div class="saved-item-ingredients">'+r.ingredients.map(function(i){return'<span class="saved-ing-tag">'+i+'</span>'}).join('')+'</div>' : ''
     var stepsHtml=r.steps&&r.steps.length
@@ -1641,15 +1704,50 @@ function renderSavedList(){
     var item=document.createElement('div')
     item.className='saved-item'
 
+    // Étoiles interactives
+    var starsDiv=document.createElement('div')
+    starsDiv.className='saved-item-stars'
+    starsDiv.setAttribute('data-recette-id', String(r.id))
+    ;(function(rid, currentNote){
+      for(var n=1;n<=5;n++){
+        var star=document.createElement('span')
+        star.style.cssText='font-size:16px;cursor:pointer;transition:filter 0.1s;filter:'+(currentNote&&n<=currentNote?'none':'grayscale(1) opacity(0.3)')
+        star.textContent='⭐'
+        star.dataset.val=n
+        ;(function(s, val){
+          s.addEventListener('mouseenter', function(){
+            starsDiv.querySelectorAll('span').forEach(function(x){ x.style.filter=Number(x.dataset.val)<=val?'none':'grayscale(1) opacity(0.3)' })
+          })
+          s.addEventListener('mouseleave', function(){
+            var note=savedRecipes.find(function(x){return String(x.id)===rid})
+            var n2=note?note.note:null
+            starsDiv.querySelectorAll('span').forEach(function(x){ x.style.filter=n2&&Number(x.dataset.val)<=n2?'none':'grayscale(1) opacity(0.3)' })
+          })
+          s.addEventListener('click', function(e){
+            e.stopPropagation()
+            noterRecetteSauvegardee(rid, val)
+          })
+        })(star, n)
+        starsDiv.appendChild(star)
+      }
+      if(!currentNote){
+        var hint=document.createElement('span')
+        hint.className='saved-stars-hint'
+        hint.textContent='Notez cette recette'
+        starsDiv.appendChild(hint)
+      }
+    })(String(r.id), r.note)
+
     // Header cliquable (titre + étoiles + flèche)
     var header=document.createElement('div')
     header.className='saved-item-header'
     header.innerHTML=
       '<div style="flex:1;min-width:0">'+
         '<div class="saved-item-title">'+r.titre+'</div>'+
-        '<div class="saved-item-meta"><span>📅 '+r.date+'</span>'+syncIcon+'<div class="saved-item-stars">'+starsHtml+'</div></div>'+
+        '<div class="saved-item-meta"><span>📅 '+r.date+'</span>'+syncIcon+'</div>'+
       '</div>'+
       '<span class="saved-expand-arrow">▼</span>'
+    header.querySelector('.saved-item-meta').appendChild(starsDiv)
     header.addEventListener('click', function(){ toggleSavedDetail(detailId, header) })
     item.appendChild(header)
 
