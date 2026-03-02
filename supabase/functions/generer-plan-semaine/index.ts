@@ -250,24 +250,194 @@ async function genererRecetteIA(
 // ─── Fallbacks recettes ────────────────────────────────────────────────────
 
 function recetteFallback(typeRepas: string, proteineAssignee: string | null): any {
-  const nom = proteineAssignee
-    ? `${proteineAssignee} ${typeRepas === 'petit-dejeuner' ? 'du matin' : 'maison'}`
-    : (typeRepas === 'petit-dejeuner' ? 'Bol de céréales' : 'Plat équilibré');
-  const ingredients = proteineAssignee
-    ? [{ nom: proteineAssignee, quantite: 150, unite: 'g' }, { nom: 'Légumes de saison', quantite: 200, unite: 'g' }]
-    : [{ nom: 'Légumes', quantite: 250, unite: 'g' }, { nom: 'Légumineuses', quantite: 100, unite: 'g' }];
+  if (typeRepas === 'petit-dejeuner') {
+    return {
+      nom: 'Bol Énergie du Matin',
+      type_repas: 'petit-dejeuner',
+      style_culinaire: 'maison',
+      ingredients: [
+        { nom: 'Flocons d\'avoine', quantite: 60, unite: 'g' },
+        { nom: 'Lait végétal ou animal', quantite: 150, unite: 'ml' },
+        { nom: 'Banane', quantite: 1, unite: 'pièce' },
+        { nom: 'Miel', quantite: 10, unite: 'g' },
+        { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
+      ],
+      instructions: [
+        'Verser les flocons d\'avoine dans un bol et couvrir avec le lait froid ou chaud.',
+        'Laisser gonfler 3 minutes si vous utilisez du lait chaud, ou préparer la veille avec du lait froid pour un porridge overnight.',
+        'Éplucher la banane et la couper en rondelles.',
+        'Déposer les rondelles de banane sur les flocons d\'avoine gonflés.',
+        'Arroser de miel et parsemer d\'amandes effilées.',
+        'Déguster immédiatement pour profiter de la texture crémeuse.',
+      ],
+      temps_preparation: 5,
+      temps_cuisson: 3,
+      portions: 1,
+      valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 },
+      astuces: ['Les flocons d\'avoine à index glycémique bas libèrent l\'énergie progressivement pour tenir jusqu\'au déjeuner.'],
+      variantes: ['Remplacez la banane par des fruits rouges surgelés décongelés la veille.'],
+      genere_par_llm: false,
+    };
+  }
+
+  // Déjeuner / Dîner avec protéine assignée
+  const prot = proteineAssignee || 'Filet de poulet';
+  const protLow = prot.toLowerCase();
+
+  let instructions: string[];
+  let ingredients: any[];
+  let nom: string;
+  let calories = 430;
+  let proteines = 28;
+
+  if (protLow.includes('maquereau') || protLow.includes('sardine') || protLow.includes('hareng')) {
+    nom = `${prot} en papillote aux herbes`;
+    ingredients = [
+      { nom: prot, quantite: 160, unite: 'g' },
+      { nom: 'Tomates cerises', quantite: 150, unite: 'g' },
+      { nom: 'Courgette', quantite: 150, unite: 'g' },
+      { nom: 'Citron', quantite: 1, unite: 'pièce' },
+      { nom: 'Herbes de Provence', quantite: 5, unite: 'g' },
+      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
+    ];
+    instructions = [
+      'Préchauffer le four à 200 °C. Découper deux grandes feuilles de papier sulfurisé.',
+      'Couper la courgette en fines rondelles et les tomates cerises en deux.',
+      'Déposer les légumes au centre de chaque feuille, arroser d\'un filet d\'huile d\'olive.',
+      'Placer le poisson par-dessus, presser le demi-citron et parsemer d\'herbes de Provence.',
+      'Refermer hermétiquement les papillotes en repliant les bords et enfourner 18 minutes.',
+      'Ouvrir délicatement à la sortie du four (attention à la vapeur) et servir directement dans la papillote.',
+    ];
+    calories = 380; proteines = 26;
+  } else if (protLow.includes('saumon') || protLow.includes('truite') || protLow.includes('cabillaud') || protLow.includes('dorade') || protLow.includes('bar') || protLow.includes('daurade')) {
+    nom = `${prot} poêlé au citron et câpres`;
+    ingredients = [
+      { nom: prot, quantite: 160, unite: 'g' },
+      { nom: 'Haricots verts', quantite: 180, unite: 'g' },
+      { nom: 'Citron', quantite: 1, unite: 'pièce' },
+      { nom: 'Câpres', quantite: 10, unite: 'g' },
+      { nom: 'Beurre ou huile d\'olive', quantite: 10, unite: 'g' },
+      { nom: 'Sel, poivre', quantite: 2, unite: 'g' },
+    ];
+    instructions = [
+      'Sortir le poisson du réfrigérateur 10 minutes avant la cuisson pour une cuisson homogène.',
+      'Faire bouillir de l\'eau salée et cuire les haricots verts 6 à 7 minutes. Égoutter et réserver au chaud.',
+      'Chauffer une poêle antiadhésive à feu vif avec le beurre ou l\'huile d\'olive.',
+      'Saler et poivrer le poisson côté peau. Déposer côté peau dans la poêle chaude et cuire 4 minutes sans y toucher.',
+      'Retourner délicatement et cuire encore 2 à 3 minutes selon l\'épaisseur. Ajouter les câpres et presser le citron.',
+      'Servir le poisson sur les haricots verts, napper du jus de cuisson citronnée.',
+    ];
+    calories = 400; proteines = 30;
+  } else if (protLow.includes('poulet') || protLow.includes('dinde')) {
+    nom = `${prot} rôti aux légumes du soleil`;
+    ingredients = [
+      { nom: prot, quantite: 160, unite: 'g' },
+      { nom: 'Poivron rouge', quantite: 120, unite: 'g' },
+      { nom: 'Courgette', quantite: 120, unite: 'g' },
+      { nom: 'Oignon rouge', quantite: 80, unite: 'g' },
+      { nom: 'Ail', quantite: 2, unite: 'gousses' },
+      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
+      { nom: 'Paprika, thym', quantite: 3, unite: 'g' },
+    ];
+    instructions = [
+      'Préchauffer le four à 200 °C. Couper le poivron, la courgette et l\'oignon en morceaux de 3 cm.',
+      'Écraser les gousses d\'ail sans les éplucher. Déposer tous les légumes dans un plat allant au four.',
+      'Arroser d\'huile d\'olive, saupoudrer de paprika et thym, saler et poivrer. Mélanger pour enrober.',
+      'Déposer le poulet ou la dinde par-dessus les légumes. Badigeonner avec un peu d\'huile et d\'épices.',
+      'Enfourner 25 à 30 minutes jusqu\'à ce que la viande soit dorée et les légumes légèrement caramélisés.',
+      'Laisser reposer 3 minutes avant de découper et servir avec les légumes confits.',
+    ];
+    calories = 440; proteines = 34;
+  } else if (protLow.includes('bœuf') || protLow.includes('boeuf') || protLow.includes('steak') || protLow.includes('veau')) {
+    nom = `${prot} poêlé, purée de patate douce`;
+    ingredients = [
+      { nom: prot, quantite: 150, unite: 'g' },
+      { nom: 'Patate douce', quantite: 200, unite: 'g' },
+      { nom: 'Épinards frais', quantite: 100, unite: 'g' },
+      { nom: 'Ail', quantite: 1, unite: 'gousse' },
+      { nom: 'Huile d\'olive', quantite: 10, unite: 'ml' },
+      { nom: 'Romarin, sel, poivre', quantite: 3, unite: 'g' },
+    ];
+    instructions = [
+      'Éplucher la patate douce, la couper en cubes et la cuire à l\'eau bouillante salée 15 minutes.',
+      'Égoutter et écraser à la fourchette avec un filet d\'huile d\'olive, saler et poivrer. Réserver au chaud.',
+      'Sortir la viande du réfrigérateur 15 minutes avant. La saler et poivrer des deux côtés.',
+      'Chauffer une poêle à feu très vif. Cuire la viande 2 à 3 minutes de chaque côté selon l\'épaisseur pour une cuisson rosée.',
+      'Dans la même poêle, faire revenir l\'ail écrasé 30 secondes puis ajouter les épinards. Faire tomber 2 minutes à feu moyen.',
+      'Servir la viande tranchée sur la purée de patate douce, accompagnée des épinards à l\'ail.',
+    ];
+    calories = 480; proteines = 36;
+  } else if (protLow.includes('lentille') || protLow.includes('pois chiche') || protLow.includes('haricot') || protLow.includes('tofu') || protLow.includes('tempeh')) {
+    nom = `${prot} mijotés aux épices douces`;
+    ingredients = [
+      { nom: prot, quantite: 180, unite: 'g' },
+      { nom: 'Tomates concassées', quantite: 200, unite: 'g' },
+      { nom: 'Oignon', quantite: 100, unite: 'g' },
+      { nom: 'Carottes', quantite: 120, unite: 'g' },
+      { nom: 'Cumin, curcuma, coriandre', quantite: 5, unite: 'g' },
+      { nom: 'Huile d\'olive', quantite: 10, unite: 'ml' },
+    ];
+    instructions = [
+      'Émincer l\'oignon et couper les carottes en rondelles fines. Faire revenir dans l\'huile d\'olive à feu moyen 5 minutes.',
+      'Ajouter le cumin, le curcuma et la coriandre moulus. Faire revenir 1 minute pour libérer les arômes.',
+      'Incorporer les tomates concassées et mélanger. Laisser réduire 5 minutes à feu moyen.',
+      'Ajouter la protéine (lentilles rincées, pois chiches égouttés ou tofu en dés). Mélanger délicatement.',
+      'Couvrir et laisser mijoter 15 à 20 minutes à feu doux en remuant de temps en temps.',
+      'Rectifier l\'assaisonnement, parsemer de coriandre fraîche si disponible et servir.',
+    ];
+    calories = 390; proteines = 20;
+  } else if (protLow.includes('œuf') || protLow.includes('oeuf')) {
+    nom = 'Omelette aux légumes et fromage de chèvre';
+    ingredients = [
+      { nom: 'Œufs', quantite: 3, unite: 'pièces' },
+      { nom: 'Fromage de chèvre frais', quantite: 40, unite: 'g' },
+      { nom: 'Tomates cerises', quantite: 100, unite: 'g' },
+      { nom: 'Épinards frais', quantite: 80, unite: 'g' },
+      { nom: 'Huile d\'olive', quantite: 5, unite: 'ml' },
+      { nom: 'Sel, poivre, ciboulette', quantite: 3, unite: 'g' },
+    ];
+    instructions = [
+      'Battre les œufs énergiquement avec une pincée de sel et de poivre jusqu\'à obtenir un mélange homogène et légèrement mousseux.',
+      'Couper les tomates cerises en deux. Faire tomber les épinards dans la poêle chaude 1 minute puis réserver.',
+      'Essuyer la poêle, ajouter l\'huile d\'olive à feu moyen-vif.',
+      'Verser les œufs battus. Laisser coaguler 30 secondes sur les bords, puis rabattre délicatement vers le centre avec une spatule.',
+      'Quand l\'omelette est encore baveuse au centre, répartir les épinards, les tomates et le fromage de chèvre émietté sur la moitié.',
+      'Plier l\'omelette en deux, glisser dans l\'assiette et parsemer de ciboulette ciselée. Servir immédiatement.',
+    ];
+    calories = 350; proteines = 24;
+  } else {
+    // Protéine générique ou inconnue
+    nom = `${prot} poêlé aux légumes de saison`;
+    ingredients = [
+      { nom: prot, quantite: 150, unite: 'g' },
+      { nom: 'Légumes de saison variés', quantite: 250, unite: 'g' },
+      { nom: 'Oignon', quantite: 80, unite: 'g' },
+      { nom: 'Ail', quantite: 2, unite: 'gousses' },
+      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
+      { nom: 'Herbes fraîches, sel, poivre', quantite: 5, unite: 'g' },
+    ];
+    instructions = [
+      'Préparer et couper les légumes en morceaux réguliers (2 à 3 cm). Émincer l\'oignon et écraser l\'ail.',
+      'Chauffer l\'huile d\'olive dans une grande poêle ou wok à feu vif.',
+      'Faire revenir l\'oignon et l\'ail 2 minutes jusqu\'à ce qu\'ils soient translucides et dorés.',
+      'Ajouter les légumes les plus durs en premier (carottes, brocoli), puis les plus tendres après 3 minutes.',
+      'Incorporer la protéine préparée (coupée en dés ou en tranches selon sa nature). Saler, poivrer et mélanger.',
+      'Cuire encore 5 à 8 minutes à feu moyen en remuant régulièrement. Parsemer d\'herbes fraîches et servir.',
+    ];
+  }
+
   return {
     nom,
     type_repas: typeRepas,
     style_culinaire: 'maison',
     ingredients,
-    instructions: ['Préparer les ingrédients.', 'Cuisiner selon votre méthode.', 'Assaisonner et servir.'],
+    instructions,
     temps_preparation: 10,
-    temps_cuisson: 15,
+    temps_cuisson: 20,
     portions: 2,
-    valeurs_nutritionnelles: { calories: 420, proteines: 18, glucides: 48, lipides: 12 },
-    astuces: ['Choisissez des produits de saison pour plus de saveur.'],
-    variantes: ['Adaptez les légumes selon votre goût.'],
+    valeurs_nutritionnelles: { calories, proteines, glucides: 40, lipides: 14 },
+    astuces: ['Choisissez des légumes de saison pour plus de nutriments et de saveur.'],
+    variantes: ['Adaptez les épices selon vos goûts et les légumes selon la saison.'],
     genere_par_llm: false,
   };
 }
