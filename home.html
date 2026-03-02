@@ -2228,6 +2228,16 @@ function afficherSemaine(data) {
         html += '</div>'
       }
 
+      // Timing chips
+      var tPrep = recette.temps_preparation || 0
+      var tCook = recette.temps_cuisson || 0
+      if (tPrep > 0 || tCook > 0) {
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
+        if (tPrep > 0) html += '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--terracotta);font-weight:500;">⏱ ' + tPrep + ' min prép.</span>'
+        if (tCook > 0) html += '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(232,184,75,0.1);border:1px solid rgba(232,184,75,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--mid-brown);font-weight:500;">🔥 ' + tCook + ' min cuisson</span>'
+        html += '</div>'
+      }
+
       // Ingredients (scaled dynamically)
       if (recette.ingredients && recette.ingredients.length) {
         html += '<div class="day-meal-ingredients" id="ing-' + id + '">'
@@ -2939,6 +2949,11 @@ function afficherRecettesSauvegardees() {
            '    </div>' +
            '  </div>' +
            '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           ((prep > 0 || cook > 0) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+             (prep > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--terracotta);font-weight:500;">⏱ ' + prep + ' min prép.</span>' : '') +
+             (cook > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(232,184,75,0.1);border:1px solid rgba(232,184,75,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--mid-brown);font-weight:500;">🔥 ' + cook + ' min cuisson</span>' : '') +
+             (cal ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(122,158,126,0.1);border:1px solid rgba(122,158,126,0.2);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--sage);font-weight:500;">🔋 ' + cal + '</span>' : '') +
+           '</div>' : '') +
            (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions +
            astuces +
@@ -2958,6 +2973,7 @@ function toggleSavedRecette(id) {
 }
 
 function supprimerRecetteSauvegardee(idx) {
+  if (!confirm('Supprimer cette recette de vos favoris ?')) return
   try {
     var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
     saved.splice(idx, 1)
