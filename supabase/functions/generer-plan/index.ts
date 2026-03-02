@@ -593,12 +593,43 @@ serve(async (req) => {
         });
     }
 
-    const proteinesSorted = shuffleParScore(proteinesDB);
-    const autresSorted    = shuffleParScore(autresAlimentsDB);
+    // Filet de sécurité : déduplication par nom normalisé après shuffle
+    // (au cas où la déduplication niveau1 ne suffit pas ou que des homonymes passent)
+    function deduplicerParNom(liste: any[]): any[] {
+      const seen = new Set<string>();
+      return liste.filter(a => {
+        const key = (a.nom || '').toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    const proteinesSorted = deduplicerParNom(shuffleParScore(proteinesDB));
+    const autresSorted    = deduplicerParNom(shuffleParScore(autresAlimentsDB));
+
+    // Détecte si un aliment est un poisson/fruit de mer (pour la diversification de famille)
+    function estPoisson(aliment: any): boolean {
+      const cat = (aliment?.categorie || '').toLowerCase();
+      return ['poisson', 'hareng', 'anchois', 'sardine', 'thon', 'saumon', 'maquereau']
+        .some(k => cat.includes(k));
+    }
 
     // Protéines pour déjeuner et dîner (2 protéines différentes si possible)
-    const protDej = proteinesSorted[0]?.nom;
-    const protDin = proteinesSorted[1]?.nom || proteinesSorted[0]?.nom;
+    // FIX diversité : si la première protéine est un poisson, chercher une viande pour le dîner
+    // (évite d'avoir maquereau + sardines le même jour, ce qui arrive souvent car les poissons
+    // gras dominent le score 5 pour les objectifs mobilite / vitalite)
+    const protDejAliment = proteinesSorted[0];
+    const protDej = protDejAliment?.nom;
+
+    let protDin: string | undefined;
+    if (protDejAliment && estPoisson(protDejAliment) && proteinesSorted.length > 1) {
+      // Chercher la première protéine non-poisson disponible pour varier
+      const autreViande = proteinesSorted.find((a, i) => i > 0 && !estPoisson(a));
+      protDin = autreViande?.nom || proteinesSorted[1]?.nom || protDej;
+    } else {
+      protDin = proteinesSorted[1]?.nom || protDej;
+    }
 
     // Aliments complémentaires (sans répéter les protéines choisies)
     const autresPool = autresSorted.filter(a => a.nom !== protDej && a.nom !== protDin);
@@ -736,13 +767,22 @@ serve(async (req) => {
           type: 'recette', id: recetteDejeuner.id || `gen-midi-${Date.now()}`,
           nom: recetteDejeuner.nom, style_culinaire: recetteDejeuner.style_culinaire,
           type_repas: 'dejeuner',
-          ingredients: recetteDejeuner.ingredients.map((i: any) => i.nom)
+          // FIX anti-répétition inter-plans : ajouter les noms bruts DB en plus des noms LLM
+          // (le LLM peut renommer "Maquereau" en "Filets de maquereau grillés" → ban cassé)
+          ingredients: [
+            ...recetteDejeuner.ingredients.map((i: any) => i.nom),
+            ...(protDej ? [protDej] : [])
+          ]
         },
         {
           type: 'recette', id: recetteDiner.id || `gen-soir-${Date.now()}`,
           nom: recetteDiner.nom, style_culinaire: recetteDiner.style_culinaire,
           type_repas: 'diner',
-          ingredients: recetteDiner.ingredients.map((i: any) => i.nom)
+          // FIX idem pour le dîner
+          ingredients: [
+            ...recetteDiner.ingredients.map((i: any) => i.nom),
+            ...(protDin && protDin !== protDej ? [protDin] : [])
+          ]
         },
         ...routinesSelectionnees.map(r => ({
           type: 'routine', id: r.id, nom: r.nom, moment: r.moment_optimal

@@ -336,14 +336,19 @@ export async function filtrerAlimentsBesoins(
       return [];
     }
 
-    // Dédupliquer : garder score max par aliment
+    // Dédupliquer : garder score max par NOM normalisé (pas par ID)
+    // FIX anti-répétition : certains aliments ont deux IDs différents mais le même nom
+    // (ex: "Maquereau" ALI_047 + ALI_119, "Saumon sauvage" ALI_010 + ALI_045)
+    // Sans cette déduplication par nom, proteinesSorted[0] et [1] peuvent être le même aliment
+    // → même protéine au déjeuner ET au dîner dans un même plan.
     const alimentMap = new Map<string, any>();
     for (const row of data as any[]) {
       const a = row.alimentation;
       if (!a) continue;
-      const existing = alimentMap.get(a.id);
+      const nomKey = (a.nom || '').toLowerCase().trim();
+      const existing = alimentMap.get(nomKey);
       if (!existing || (existing.besoin_score || 0) < (row.score || 0)) {
-        alimentMap.set(a.id, { ...a, besoin_score: row.score || 1, besoin_id: row.besoin_id });
+        alimentMap.set(nomKey, { ...a, besoin_score: row.score || 1, besoin_id: row.besoin_id });
       }
     }
 

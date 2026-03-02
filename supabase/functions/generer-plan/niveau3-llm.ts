@@ -217,7 +217,7 @@ function construirePromptRecette(
   // Protéine animale : uniquement déjeuner & dîner (pas petit-dej → conflit avec contrainte sucrée)
   // La protéine est sélectionnée depuis la BDD et passée via ingredientsObligatoires — ne pas hardcoder.
   const proteineAnimaleConsigne = (estOmnivore && !estPetitDej)
-    ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : utiliser la protéine animale présente dans les ingrédients obligatoires listés ci-dessus. Ne pas la remplacer par une autre protéine animale.'
+    ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : utiliser la protéine animale présente dans les ingrédients obligatoires ci-dessus. Ne pas la remplacer. Dans le JSON de sortie, le champ "nom" de cet ingrédient DOIT être EXACTEMENT le même mot que dans la liste (ex: si la liste dit "Maquereau", écrire "Maquereau" — pas "Filets de maquereau", pas "Maquereau grillé").'
     : '';
 
   // Nombre d'étapes aléatoire entre 3 et 5 pour le petit-déjeuner
