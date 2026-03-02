@@ -801,11 +801,12 @@ serve(async (req: Request) => {
     // Charger les données wellness
     const wellness = await chargerWellness(supabase, symptomesArr, profilNorm);
 
-    // Générer toutes les recettes en parallèle (7 jours × 3 repas = 21 appels)
-    console.log('[generer-plan-semaine] Génération 21 recettes en parallèle...');
+    // Générer les recettes par batch de 4 pour éviter les rate limits Claude
+    // 7 jours × 3 repas = 21 appels → batches de 4 avec 400ms entre chaque
+    console.log('[generer-plan-semaine] Génération 21 recettes en batches...');
 
-    type RecettePromise = Promise<any>;
-    const recettesPromises: RecettePromise[] = [];
+    type RecetteThunk = () => Promise<any>;
+    const recettesThunks: RecetteThunk[] = [];
 
     for (let j = 0; j < 7; j++) {
       const style = stylesJours[j];
@@ -814,26 +815,29 @@ serve(async (req: Request) => {
         .filter((_, k) => k !== j)
         .flatMap(([a, b]) => [a, b]);
 
-      // Petit-déjeuner (pas de protéine assignée)
-      recettesPromises.push(
+      recettesThunks.push(() =>
         genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [])
           .then(r => r || recetteFallback('petit-dejeuner', null))
       );
-
-      // Déjeuner
-      recettesPromises.push(
+      recettesThunks.push(() =>
         genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines)
           .then(r => r || recetteFallback('dejeuner', protDej))
       );
-
-      // Dîner
-      recettesPromises.push(
+      recettesThunks.push(() =>
         genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines)
           .then(r => r || recetteFallback('diner', protDin))
       );
     }
 
-    const recettesResultats = await Promise.all(recettesPromises);
+    const BATCH_SIZE = 4;
+    const BATCH_DELAY_MS = 400;
+    const recettesResultats: any[] = [];
+    for (let b = 0; b < recettesThunks.length; b += BATCH_SIZE) {
+      if (b > 0) await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+      const batch = recettesThunks.slice(b, b + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(fn => fn()));
+      recettesResultats.push(...batchResults);
+    }
 
     // Motivation + conseil en parallèle
     const motivationPromise = genererMotivation(symptomesArr);

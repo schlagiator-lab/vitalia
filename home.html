@@ -2335,20 +2335,25 @@ async function autoRegenFallbacks(data) {
 
   if (!fallbacks.length) return
 
-  // Launch all in parallel
-  await Promise.all(fallbacks.map(async function(f) {
-    try {
-      var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
-        body: JSON.stringify({ profil_id: profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: selectedSymptoms }),
-      })
-      var d = await resp.json()
-      if (d.success && d.recette && semainePlanData && semainePlanData.semaine && semainePlanData.semaine[f.jour]) {
-        semainePlanData.semaine[f.jour][f.mealKey] = d.recette
-      }
-    } catch(e) {}
-  }))
+  // Process in batches of 3 to avoid rate limiting
+  for (var bi = 0; bi < fallbacks.length; bi += 3) {
+    var batch = fallbacks.slice(bi, bi + 3)
+    await Promise.all(batch.map(async function(f) {
+      try {
+        var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
+          body: JSON.stringify({ profil_id: profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: selectedSymptoms }),
+        })
+        var d = await resp.json()
+        if (d.success && d.recette && semainePlanData && semainePlanData.semaine && semainePlanData.semaine[f.jour]) {
+          semainePlanData.semaine[f.jour][f.mealKey] = d.recette
+        }
+      } catch(e) {}
+    }))
+    // Small pause between batches
+    if (bi + 3 < fallbacks.length) await new Promise(function(r) { setTimeout(r, 500) })
+  }
 
   // Re-render once all done, restoring the open day
   semainePlanData._regenRefresh = true
