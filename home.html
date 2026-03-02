@@ -904,36 +904,34 @@
       <div class="chip" onclick="toggleSymptom(this,'hormones')">🌸 Hormones &amp; Longévité</div>
     </div>
   </div>
-  <div class="config-row">
-    <div class="config-field">
-      <label class="field-label">Temps max</label>
-      <select class="field-input" id="tempsMax">
-        <option value="15">15 min</option>
-        <option value="30" selected>30 min</option>
-        <option value="45">45 min</option>
-        <option value="60">1h</option>
-      </select>
+  <div class="config-field">
+    <label class="field-label">Temps max</label>
+    <div class="chips" id="configTempsChips" style="margin-top:8px;">
+      <div class="chip" data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+      <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+      <div class="chip" data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+      <div class="chip" data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
     </div>
-    <div class="config-field">
-      <label class="field-label">Budget/jour</label>
-      <select class="field-input" id="budgetMax">
-        <option value="15" selected>Petit</option>
-        <option value="25">Moyen</option>
-        <option value="40">Grand</option>
-      </select>
+  </div>
+  <div class="config-field">
+    <label class="field-label">Budget repas</label>
+    <div class="chips" id="configBudgetChips" style="margin-top:8px;">
+      <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit</div>
+      <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen</div>
+      <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand</div>
     </div>
   </div>
   <div class="config-field">
     <label class="field-label">Régimes</label>
     <div class="chips" id="regimesChips">
-      <div class="chip" onclick="toggleRegime(this,'omnivore')">🥩 Omnivore</div>
-      <div class="chip" onclick="toggleRegime(this,'sans_gluten')">🌾 Sans gluten</div>
-      <div class="chip" onclick="toggleRegime(this,'vegan')">🌱 Végan</div>
-      <div class="chip" onclick="toggleRegime(this,'vegetarien')">🥗 Végétarien</div>
-      <div class="chip" onclick="toggleRegime(this,'sans_lactose')">🥛 Sans lactose</div>
-      <div class="chip" onclick="toggleRegime(this,'keto')">🥑 Kéto</div>
-      <div class="chip" onclick="toggleRegime(this,'halal')">☪️ Halal</div>
-      <div class="chip" onclick="toggleRegime(this,'casher')">✡️ Casher</div>
+      <div class="chip" data-val="omnivore"    onclick="toggleSharedRegime(this,'omnivore')">🥩 Omnivore</div>
+      <div class="chip" data-val="sans_gluten" onclick="toggleSharedRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+      <div class="chip" data-val="vegan"       onclick="toggleSharedRegime(this,'vegan')">🌱 Végan</div>
+      <div class="chip" data-val="vegetarien"  onclick="toggleSharedRegime(this,'vegetarien')">🥗 Végétarien</div>
+      <div class="chip" data-val="sans_lactose" onclick="toggleSharedRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+      <div class="chip" data-val="keto"        onclick="toggleSharedRegime(this,'keto')">🥑 Kéto</div>
+      <div class="chip" data-val="halal"       onclick="toggleSharedRegime(this,'halal')">☪️ Halal</div>
+      <div class="chip" data-val="casher"      onclick="toggleSharedRegime(this,'casher')">✡️ Casher</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-top:4px;padding:4px 0;">
@@ -1226,6 +1224,38 @@
           <div class="chip" data-val="hormones" onclick="toggleSemaineSymptom(this,'hormones')">🌸 Hormones</div>
         </div>
       </div>
+      <div>
+        <div class="field-label">Régimes alimentaires</div>
+        <div class="chips" id="semaineRegimesChips" style="margin-top:10px;">
+          <div class="chip" data-val="omnivore"    onclick="toggleSharedRegime(this,'omnivore')">🥩 Omnivore</div>
+          <div class="chip" data-val="sans_gluten" onclick="toggleSharedRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+          <div class="chip" data-val="vegan"       onclick="toggleSharedRegime(this,'vegan')">🌱 Végan</div>
+          <div class="chip" data-val="vegetarien"  onclick="toggleSharedRegime(this,'vegetarien')">🥗 Végétarien</div>
+          <div class="chip" data-val="sans_lactose" onclick="toggleSharedRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+          <div class="chip" data-val="keto"        onclick="toggleSharedRegime(this,'keto')">🥑 Kéto</div>
+          <div class="chip" data-val="halal"       onclick="toggleSharedRegime(this,'halal')">☪️ Halal</div>
+          <div class="chip" data-val="casher"      onclick="toggleSharedRegime(this,'casher')">✡️ Casher</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <div class="field-label">Temps max</div>
+          <div class="chips" id="semaineTempsChips" style="margin-top:10px;flex-wrap:wrap;">
+            <div class="chip" data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+            <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+            <div class="chip" data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+            <div class="chip" data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Budget repas</div>
+          <div class="chips" id="semaineBudgetChips" style="margin-top:10px;flex-wrap:wrap;">
+            <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit</div>
+            <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen</div>
+            <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand</div>
+          </div>
+        </div>
+      </div>
       <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine()">
         <span id="semaineBtnText">✨ Générer ma semaine</span>
       </button>
@@ -1249,12 +1279,6 @@
 
     <!-- Wellness section (nutraceutique + routine) — populated by JS -->
     <div class="semaine-wellness" id="semaineWellness" style="display:none;padding-bottom:calc(var(--tab-bar-height) + 80px);"></div>
-
-    <!-- Floating shopping list bar -->
-    <div class="courses-bar" id="coursesBar" style="display:none;">
-      <span class="courses-bar-count" id="coursesCount">0 recette sélectionnée</span>
-      <button class="courses-bar-btn" onclick="afficherListeCourses()">🛒 Voir ma liste</button>
-    </div>
 
   </div>
 
@@ -1309,12 +1333,40 @@
         </div>
       </div>
 
-      <!-- Votre profil -->
-      <div id="recetteProfilSection" style="display:none;">
-        <div class="field-label">Votre profil</div>
-        <div id="recetteProfilContent" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;"></div>
-        <div style="margin-top:8px;font-size:11px;color:var(--text-light);font-style:italic;">🔒 Ces contraintes sont prises en compte automatiquement</div>
+      <!-- Préférences inline (régimes + temps + budget) -->
+      <div>
+        <div class="field-label">Régimes alimentaires</div>
+        <div class="chips" id="recetteRegimesChips" style="margin-top:10px;">
+          <div class="chip" data-val="omnivore"    onclick="toggleSharedRegime(this,'omnivore')">🥩 Omnivore</div>
+          <div class="chip" data-val="sans_gluten" onclick="toggleSharedRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+          <div class="chip" data-val="vegan"       onclick="toggleSharedRegime(this,'vegan')">🌱 Végan</div>
+          <div class="chip" data-val="vegetarien"  onclick="toggleSharedRegime(this,'vegetarien')">🥗 Végétarien</div>
+          <div class="chip" data-val="sans_lactose" onclick="toggleSharedRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+          <div class="chip" data-val="keto"        onclick="toggleSharedRegime(this,'keto')">🥑 Kéto</div>
+          <div class="chip" data-val="halal"       onclick="toggleSharedRegime(this,'halal')">☪️ Halal</div>
+          <div class="chip" data-val="casher"      onclick="toggleSharedRegime(this,'casher')">✡️ Casher</div>
+        </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <div class="field-label">Temps max</div>
+          <div class="chips" id="recetteTempsChips" style="margin-top:10px;flex-wrap:wrap;">
+            <div class="chip" data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+            <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+            <div class="chip" data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+            <div class="chip" data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Budget repas</div>
+          <div class="chips" id="recetteBudgetChips" style="margin-top:10px;flex-wrap:wrap;">
+            <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit</div>
+            <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen</div>
+            <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-light);font-style:italic;margin-top:6px;">🔒 Ces contraintes sont prises en compte automatiquement</div>
 
       <button class="btn-primary" id="recetteBtnGenerate" onclick="genererRecetteUnique()">
         <span id="recetteBtnText">🍳 Générer une recette</span>
@@ -1409,10 +1461,20 @@
       <div>
         <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Temps de cuisine max</div>
         <div class="chips" id="profilTempsCuisineChips">
-          <div class="chip"          data-val="15" onclick="selectProfilTempsCuisine(this,15)">⚡ 15 min</div>
-          <div class="chip selected" data-val="30" onclick="selectProfilTempsCuisine(this,30)">🕐 30 min</div>
-          <div class="chip"          data-val="45" onclick="selectProfilTempsCuisine(this,45)">🍳 45 min</div>
-          <div class="chip"          data-val="60" onclick="selectProfilTempsCuisine(this,60)">👨‍🍳 1h+</div>
+          <div class="chip"          data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+          <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+          <div class="chip"          data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+          <div class="chip"          data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
+        </div>
+      </div>
+
+      <!-- Budget repas -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Budget repas</div>
+        <div class="chips" id="profilBudgetChips">
+          <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit (5-8€)</div>
+          <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen (8-12€)</div>
+          <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand (12-20€)</div>
         </div>
       </div>
 
@@ -1443,6 +1505,12 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- ── Floating shopping list bar (outside tabs so it's always visible) ── -->
+  <div class="courses-bar" id="coursesBar" style="display:none;">
+    <span class="courses-bar-count" id="coursesCount">0 recette sélectionnée</span>
+    <button class="courses-bar-btn" onclick="afficherListeCourses()">🛒 Voir ma liste</button>
   </div>
 
   <!-- ── Tab bar ── -->
@@ -1480,6 +1548,7 @@ var semaineData       = null
 var recetteGeneree    = null
 var selectedSymptoms  = ['vitalite', 'serenite']
 var selectedRegimes   = []
+var selectedBudget    = 'moyen'
 var recipeServings    = { matin: 1, midi: 1, apres_midi: 1, soir: 1 }
 var recipeBaseIng     = {}
 var savedRecipes      = []
@@ -1518,8 +1587,8 @@ function switchTab(name) {
   window.scrollTo({ top: 0, behavior: 'instant' })
 
   // Sync chips / UI on tab switch
+  syncAllPreferencesChips()
   if (name === 'semaine') syncSemaineChips()
-  if (name === 'recette') afficherProfilRecetteTab()
   if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
 
   fermerConfig()
@@ -1560,13 +1629,97 @@ function toggleSymptom(el, val) {
     selectedSymptoms = selectedSymptoms.filter(function(v) { return v !== val })
   }
 }
-function toggleRegime(el, val) {
-  el.classList.toggle('selected')
+// ── Shared chipset IDs ──
+var ALL_REGIMES_IDS = ['regimesChips','semaineRegimesChips','recetteRegimesChips','profilRegimesChips']
+var ALL_TEMPS_IDS   = ['configTempsChips','semaineTempsChips','recetteTempsChips','profilTempsCuisineChips']
+var ALL_BUDGET_IDS  = ['configBudgetChips','semaineBudgetChips','recetteBudgetChips','profilBudgetChips']
+
+function toggleSharedRegime(el, val) {
   if (el.classList.contains('selected')) {
-    if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
-  } else {
+    el.classList.remove('selected')
     selectedRegimes = selectedRegimes.filter(function(v) { return v !== val })
+  } else {
+    el.classList.add('selected')
+    if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
   }
+  ALL_REGIMES_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip[data-val="' + val + '"]').forEach(function(c) {
+      c.classList.toggle('selected', selectedRegimes.includes(val))
+    })
+  })
+  autoSauvegarderPreferences()
+}
+
+function selectSharedTemps(el, val) {
+  profilTempsCuisineCourant = val
+  ALL_TEMPS_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', parseInt(c.dataset.val) === val)
+    })
+  })
+  autoSauvegarderPreferences()
+}
+
+function selectSharedBudget(el, val) {
+  selectedBudget = val
+  ALL_BUDGET_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', c.dataset.val === val)
+    })
+  })
+  autoSauvegarderPreferences()
+}
+
+var _prefTimer = null
+function autoSauvegarderPreferences() {
+  if (profilUtilisateur) {
+    profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
+    profilUtilisateur.temps_cuisine_max    = profilTempsCuisineCourant
+    profilUtilisateur.budget               = selectedBudget
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+  }
+  clearTimeout(_prefTimer)
+  _prefTimer = setTimeout(function() {
+    if (!profil_id || profil_id === 'new') return
+    fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer '+SUPABASE_ANON_KEY },
+      body: JSON.stringify({ regimes_alimentaires:selectedRegimes, temps_cuisine_max:profilTempsCuisineCourant, budget:selectedBudget })
+    })
+  }, 1500)
+}
+
+function syncAllPreferencesChips() {
+  // Régimes (multi-select)
+  ALL_REGIMES_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip[data-val]').forEach(function(c) {
+      c.classList.toggle('selected', selectedRegimes.includes(c.dataset.val))
+    })
+  })
+  // Temps (single-select)
+  ALL_TEMPS_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', parseInt(c.dataset.val) === profilTempsCuisineCourant)
+    })
+  })
+  // Budget (single-select)
+  ALL_BUDGET_IDS.forEach(function(id) {
+    var container = document.getElementById(id)
+    if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', c.dataset.val === selectedBudget)
+    })
+  })
 }
 
 // ── Ally modal (stub — data & logic added in Step 2) ──
@@ -1669,7 +1822,6 @@ async function chargerProfilSupabase(id) {
         profilUtilisateur = d[0]
         appliquerProfil(d[0])
         localStorage.setItem('vitalia_profil', JSON.stringify(d[0]))
-        if (currentTab === 'recette') afficherProfilRecetteTab()
       }
     }
   } catch(e) { console.warn('Profile load error:', e) }
@@ -1689,11 +1841,13 @@ function appliquerProfil(p) {
   // Sync regimes
   if (p.regimes_alimentaires && p.regimes_alimentaires.length) {
     selectedRegimes = p.regimes_alimentaires
-    document.querySelectorAll('#regimesChips .chip').forEach(function(el) {
-      var m = el.getAttribute('onclick').match(/'([^']+)'/)
-      if (m) el.classList.toggle('selected', selectedRegimes.includes(m[1]))
-    })
   }
+  // Sync budget
+  if (p.budget) selectedBudget = p.budget
+  // Sync temps cuisine
+  if (p.temps_cuisine_max) profilTempsCuisineCourant = p.temps_cuisine_max
+  // Sync all chips
+  syncAllPreferencesChips()
   // Update Aujourd'hui profile button
   var av = document.getElementById('profileAvatar')
   var nm = document.getElementById('profileNameBadge')
@@ -2048,12 +2202,13 @@ async function genererPlan() {
   if (ap) ap.style.opacity = '0'
 
   try {
+    var budgetMap = { faible: 15, moyen: 25, eleve: 40 }
     var body = {
       profil_id: profil_id,
       symptomes: selectedSymptoms,
       preferences_moment: {
-        temps_max:  parseInt((document.getElementById('tempsMax')  || {}).value  || '30'),
-        budget_max: parseInt((document.getElementById('budgetMax') || {}).value || '15')
+        temps_max:  profilTempsCuisineCourant,
+        budget_max: budgetMap[selectedBudget] || 25
       },
       force_regeneration: true,
       meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false
@@ -2203,40 +2358,6 @@ async function genererSemaine() {
   }
 }
 
-// Populate profil section in Recette tab
-function afficherProfilRecetteTab() {
-  var section = document.getElementById('recetteProfilSection')
-  var content = document.getElementById('recetteProfilContent')
-  if (!section || !content) return
-  var p = profilUtilisateur
-  if (!p) { section.style.display = 'none'; return }
-
-  var regimes  = p.regimes_alimentaires || p.regime_alimentaire || []
-  var temps    = p.temps_cuisine_max || p.temps_preparation || null
-  var budget   = p.budget_complements || p.budget || null
-  var budgetLabel = budget === 'faible' ? '💰 Budget serré (5-8€)'
-                  : budget === 'eleve'  ? '💰 Budget généreux (12-20€)'
-                  : budget === 'moyen'  ? '💰 Budget modéré (8-12€)'
-                  : null
-
-  var badges = []
-  var regimeLabels = { vegan:'🌱 Vegan', vegetarien:'🥗 Végétarien', 'sans-gluten':'🚫 Sans gluten',
-                       'sans_lactose':'🥛 Sans lactose', paleo:'🍖 Paléo', keto:'⚡ Keto' }
-  regimes.forEach(function(r) {
-    if (regimeLabels[r]) badges.push(regimeLabels[r])
-  })
-  if (temps)        badges.push('⏱ ' + temps + ' min max')
-  if (budgetLabel)  badges.push(budgetLabel)
-
-  if (!badges.length) {
-    content.innerHTML = '<span style="font-size:13px;color:var(--text-light);">Aucune restriction</span>'
-  } else {
-    content.innerHTML = badges.map(function(b) {
-      return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--terracotta);font-weight:500;">' + b + '</span>'
-    }).join('')
-  }
-  section.style.display = 'block'
-}
 
 // State for semaine meal interactions
 var semaineServings  = {}
@@ -2957,23 +3078,14 @@ function chargerProfilUI() {
     el.classList.toggle('selected', objectifs.includes(el.dataset.val))
   })
 
-  // Régimes
-  var regimes = (p.regimes_alimentaires && p.regimes_alimentaires.length) ? p.regimes_alimentaires : selectedRegimes
-  document.querySelectorAll('#profilRegimesChips .chip').forEach(function(el) {
-    el.classList.toggle('selected', regimes.includes(el.dataset.val))
-  })
-
   // Allergènes
   profilAllergiesCourantes = (p.allergies || []).slice()
   document.querySelectorAll('#profilAllergiesChips .chip').forEach(function(el) {
     el.classList.toggle('selected', profilAllergiesCourantes.includes(el.dataset.val))
   })
 
-  // Temps cuisine
-  profilTempsCuisineCourant = p.temps_cuisine_max || 30
-  document.querySelectorAll('#profilTempsCuisineChips .chip').forEach(function(el) {
-    el.classList.toggle('selected', parseInt(el.dataset.val) === profilTempsCuisineCourant)
-  })
+  // Sync all shared chips (régimes, temps, budget)
+  syncAllPreferencesChips()
 }
 
 // Toggle objectif (mirrors selectedSymptoms + config panel)
@@ -2990,18 +3102,9 @@ function toggleProfilObjectif(el, val) {
   })
 }
 
-// Toggle régime (mirrors selectedRegimes + config panel)
+// Toggle régime — delegates to shared master function
 function toggleProfilRegime(el, val) {
-  el.classList.toggle('selected')
-  if (el.classList.contains('selected')) {
-    if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
-  } else {
-    selectedRegimes = selectedRegimes.filter(function(v) { return v !== val })
-  }
-  document.querySelectorAll('#regimesChips .chip').forEach(function(c) {
-    var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
-    if (m && m[1] === val) c.classList.toggle('selected', selectedRegimes.includes(val))
-  })
+  toggleSharedRegime(el, val)
 }
 
 // Toggle allergène (independent list)
@@ -3014,11 +3117,9 @@ function toggleProfilAllergie(el, val) {
   }
 }
 
-// Select cooking time (single-select)
+// Select cooking time — delegates to shared master function
 function selectProfilTempsCuisine(el, val) {
-  profilTempsCuisineCourant = val
-  document.querySelectorAll('#profilTempsCuisineChips .chip').forEach(function(c) { c.classList.remove('selected') })
-  el.classList.add('selected')
+  selectSharedTemps(el, val)
 }
 
 // Save profile preferences to Supabase
@@ -3031,6 +3132,7 @@ async function sauvegarderProfil() {
     profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
     profilUtilisateur.allergies            = profilAllergiesCourantes.slice()
     profilUtilisateur.temps_cuisine_max    = profilTempsCuisineCourant
+    profilUtilisateur.budget               = selectedBudget
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
 
@@ -3049,6 +3151,7 @@ async function sauvegarderProfil() {
           regimes_alimentaires: selectedRegimes,
           allergies:            profilAllergiesCourantes,
           temps_cuisine_max:    profilTempsCuisineCourant,
+          budget:               selectedBudget,
         }),
       })
       afficherToast(r.ok ? 'Profil enregistré ✓' : 'Erreur lors de la sauvegarde')
@@ -3074,10 +3177,6 @@ function afficherRecettesSauvegardees() {
     container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Aucune recette sauvegardée</div>'
     return
   }
-
-  // Init state for newly loaded saved recipes
-  savedSelected = {}
-  savedServings = {}
 
   container.innerHTML = saved.slice(0, 20).map(function(r, idx) {
     var nv    = r.valeurs_nutritionnelles || {}
@@ -3146,6 +3245,20 @@ function afficherRecettesSauvegardees() {
            '  </div>' +
            '</div>'
   }).join('')
+
+  // Restore visual state of already-selected buttons
+  Object.keys(savedSelected).forEach(function(idx) {
+    if (!savedSelected[idx]) return
+    var btn = document.getElementById('saved-select-btn-' + idx)
+    if (btn) {
+      btn.textContent = '✓ Sélectionné'
+      btn.style.background = 'rgba(122,158,126,0.15)'
+      btn.style.borderColor = 'var(--sage)'
+      btn.style.color = 'var(--sage)'
+    }
+    var portEl = document.getElementById('saved-portions-' + idx)
+    if (portEl) portEl.textContent = savedServings[parseInt(idx)] || 2
+  })
 }
 
 function toggleSavedRecette(id) {
