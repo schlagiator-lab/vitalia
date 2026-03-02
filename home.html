@@ -1,0 +1,2607 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalia — Mon espace bien-être</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Variables ── */
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --terracotta: #C4714A;
+    --terracotta-light: #E8956D;
+    --sage: #7A9E7E;
+    --sage-light: #A8C5AC;
+    --peach: #F2C4A0;
+    --golden: #E8B84B;
+    --dusty-rose: #D4936A;
+    --deep-brown: #3D2B1F;
+    --mid-brown: #7A5C4A;
+    --text-light: #9E8070;
+    --mirtille-purple: #8E44AD;
+    --tab-bar-height: 64px;
+  }
+
+  /* ── Reset & base ── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--deep-brown);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(196,113,74,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(122,158,126,0.10) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Loading screen ── */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    gap: 24px;
+    transition: opacity 0.4s;
+  }
+  .loading-screen.hidden { opacity: 0; pointer-events: none; }
+  .loading-mascot { animation: spin-bounce 1.5s ease-in-out infinite; }
+  @keyframes spin-bounce {
+    0%,100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.1) rotate(5deg); }
+    75% { transform: scale(0.9) rotate(-5deg); }
+  }
+  .loading-text { font-family: 'Fraunces', serif; font-size: 20px; color: var(--deep-brown); text-align: center; }
+  .loading-sub  { font-size: 14px; color: var(--text-light); text-align: center; max-width: 260px; line-height: 1.5; }
+  .loading-dots { display: flex; gap: 6px; }
+  .loading-dot  { width: 8px; height: 8px; background: var(--terracotta); border-radius: 50%; animation: dot-bounce 1.2s ease-in-out infinite; }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; background: var(--sage); }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; background: var(--golden); }
+  @keyframes dot-bounce { 0%,100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-8px); opacity: 1; } }
+
+  /* ── Overlay ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(61,43,31,0.3);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(2px);
+  }
+  .overlay.active { opacity: 1; pointer-events: all; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + 16px);
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--deep-brown);
+    color: white;
+    border-radius: 14px;
+    padding: 12px 20px;
+    font-size: 14px;
+    box-shadow: 0 8px 24px rgba(61,43,31,0.25);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 300;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── App wrapper ── */
+  #app { position: relative; z-index: 1; opacity: 0; transition: opacity 0.5s; }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--warm-white);
+    border-top: 1px solid rgba(196,113,74,0.15);
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    height: var(--tab-bar-height);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 20px rgba(61,43,31,0.08);
+  }
+  .tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 4px;
+    position: relative;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--terracotta);
+    border-radius: 0 0 2px 2px;
+    transform: scaleX(0);
+    transition: transform 0.25s ease;
+  }
+  .tab-btn.active::before { transform: scaleX(1); }
+  .tab-icon {
+    font-size: 22px;
+    line-height: 1;
+    transition: transform 0.2s;
+  }
+  .tab-btn.active .tab-icon { transform: scale(1.15); }
+  .tab-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: var(--text-light);
+    transition: color 0.2s;
+  }
+  .tab-btn.active .tab-label { color: var(--terracotta); font-weight: 600; }
+
+  /* ── Tab content ── */
+  .tab-content {
+    display: none;
+    min-height: 100vh;
+    padding-bottom: calc(var(--tab-bar-height) + 16px);
+    animation: fadeTabIn 0.25s ease both;
+  }
+  .tab-content.active { display: block; }
+  @keyframes fadeTabIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Shared header (tabs 2/3/4) ── */
+  .tab-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--cream);
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid rgba(196,113,74,0.1);
+  }
+  .tab-header-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--deep-brown);
+  }
+  .tab-header-sub {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-light);
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1.5px solid rgba(196,113,74,0.1);
+    box-shadow: 0 4px 20px rgba(61,43,31,0.06);
+  }
+
+  /* ── Chips ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--mid-brown);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    user-select: none;
+  }
+  .chip.selected { background: var(--terracotta); border-color: var(--terracotta); color: white; }
+  .chip:hover:not(.selected) { border-color: var(--terracotta-light); color: var(--terracotta); }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 15px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); opacity: 1; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── Input ── */
+  .field-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-light);
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--deep-brown);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-input:focus { border-color: var(--terracotta); }
+  .field-help { font-size: 11px; color: var(--text-light); margin-top: 4px; line-height: 1.4; }
+
+  /* ── Tag input ── */
+  .tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 14px;
+    padding: 8px 12px;
+    cursor: text;
+    min-height: 46px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .tag-container:focus-within { border-color: var(--terracotta); }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(196,113,74,0.15);
+    color: var(--terracotta);
+    border-radius: 20px;
+    padding: 2px 8px 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .tag-remove {
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+  }
+  .tag-remove:hover { opacity: 1; }
+  .tag-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--deep-brown);
+    min-width: 100px;
+    flex: 1;
+  }
+  .tag-input::placeholder { color: var(--text-light); }
+
+  /* ── Toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+  }
+  .toggle-label { font-size: 14px; color: var(--mid-brown); font-weight: 500; }
+  .pp-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .pp-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .pp-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: rgba(196,113,74,0.2);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .pp-toggle input:checked + .pp-toggle-track { background: var(--terracotta); }
+  .pp-toggle-track::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .pp-toggle input:checked + .pp-toggle-track::before { transform: translateX(20px); }
+
+  /* ── Preset chips (profile) ── */
+  .preset-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .preset-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--cream);
+    border: 1.5px solid rgba(196,113,74,0.15);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--mid-brown);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+  }
+  .preset-chip:hover { border-color: var(--terracotta-light); color: var(--terracotta); }
+  .preset-chip.selected { background: rgba(196,113,74,0.12); border-color: var(--terracotta); color: var(--terracotta); }
+
+  /* ── Hero card (Aujourd'hui) ── */
+  .hero { position: relative; z-index: 5; padding: 24px 24px 0; }
+  .hero-card {
+    background: linear-gradient(135deg, var(--terracotta) 0%, var(--dusty-rose) 60%, var(--golden) 100%);
+    border-radius: 28px;
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(196,113,74,0.25);
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 160px; height: 160px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+  }
+  .hero-greeting { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+  .hero-message  { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; color: #fff; line-height: 1.45; max-width: 240px; margin-bottom: 16px; position: relative; z-index: 2; }
+  .hero-score    { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 20px; padding: 8px 16px; }
+  .hero-score-label { color: rgba(255,255,255,0.85); font-size: 13px; }
+  .hero-score-value { color: #fff; font-weight: 700; font-size: 16px; }
+  .stars { display: flex; gap: 2px; }
+  .star  { font-size: 11px; }
+  .mascots-row { position: absolute; right: 16px; bottom: 16px; display: flex; z-index: 3; }
+  .mascot { width: 52px; height: 52px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15)); animation: float 3s ease-in-out infinite; }
+  .mascot:nth-child(2) { animation-delay: 0.5s; margin-left: -8px; margin-top: -6px; }
+  .mascot:nth-child(3) { animation-delay: 1s; margin-left: -6px; margin-top: 4px; }
+  @keyframes float { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
+
+  /* ── Header (Aujourd'hui) ── */
+  .app-header {
+    position: relative;
+    z-index: 10;
+    padding: 20px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+  }
+  .logo { flex-shrink: 0; line-height: 0; }
+  .logo img { height: 42px; width: auto; object-fit: contain; }
+  .header-actions { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
+  .date-badge {
+    background: var(--warm-white);
+    border: 1.5px solid var(--peach);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--mid-brown);
+    font-weight: 500;
+  }
+  .profile-badge-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--warm-white);
+    border: 1.5px solid var(--peach);
+    border-radius: 20px;
+    padding: 5px 12px 5px 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+  .profile-badge-btn:hover { background: var(--peach); border-color: var(--terracotta); }
+  .profile-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--terracotta), var(--golden));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .profile-name { font-size: 13px; color: var(--mid-brown); font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Companions ── */
+  .companions-section { position: relative; z-index: 5; padding: 24px 24px 0; }
+  .companions-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .companions-scroll::-webkit-scrollbar { display: none; }
+  .companion-chip { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: transform 0.2s; }
+  .companion-chip:hover { transform: translateY(-3px); }
+  .companion-avatar { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; transition: all 0.2s; }
+  .companion-avatar.active { border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(196,113,74,0.15); }
+  .companion-avatar svg { width: 40px; height: 40px; }
+  .companion-name { font-size: 11px; color: var(--mid-brown); text-align: center; font-weight: 500; }
+
+  /* ── Timeline ── */
+  .plan-section { position: relative; z-index: 5; padding: 28px 24px; }
+  .timeline { display: flex; flex-direction: column; gap: 16px; }
+  .moment-card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1.5px solid rgba(196,113,74,0.1);
+    box-shadow: 0 4px 20px rgba(61,43,31,0.06);
+    position: relative;
+    overflow: visible;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    animation: fadeSlideIn 0.5s ease both;
+  }
+  .moment-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(61,43,31,0.12); }
+  .moment-card:nth-child(1) { animation-delay: 0.1s; }
+  .moment-card:nth-child(2) { animation-delay: 0.2s; }
+  .moment-card:nth-child(3) { animation-delay: 0.3s; }
+  .moment-card:nth-child(4) { animation-delay: 0.4s; }
+  .moment-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 24px 0 0 24px; }
+  .moment-card.matin::before      { background: var(--golden); }
+  .moment-card.midi::before       { background: var(--terracotta); }
+  .moment-card.apres-midi::before { background: var(--sage); }
+  .moment-card.soir::before       { background: var(--mirtille-purple); }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  .moment-header     { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .moment-time-block { display: flex; align-items: center; gap: 8px; }
+  .moment-emoji      { font-size: 24px; line-height: 1; }
+  .moment-time       { font-size: 11px; color: var(--text-light); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+  .moment-label      { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 500; color: var(--mid-brown); }
+  .moment-calories   { background: var(--cream); border-radius: 10px; padding: 4px 10px; font-size: 12px; color: var(--text-light); font-weight: 500; }
+  .moment-title      { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--deep-brown); line-height: 1.3; margin-bottom: 6px; }
+  .moment-description { font-size: 14px; color: var(--mid-brown); line-height: 1.5; margin-bottom: 12px; }
+  .moment-footer     { display: flex; justify-content: space-between; align-items: center; }
+  .moment-motivant   { font-size: 13px; color: var(--terracotta); font-style: italic; font-weight: 500; flex: 1; }
+  .expand-btn        { width: 32px; height: 32px; background: var(--cream); border-radius: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; font-size: 14px; color: var(--mid-brown); transition: background 0.2s; flex-shrink: 0; }
+  .expand-btn:hover  { background: var(--peach); }
+
+  .moment-instructions         { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+  .moment-instructions.open    { max-height: 3000px; }
+  .instructions-content        { margin-top: 14px; padding-top: 14px; border-top: 1px dashed rgba(196,113,74,0.2); font-size: 13.5px; color: var(--mid-brown); line-height: 1.6; }
+  .instructions-section-label  { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 7px; }
+  .instructions-steps          { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .instruction-step            { display: flex; gap: 10px; align-items: flex-start; }
+  .step-num                    { width: 22px; height: 22px; background: var(--terracotta); color: white; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-text                   { font-size: 13px; color: var(--mid-brown); line-height: 1.55; }
+  .instructions-tip            { background: rgba(232,184,75,0.12); border-left: 3px solid var(--golden); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 12.5px; color: var(--mid-brown); font-style: italic; margin-top: 4px; }
+  .instructions-ingredients    { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .ingredient-tag              { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
+  .recipe-timing               { display: flex; gap: 10px; margin-bottom: 12px; }
+  .recipe-timing-chip          { display: flex; align-items: center; gap: 4px; background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
+
+  /* ── Recipe actions bar ── */
+  .recipe-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(196,113,74,0.2); }
+  .servings-stepper { display: flex; align-items: center; gap: 8px; background: var(--cream); border-radius: 20px; padding: 5px 10px; border: 1px solid rgba(196,113,74,0.15); }
+  .servings-label   { font-size: 11px; color: var(--text-light); font-weight: 500; white-space: nowrap; }
+  .stepper-btn      { width: 24px; height: 24px; background: var(--terracotta); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; font-family: 'DM Sans', sans-serif; line-height: 1; padding-bottom: 1px; }
+  .stepper-btn:hover { background: var(--dusty-rose); }
+  .stepper-count    { font-size: 14px; font-weight: 600; color: var(--deep-brown); min-width: 18px; text-align: center; }
+  .recipe-rating    { display: flex; align-items: center; gap: 5px; }
+  .recipe-rating-label { font-size: 11px; color: var(--text-light); font-weight: 500; }
+  .recipe-stars     { display: flex; gap: 2px; }
+  .recipe-star      { font-size: 18px; cursor: pointer; transition: transform 0.15s; filter: grayscale(1) opacity(0.3); user-select: none; }
+  .recipe-star:hover, .recipe-star.lit { filter: none; transform: scale(1.25); }
+  .save-recipe-btn  { background: var(--warm-white); border: 1.5px solid rgba(196,113,74,0.25); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--mid-brown); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
+  .save-recipe-btn:hover { background: var(--peach); border-color: var(--terracotta); }
+  .save-recipe-btn.saved { background: rgba(196,113,74,0.1); border-color: var(--terracotta); color: var(--terracotta); }
+
+  /* ── Feedback bar ── */
+  .feedback-bar { margin: 0 24px 24px; background: linear-gradient(135deg, rgba(196,113,74,0.07), rgba(232,184,75,0.07)); border: 1.5px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .feedback-label { font-size: 13px; color: var(--mid-brown); flex-shrink: 0; font-weight: 500; }
+  .feedback-stars { display: flex; gap: 6px; }
+  .feedback-star  { font-size: 24px; cursor: pointer; transition: transform 0.15s; filter: grayscale(1) opacity(0.35); user-select: none; }
+  .feedback-star:hover, .feedback-star.lit { filter: none; transform: scale(1.2); }
+  .feedback-sent  { font-size: 13px; color: var(--sage); font-weight: 600; display: none; }
+  .feedback-sent.show { display: block; }
+
+  /* ── Routine section ── */
+  .routine-section { position: relative; z-index: 5; padding: 0 24px 20px; }
+  .routine-card    { background: linear-gradient(135deg, rgba(122,158,126,0.15) 0%, rgba(168,197,172,0.1) 100%); border: 1.5px solid rgba(122,158,126,0.25); border-radius: 24px; padding: 20px; }
+  .routine-title   { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 700; color: var(--deep-brown); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .routine-items   { display: flex; flex-direction: column; }
+  .routine-item-card:not(:last-child) { border-bottom: 1px dashed rgba(122,158,126,0.2); }
+  .routine-item-btn     { display: flex; align-items: center; gap: 10px; padding: 11px 0; cursor: pointer; user-select: none; }
+  .routine-item-btn:hover .routine-text { color: var(--deep-brown); }
+  .routine-item-content { flex: 1; min-width: 0; }
+  .routine-item-label   { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 2px; }
+  .routine-dot     { width: 8px; height: 8px; background: var(--sage); border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .routine-text    { font-size: 13.5px; color: var(--mid-brown); line-height: 1.4; }
+  .routine-text strong { color: var(--deep-brown); font-weight: 600; }
+  .routine-chevron { font-size: 11px; color: var(--text-light); flex-shrink: 0; transition: transform 0.3s; }
+  .routine-chevron.open { transform: rotate(180deg); }
+  .routine-detail  { max-height: 0; overflow: hidden; transition: max-height 0.45s ease; }
+  .routine-detail.open { max-height: 800px; }
+  .routine-detail-inner      { padding: 0 0 14px 18px; }
+  .routine-detail-raison     { font-size: 12.5px; color: var(--sage); font-weight: 500; line-height: 1.5; margin-bottom: 8px; font-style: italic; }
+  .routine-detail-protocole  { font-size: 13px; color: var(--mid-brown); line-height: 1.6; }
+  .routine-detail-steps      { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+  .routine-detail-step       { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--mid-brown); line-height: 1.45; }
+  .routine-detail-stepnum    { width: 18px; height: 18px; background: var(--sage); color: white; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .routine-detail-chips      { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .routine-detail-chip       { background: rgba(122,158,126,0.1); border: 1px solid rgba(122,158,126,0.25); border-radius: 20px; padding: 3px 10px; font-size: 11.5px; color: var(--sage); font-weight: 500; }
+  .routine-detail-chip-warn  { background: rgba(196,113,74,0.08); border-color: rgba(196,113,74,0.25); color: var(--terracotta); }
+
+  /* ── Conseil section ── */
+  .conseil-section { position: relative; z-index: 5; padding: 0 24px 24px; }
+  .conseil-card { background: var(--warm-white); border-radius: 24px; padding: 20px; border: 1.5px solid rgba(232,184,75,0.2); position: relative; overflow: hidden; }
+  .conseil-card::before { content: '"'; position: absolute; top: -10px; left: 12px; font-family: 'Fraunces', serif; font-size: 100px; color: rgba(232,184,75,0.12); line-height: 1; }
+  .conseil-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--golden); font-weight: 600; margin-bottom: 10px; }
+  .conseil-text  { font-family: 'Fraunces', serif; font-size: 15px; font-style: italic; color: var(--mid-brown); line-height: 1.6; position: relative; z-index: 1; }
+
+  /* ── Generate button (Aujourd'hui) ── */
+  .generate-fab {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose));
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 14px 32px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(196,113,74,0.35);
+    transition: all 0.3s;
+    white-space: nowrap;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .generate-fab.visible { display: flex; }
+  .generate-fab:hover   { transform: translateX(-50%) translateY(-2px); box-shadow: 0 12px 40px rgba(196,113,74,0.45); }
+
+  /* ── Config panel (Aujourd'hui) ── */
+  .config-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--warm-white);
+    border-radius: 28px 28px 0 0;
+    padding: 24px 24px calc(var(--tab-bar-height) + 16px);
+    z-index: 80;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.32,0.72,0,1);
+    box-shadow: 0 -8px 40px rgba(61,43,31,0.12);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .config-panel.open { transform: translateY(0); }
+  .config-handle { width: 36px; height: 4px; background: var(--peach); border-radius: 2px; margin: 0 auto 20px; }
+  .config-title  { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700; color: var(--deep-brown); margin-bottom: 20px; }
+  .config-row    { display: flex; gap: 12px; }
+  .config-row .config-field { flex: 1; }
+  .config-field  { margin-bottom: 16px; }
+
+  /* ── Semaine tab ── */
+  .semaine-controls { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .day-cards { padding: 0 24px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .day-card { background: var(--warm-white); border-radius: 20px; border: 1.5px solid rgba(196,113,74,0.1); overflow: hidden; box-shadow: 0 4px 16px rgba(61,43,31,0.05); }
+  .day-card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; cursor: pointer; user-select: none; }
+  .day-card-header:hover { background: rgba(196,113,74,0.03); }
+  .day-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 700; color: var(--deep-brown); text-transform: capitalize; }
+  .day-summary { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .day-chevron { font-size: 12px; color: var(--text-light); transition: transform 0.3s; flex-shrink: 0; }
+  .day-chevron.open { transform: rotate(180deg); }
+  .day-meals { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+  .day-meals.open { max-height: 2000px; }
+  .day-meal { padding: 12px 20px; border-top: 1px dashed rgba(196,113,74,0.12); cursor: pointer; transition: background 0.15s; }
+  .day-meal:hover { background: rgba(196,113,74,0.03); }
+  .day-meal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .day-meal-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 3px; }
+  .day-meal-name { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; color: var(--deep-brown); line-height: 1.3; }
+  .day-meal-cal  { font-size: 11px; color: var(--text-light); flex-shrink: 0; margin-top: 2px; }
+  .day-meal-detail { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+  .day-meal-detail.open { max-height: 1200px; }
+  .day-meal-inner { padding: 10px 0 4px; }
+  .day-meal-ingredients { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .day-meal-tag { background: var(--cream); border: 1px solid rgba(196,113,74,0.15); border-radius: 14px; padding: 2px 8px; font-size: 11px; color: var(--mid-brown); }
+  .day-meal-steps { display: flex; flex-direction: column; gap: 6px; }
+  .day-meal-step { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--mid-brown); line-height: 1.4; }
+  .day-meal-stepnum { width: 18px; height: 18px; background: var(--terracotta); color: white; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .day-meal-tip { margin-top: 8px; background: rgba(232,184,75,0.1); border-left: 3px solid var(--golden); border-radius: 0 6px 6px 0; padding: 6px 10px; font-size: 11.5px; color: var(--mid-brown); font-style: italic; }
+  .semaine-empty { text-align: center; padding: 48px 24px; }
+  .semaine-empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .semaine-empty-text { font-family: 'Fraunces', serif; font-size: 18px; color: var(--mid-brown); margin-bottom: 8px; }
+  .semaine-empty-sub  { font-size: 14px; color: var(--text-light); line-height: 1.5; }
+
+  /* ── Recette tab ── */
+  .recette-controls { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+  .recette-result   { padding: 0 24px 24px; }
+  .recette-card { background: var(--warm-white); border-radius: 24px; border: 1.5px solid rgba(196,113,74,0.1); overflow: hidden; box-shadow: 0 4px 20px rgba(61,43,31,0.06); }
+  .recette-card-header { background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose)); padding: 24px 20px 20px; }
+  .recette-card-type  { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.75); margin-bottom: 6px; font-weight: 600; }
+  .recette-card-name  { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 700; color: white; line-height: 1.3; margin-bottom: 12px; }
+  .recette-card-meta  { display: flex; gap: 10px; flex-wrap: wrap; }
+  .recette-meta-chip  { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 10px; font-size: 12px; color: white; }
+  .recette-card-body  { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .recette-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 8px; }
+  .recette-ingredients { display: flex; flex-wrap: wrap; gap: 6px; }
+  .recette-ing-tag { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
+  .recette-steps { display: flex; flex-direction: column; gap: 10px; }
+  .recette-step  { display: flex; gap: 10px; align-items: flex-start; }
+  .recette-stepnum { width: 22px; height: 22px; background: var(--terracotta); color: white; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .recette-step-text { font-size: 13px; color: var(--mid-brown); line-height: 1.55; }
+  .recette-tip { background: rgba(232,184,75,0.12); border-left: 3px solid var(--golden); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 12.5px; color: var(--mid-brown); font-style: italic; }
+  .recette-nutrition { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .recette-nutri-box { background: var(--cream); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .recette-nutri-val  { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--terracotta); }
+  .recette-nutri-lbl  { font-size: 10px; color: var(--text-light); font-weight: 500; margin-top: 2px; }
+  .recette-variantes  { display: flex; flex-direction: column; gap: 6px; }
+  .recette-variante   { font-size: 13px; color: var(--mid-brown); line-height: 1.4; padding-left: 12px; border-left: 2px solid var(--sage); }
+  .recette-empty { text-align: center; padding: 48px 24px; }
+  .recette-empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .recette-empty-text { font-family: 'Fraunces', serif; font-size: 18px; color: var(--mid-brown); margin-bottom: 8px; }
+  .recette-empty-sub  { font-size: 14px; color: var(--text-light); line-height: 1.5; }
+
+  /* ── Ally modal ── */
+  .ally-modal { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; background: rgba(61,43,31,0.38); backdrop-filter: blur(3px); }
+  .ally-modal-card { position: relative; background: var(--warm-white); border-radius: 28px 28px 0 0; padding: 20px 24px calc(var(--tab-bar-height) + 20px); width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; animation: slideUpModal 0.3s ease; }
+  @keyframes slideUpModal { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .ally-modal-drag     { width: 36px; height: 4px; background: var(--peach); border-radius: 2px; margin: 0 auto 18px; }
+  .ally-modal-header   { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .ally-modal-avatar   { width: 72px; height: 72px; border-radius: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ally-modal-close    { width: 32px; height: 32px; background: var(--cream); border: none; border-radius: 10px; cursor: pointer; font-size: 18px; color: var(--mid-brown); display: flex; align-items: center; justify-content: center; }
+  .ally-modal-name     { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 700; color: var(--deep-brown); margin-bottom: 4px; }
+  .ally-modal-subtitle { font-size: 13px; color: var(--text-light); font-style: italic; margin-bottom: 16px; }
+  .ally-section-label  { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 8px; }
+  .ally-benefits       { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .ally-benefits li    { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; color: var(--mid-brown); line-height: 1.4; }
+  .ally-benefits li::before { content: '✓'; color: var(--sage); font-weight: 700; flex-shrink: 0; }
+  .ally-detail         { font-size: 13.5px; color: var(--mid-brown); line-height: 1.6; margin-bottom: 14px; }
+  .ally-tip            { background: rgba(232,184,75,0.12); border-left: 3px solid var(--golden); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: var(--mid-brown); font-style: italic; margin-bottom: 14px; }
+  .ally-present-badge  { display: inline-flex; align-items: center; gap: 6px; background: rgba(122,158,126,0.12); border: 1px solid rgba(122,158,126,0.3); border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--sage); font-weight: 500; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .mascots-row { right: 8px; bottom: 8px; }
+    .mascot { width: 36px; height: 36px; }
+    .hero-message { font-size: 17px; max-width: 200px; }
+    .hero-score { padding: 6px 12px; }
+    .app-header { padding: 14px 16px 0; }
+    .date-badge { display: none; }
+    .recette-nutrition { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── SVG Mascots ── -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="mascot-goji" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="48" rx="22" ry="24" fill="#C0392B"/><ellipse cx="40" cy="46" rx="20" ry="22" fill="#E74C3C"/>
+      <ellipse cx="33" cy="38" rx="6" ry="4" fill="rgba(255,255,255,0.3)" transform="rotate(-20 33 38)"/>
+      <ellipse cx="28" cy="27" rx="8" ry="4" fill="#27AE60" transform="rotate(-30 28 27)"/>
+      <ellipse cx="52" cy="26" rx="8" ry="4" fill="#2ECC71" transform="rotate(30 52 26)"/>
+      <rect x="38" y="22" width="4" height="8" rx="2" fill="#8B6914"/>
+      <circle cx="34" cy="47" r="3.5" fill="#000" opacity="0.7"/><circle cx="46" cy="47" r="3.5" fill="#000" opacity="0.7"/>
+      <circle cx="35" cy="46" r="1.2" fill="white"/><circle cx="47" cy="46" r="1.2" fill="white"/>
+      <path d="M34 55 Q40 61 46 55" stroke="#8B0000" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="28" cy="51" r="4" fill="rgba(255,180,180,0.5)"/><circle cx="52" cy="51" r="4" fill="rgba(255,180,180,0.5)"/>
+      <path d="M20 52 L18 70 L40 64 L62 70 L60 52 Q40 60 20 52Z" fill="#8B0000" opacity="0.8"/>
+    </symbol>
+    <symbol id="mascot-curcuma" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="50" rx="18" ry="20" fill="#E67E22"/><ellipse cx="40" cy="48" rx="16" ry="18" fill="#F39C12"/>
+      <ellipse cx="56" cy="52" rx="10" ry="8" fill="#E67E22"/><ellipse cx="24" cy="55" rx="9" ry="7" fill="#E67E22"/>
+      <ellipse cx="40" cy="33" rx="20" ry="6" fill="#8B6914"/><rect x="28" y="20" width="24" height="14" rx="4" fill="#6B4F0A"/>
+      <rect x="30" y="22" width="20" height="10" rx="3" fill="#8B6914"/>
+      <circle cx="35" cy="46" r="3" fill="#000" opacity="0.7"/><circle cx="45" cy="46" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="45" r="1" fill="white"/><circle cx="46" cy="45" r="1" fill="white"/>
+      <path d="M31 41 Q35 39 38 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M42 41 Q45 39 49 41" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M33 53 Q40 58 47 53" stroke="#7D5A00" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M33 57 Q40 65 47 57" stroke="#D4A017" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="mascot-gingembre" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="50" rx="16" ry="18" fill="#CA8A04"/><ellipse cx="40" cy="48" rx="14" ry="16" fill="#D97706"/>
+      <ellipse cx="58" cy="44" rx="11" ry="8" fill="#CA8A04" transform="rotate(20 58 44)"/>
+      <ellipse cx="22" cy="42" rx="11" ry="8" fill="#CA8A04" transform="rotate(-20 22 42)"/>
+      <path d="M60 20 Q63 12 58 8 Q65 14 64 20 Q67 13 63 8 Q70 16 66 22Z" fill="#EF4444" opacity="0.8"/>
+      <circle cx="35" cy="47" r="3" fill="#000" opacity="0.7"/><circle cx="45" cy="47" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="46" r="1" fill="white"/><circle cx="46" cy="46" r="1" fill="white"/>
+      <path d="M33 54 Q40 60 47 54" stroke="#92400E" stroke-width="2" fill="#FCA5A5" stroke-linecap="round"/>
+      <text x="8" y="35" font-size="12" fill="#F59E0B">&#x26A1;</text>
+    </symbol>
+    <symbol id="mascot-myrtille" viewBox="0 0 80 80">
+      <circle cx="40" cy="50" r="22" fill="#7C3AED"/><circle cx="40" cy="48" r="20" fill="#8B5CF6"/>
+      <ellipse cx="33" cy="40" rx="6" ry="4" fill="rgba(255,255,255,0.25)" transform="rotate(-15 33 40)"/>
+      <circle cx="40" cy="28" r="5" fill="#6D28D9"/><circle cx="33" cy="30" r="4" fill="#7C3AED"/><circle cx="47" cy="30" r="4" fill="#7C3AED"/>
+      <circle cx="34" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
+      <circle cx="46" cy="46" r="7" fill="none" stroke="#C4B5FD" stroke-width="2"/>
+      <line x1="41" y1="46" x2="39" y2="46" stroke="#C4B5FD" stroke-width="2"/>
+      <circle cx="34" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/><circle cx="46" cy="46" r="3" fill="#1E1B4B" opacity="0.8"/>
+      <circle cx="35" cy="45" r="1" fill="white"/><circle cx="47" cy="45" r="1" fill="white"/>
+      <path d="M34 56 Q40 62 46 56" stroke="#4C1D95" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <circle cx="27" cy="53" r="4" fill="rgba(196,181,253,0.4)"/><circle cx="53" cy="53" r="4" fill="rgba(196,181,253,0.4)"/>
+    </symbol>
+    <symbol id="mascot-avocat" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="50" rx="20" ry="26" fill="#166534"/><ellipse cx="40" cy="52" rx="18" ry="24" fill="#16A34A"/>
+      <ellipse cx="40" cy="55" rx="13" ry="17" fill="#BBF7D0"/><ellipse cx="40" cy="57" rx="10" ry="13" fill="#86EFAC"/>
+      <ellipse cx="40" cy="60" rx="7" ry="9" fill="#92400E"/>
+      <rect x="26" y="40" width="12" height="8" rx="4" fill="#0F172A"/><rect x="42" y="40" width="12" height="8" rx="4" fill="#0F172A"/>
+      <line x1="38" y1="44" x2="42" y2="44" stroke="#334155" stroke-width="2"/>
+      <path d="M33 55 Q40 61 47 55" stroke="#14532D" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <rect x="38" y="22" width="4" height="10" rx="2" fill="#166534"/>
+    </symbol>
+    <symbol id="mascot-banane" viewBox="0 0 80 80">
+      <path d="M20 55 Q15 30 35 20 Q55 12 60 30 Q65 45 50 55 Q35 60 20 55Z" fill="#CA8A04"/>
+      <path d="M22 53 Q18 32 36 22 Q53 15 58 31 Q62 44 48 53 Q34 58 22 53Z" fill="#FDE047"/>
+      <ellipse cx="35" cy="30" rx="8" ry="3" fill="rgba(255,255,255,0.3)" transform="rotate(-30 35 30)"/>
+      <circle cx="37" cy="40" r="3" fill="#000" opacity="0.7"/><circle cx="47" cy="38" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="38" cy="39" r="1" fill="white"/><circle cx="48" cy="37" r="1" fill="white"/>
+      <path d="M35 47 Q41 52 47 47" stroke="#78350F" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="30" cy="45" r="4" fill="rgba(253,224,71,0.4)"/><circle cx="52" cy="43" r="4" fill="rgba(253,224,71,0.4)"/>
+      <path d="M18 57 Q12 63 14 67 Q18 62 22 58Z" fill="#92400E"/>
+    </symbol>
+    <symbol id="mascot-amandes" viewBox="0 0 80 80">
+      <ellipse cx="40" cy="50" rx="18" ry="24" fill="#92400E"/>
+      <ellipse cx="40" cy="50" rx="16" ry="22" fill="#B45309"/>
+      <ellipse cx="40" cy="50" rx="12" ry="18" fill="#D97706"/>
+      <ellipse cx="40" cy="50" rx="10" ry="16" fill="#FDE68A"/>
+      <line x1="40" y1="34" x2="40" y2="66" stroke="rgba(120,53,15,0.25)" stroke-width="1.5"/>
+      <circle cx="36" cy="47" r="3" fill="#000" opacity="0.7"/><circle cx="44" cy="47" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="37" cy="46" r="1" fill="white"/><circle cx="45" cy="46" r="1" fill="white"/>
+      <path d="M34 54 Q40 59 46 54" stroke="#78350F" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ── Loading screen ── -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-mascot"><svg width="90" height="90"><use href="#mascot-goji"/></svg></div>
+  <div class="loading-text" id="loadingText">Vitalia charge ton espace ✨</div>
+  <div class="loading-sub">Nos alliés bien-être préparent tout pour toi…</div>
+  <div class="loading-dots">
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+  </div>
+</div>
+
+<!-- ── Overlay ── -->
+<div class="overlay" id="overlay" onclick="fermerTout()"></div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Ally modal ── -->
+<div id="allyModal" class="ally-modal" style="display:none" onclick="if(event.target===this)fermerAlly()">
+  <div class="ally-modal-card">
+    <div class="ally-modal-drag"></div>
+    <div class="ally-modal-header">
+      <div class="ally-modal-avatar" id="allyModalAvatar">
+        <svg width="56" height="56"><use id="allyModalSvg" href="#mascot-goji"/></svg>
+      </div>
+      <button class="ally-modal-close" onclick="fermerAlly()">✕</button>
+    </div>
+    <div class="ally-modal-name"     id="allyModalName"></div>
+    <div class="ally-modal-subtitle" id="allyModalSubtitle"></div>
+    <div class="ally-section-label">Bénéfices clés</div>
+    <ul  class="ally-benefits"       id="allyModalBenefits"></ul>
+    <div class="ally-section-label">Pourquoi cet allié ?</div>
+    <div class="ally-detail"         id="allyModalDetail"></div>
+    <div class="ally-tip"            id="allyModalTip"></div>
+    <div id="allyModalFooter" style="display:none">
+      <span class="ally-present-badge">✓ Présent dans ton plan d'aujourd'hui</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Config panel (Aujourd'hui) ── -->
+<div class="config-panel" id="configPanel">
+  <div class="config-handle"></div>
+  <div class="config-title">🌿 Personnalise ton plan</div>
+  <div class="config-field">
+    <label class="field-label">Tes besoins du moment</label>
+    <div class="chips" id="symptomsChips">
+      <div class="chip selected" onclick="toggleSymptom(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
+      <div class="chip selected" onclick="toggleSymptom(this,'serenite')">🧘 Stress &amp; Sérénité</div>
+      <div class="chip" onclick="toggleSymptom(this,'digestion')">🌿 Digestion &amp; Métabolisme</div>
+      <div class="chip" onclick="toggleSymptom(this,'sommeil')">🌙 Sommeil &amp; Récupération</div>
+      <div class="chip" onclick="toggleSymptom(this,'mobilite')">💪 Mobilité &amp; Santé Cardiaque</div>
+      <div class="chip" onclick="toggleSymptom(this,'hormones')">🌸 Hormones &amp; Longévité</div>
+    </div>
+  </div>
+  <div class="config-row">
+    <div class="config-field">
+      <label class="field-label">Temps max</label>
+      <select class="field-input" id="tempsMax">
+        <option value="15">15 min</option>
+        <option value="30" selected>30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">1h</option>
+      </select>
+    </div>
+    <div class="config-field">
+      <label class="field-label">Budget/jour</label>
+      <select class="field-input" id="budgetMax">
+        <option value="15" selected>Petit</option>
+        <option value="25">Moyen</option>
+        <option value="40">Grand</option>
+      </select>
+    </div>
+  </div>
+  <div class="config-field">
+    <label class="field-label">Régimes</label>
+    <div class="chips" id="regimesChips">
+      <div class="chip" onclick="toggleRegime(this,'omnivore')">🥩 Omnivore</div>
+      <div class="chip" onclick="toggleRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+      <div class="chip" onclick="toggleRegime(this,'vegan')">🌱 Végan</div>
+      <div class="chip" onclick="toggleRegime(this,'vegetarien')">🥗 Végétarien</div>
+      <div class="chip" onclick="toggleRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+      <div class="chip" onclick="toggleRegime(this,'keto')">🥑 Kéto</div>
+      <div class="chip" onclick="toggleRegime(this,'halal')">☪️ Halal</div>
+      <div class="chip" onclick="toggleRegime(this,'casher')">✡️ Casher</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:4px;padding:4px 0;">
+    <label class="pp-toggle" style="flex-shrink:0;">
+      <input type="checkbox" id="memeThemeToggle">
+      <span class="pp-toggle-track"></span>
+    </label>
+    <span class="toggle-label" style="font-size:13px;">Même thème culinaire pour les 3 repas</span>
+  </div>
+  <button class="btn-primary" style="margin-top:20px;" onclick="genererPlan()">✨ Générer mon plan</button>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!--                   APP                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── FAB Nouveau plan (visible only on Aujourd'hui tab) ── -->
+  <button class="generate-fab" id="generateFab" onclick="ouvrirConfig()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+    </svg>
+    Nouveau plan
+  </button>
+
+  <!-- ════════════════════════════════════ -->
+  <!--  TAB 1 — AUJOURD'HUI               -->
+  <!-- ════════════════════════════════════ -->
+  <div id="tab-aujourdhui" class="tab-content active">
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="logo">
+        <span style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--terracotta);">Vitalia</span>
+      </div>
+      <div class="header-actions">
+        <div class="profile-badge-btn" onclick="switchTab('profil')" title="Mon profil">
+          <div class="profile-avatar" id="profileAvatar">?</div>
+          <span class="profile-name" id="profileNameBadge">Profil</span>
+        </div>
+        <div class="date-badge" id="dateBadge"></div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-card">
+        <div class="hero-greeting">Ton plan du jour</div>
+        <div class="hero-message" id="heroMessage">Bonjour ! Prêt à prendre soin de toi ? 🌿</div>
+        <div class="hero-score">
+          <span class="hero-score-label">Score nutritionnel</span>
+          <span class="hero-score-value" id="scoreValue">—</span>
+          <div class="stars" id="starsContainer"></div>
+        </div>
+        <div class="mascots-row">
+          <svg class="mascot"><use href="#mascot-goji"/></svg>
+          <svg class="mascot"><use href="#mascot-curcuma"/></svg>
+          <svg class="mascot"><use href="#mascot-gingembre"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Companions -->
+    <div class="companions-section">
+      <div class="section-label">Tes alliés du jour</div>
+      <div class="companions-scroll">
+        <div class="companion-chip" onclick="ouvrirAlly('goji')">
+          <div class="companion-avatar" id="ally-goji" style="background:linear-gradient(135deg,#FEE2E2,#FECACA)"><svg width="40" height="40"><use href="#mascot-goji"/></svg></div>
+          <div class="companion-name">Goji</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('curcuma')">
+          <div class="companion-avatar" id="ally-curcuma" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"><svg width="40" height="40"><use href="#mascot-curcuma"/></svg></div>
+          <div class="companion-name">Curcuma</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('gingembre')">
+          <div class="companion-avatar" id="ally-gingembre" style="background:linear-gradient(135deg,#FFF7ED,#FED7AA)"><svg width="40" height="40"><use href="#mascot-gingembre"/></svg></div>
+          <div class="companion-name">Gingembre</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('myrtille')">
+          <div class="companion-avatar" id="ally-myrtille" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE)"><svg width="40" height="40"><use href="#mascot-myrtille"/></svg></div>
+          <div class="companion-name">Myrtille</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('avocat')">
+          <div class="companion-avatar" id="ally-avocat" style="background:linear-gradient(135deg,#DCFCE7,#BBF7D0)"><svg width="40" height="40"><use href="#mascot-avocat"/></svg></div>
+          <div class="companion-name">Avocat</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('banane')">
+          <div class="companion-avatar" id="ally-banane" style="background:linear-gradient(135deg,#FEF9C3,#FDE047)"><svg width="40" height="40"><use href="#mascot-banane"/></svg></div>
+          <div class="companion-name">Banane</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('amandes')">
+          <div class="companion-avatar" id="ally-amandes" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"><svg width="40" height="40"><use href="#mascot-amandes"/></svg></div>
+          <div class="companion-name">Amandes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan timeline -->
+    <div class="plan-section">
+      <div class="section-label">Ton programme</div>
+      <div class="timeline" id="timeline">
+
+        <div class="moment-card matin" onclick="toggleInstructions('matin',event)">
+          <div class="moment-header">
+            <div class="moment-time-block">
+              <div class="moment-emoji">🌅</div>
+              <div>
+                <div class="moment-time"  id="matin-time">7h30</div>
+                <div class="moment-label">Petit-déjeuner</div>
+              </div>
+            </div>
+            <div class="moment-calories" id="matin-cal">—</div>
+          </div>
+          <div class="moment-title"        id="matin-titre">…</div>
+          <div class="moment-description"  id="matin-desc"></div>
+          <div class="moment-footer">
+            <div class="moment-motivant"   id="matin-motivant"></div>
+            <button class="expand-btn"     id="btn-matin">▼</button>
+          </div>
+          <div class="moment-instructions" id="instructions-matin"></div>
+        </div>
+
+        <div class="moment-card midi" onclick="toggleInstructions('midi',event)">
+          <div class="moment-header">
+            <div class="moment-time-block">
+              <div class="moment-emoji">☀️</div>
+              <div>
+                <div class="moment-time"  id="midi-time">12h30</div>
+                <div class="moment-label">Déjeuner</div>
+              </div>
+            </div>
+            <div class="moment-calories" id="midi-cal">—</div>
+          </div>
+          <div class="moment-title"        id="midi-titre">…</div>
+          <div class="moment-description"  id="midi-desc"></div>
+          <div class="moment-footer">
+            <div class="moment-motivant"   id="midi-motivant"></div>
+            <button class="expand-btn"     id="btn-midi">▼</button>
+          </div>
+          <div class="moment-instructions" id="instructions-midi"></div>
+        </div>
+
+        <div class="moment-card apres-midi" onclick="toggleInstructions('apres_midi',event)">
+          <div class="moment-header">
+            <div class="moment-time-block">
+              <div class="moment-emoji">🍃</div>
+              <div>
+                <div class="moment-time"  id="apres_midi-time">15h30</div>
+                <div class="moment-label">Pause</div>
+              </div>
+            </div>
+            <div class="moment-calories" id="apres_midi-cal">—</div>
+          </div>
+          <div class="moment-title"        id="apres_midi-titre">…</div>
+          <div class="moment-description"  id="apres_midi-desc"></div>
+          <div class="moment-footer">
+            <div class="moment-motivant"   id="apres_midi-motivant"></div>
+            <button class="expand-btn"     id="btn-apres_midi">▼</button>
+          </div>
+          <div class="moment-instructions" id="instructions-apres_midi"></div>
+        </div>
+
+        <div class="moment-card soir" onclick="toggleInstructions('soir',event)">
+          <div class="moment-header">
+            <div class="moment-time-block">
+              <div class="moment-emoji">🌙</div>
+              <div>
+                <div class="moment-time"  id="soir-time">19h30</div>
+                <div class="moment-label">Dîner</div>
+              </div>
+            </div>
+            <div class="moment-calories" id="soir-cal">—</div>
+          </div>
+          <div class="moment-title"        id="soir-titre">…</div>
+          <div class="moment-description"  id="soir-desc"></div>
+          <div class="moment-footer">
+            <div class="moment-motivant"   id="soir-motivant"></div>
+            <button class="expand-btn"     id="btn-soir">▼</button>
+          </div>
+          <div class="moment-instructions" id="instructions-soir"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Feedback bar -->
+    <div class="feedback-bar" id="feedbackBar" style="display:none">
+      <div>
+        <div class="feedback-label">Ce plan te convient ?</div>
+        <div style="font-size:11px;color:var(--text-light);margin-top:2px">Ta note aide à améliorer tes prochains plans</div>
+      </div>
+      <div class="feedback-stars" id="feedbackStars">
+        <span class="feedback-star" onclick="noterPlan(1)">⭐</span>
+        <span class="feedback-star" onclick="noterPlan(2)">⭐</span>
+        <span class="feedback-star" onclick="noterPlan(3)">⭐</span>
+        <span class="feedback-star" onclick="noterPlan(4)">⭐</span>
+        <span class="feedback-star" onclick="noterPlan(5)">⭐</span>
+      </div>
+      <span class="feedback-sent" id="feedbackSent">Merci ! 🙏</span>
+    </div>
+
+    <!-- Routine -->
+    <div class="routine-section">
+      <div class="routine-card">
+        <div class="routine-title">🧘 Routine du jour</div>
+        <div class="routine-items">
+          <div class="routine-item-card">
+            <div class="routine-item-btn" onclick="toggleRoutineItem('matin')">
+              <div class="routine-dot"></div>
+              <div class="routine-item-content">
+                <div class="routine-item-label">Matin</div>
+                <div class="routine-text" id="routine-matin">5 minutes de cohérence cardiaque</div>
+              </div>
+              <span class="routine-chevron" id="chevron-matin">▼</span>
+            </div>
+            <div class="routine-detail" id="detail-matin"></div>
+          </div>
+          <div class="routine-item-card">
+            <div class="routine-item-btn" onclick="toggleRoutineItem('complement')">
+              <div class="routine-dot" style="background:var(--terracotta)"></div>
+              <div class="routine-item-content">
+                <div class="routine-item-label">Complément phare</div>
+                <div class="routine-text" id="routine-complement">Vitamine D — 1 goutte ce midi avec ton repas</div>
+              </div>
+              <span class="routine-chevron" id="chevron-complement">▼</span>
+            </div>
+            <div class="routine-detail" id="detail-complement"></div>
+          </div>
+          <div class="routine-item-card">
+            <div class="routine-item-btn" onclick="toggleRoutineItem('aroma')">
+              <div class="routine-dot" style="background:var(--golden)"></div>
+              <div class="routine-item-content">
+                <div class="routine-item-label">Aromathérapie</div>
+                <div class="routine-text" id="routine-aroma">Diffusion lavande le soir pour préparer le sommeil</div>
+              </div>
+              <span class="routine-chevron" id="chevron-aroma">▼</span>
+            </div>
+            <div class="routine-detail" id="detail-aroma"></div>
+          </div>
+          <div class="routine-item-card">
+            <div class="routine-item-btn" onclick="toggleRoutineItem('soir-routine')">
+              <div class="routine-dot" style="background:var(--mirtille-purple)"></div>
+              <div class="routine-item-content">
+                <div class="routine-item-label">Soir</div>
+                <div class="routine-text" id="routine-soir">10 min de lecture légère, sans écran</div>
+              </div>
+              <span class="routine-chevron" id="chevron-soir-routine">▼</span>
+            </div>
+            <div class="routine-detail" id="detail-soir-routine"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conseil -->
+    <div class="conseil-section">
+      <div class="conseil-card">
+        <div class="conseil-title">💡 Le saviez-vous ?</div>
+        <div class="conseil-text" id="conseilText">Le curcuma et le magnésium sont de précieux alliés contre la fatigue et le stress. Le curcuma module l'inflammation, tandis que le magnésium participe à plus de 300 réactions enzymatiques dont la production d'énergie.</div>
+      </div>
+    </div>
+
+    <div style="height:24px"></div>
+  </div>
+
+  <!-- ════════════════════════════════════ -->
+  <!--  TAB 2 — SEMAINE                   -->
+  <!-- ════════════════════════════════════ -->
+  <div id="tab-semaine" class="tab-content">
+
+    <!-- Header -->
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div>
+        <div class="tab-header-title">Ma Semaine</div>
+        <div class="tab-header-sub">Plan nutritionnel sur 7 jours</div>
+      </div>
+      <button onclick="ouvrirConfig()" style="background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.18);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:16px;color:var(--mid-brown);">⚙️</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="semaine-controls">
+      <div>
+        <div class="field-label">Objectifs de la semaine</div>
+        <div class="chips" id="semaineSymptomChips" style="margin-top:10px;">
+          <div class="chip selected" data-val="vitalite" onclick="toggleSemaineSymptom(this,'vitalite')">⚡ Vitalité</div>
+          <div class="chip selected" data-val="serenite" onclick="toggleSemaineSymptom(this,'serenite')">🧘 Sérénité</div>
+          <div class="chip" data-val="digestion" onclick="toggleSemaineSymptom(this,'digestion')">🌿 Digestion</div>
+          <div class="chip" data-val="sommeil" onclick="toggleSemaineSymptom(this,'sommeil')">🌙 Sommeil</div>
+          <div class="chip" data-val="mobilite" onclick="toggleSemaineSymptom(this,'mobilite')">💪 Mobilité</div>
+          <div class="chip" data-val="hormones" onclick="toggleSemaineSymptom(this,'hormones')">🌸 Hormones</div>
+        </div>
+      </div>
+      <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine()">
+        <span id="semaineBtnText">✨ Générer ma semaine</span>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="semaine-empty" id="semaineEmpty">
+      <div class="semaine-empty-icon">📅</div>
+      <div class="semaine-empty-text">Votre plan sur 7 jours</div>
+      <div class="semaine-empty-sub">Générez un plan nutritionnel<br>complet et personnalisé</div>
+    </div>
+
+    <!-- Day cards (populated by JS) -->
+    <div class="day-cards" id="dayCards" style="display:none;padding-bottom:calc(var(--tab-bar-height) + 24px);"></div>
+
+  </div>
+
+  <!-- ════════════════════════════════════ -->
+  <!--  TAB 3 — RECETTE UNIQUE            -->
+  <!-- ════════════════════════════════════ -->
+  <div id="tab-recette" class="tab-content">
+
+    <!-- Header -->
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div class="tab-header-title">Recette à la demande</div>
+      <div class="tab-header-sub">Créée spécialement pour vous par l'IA</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="recette-controls">
+
+      <!-- Type de repas -->
+      <div>
+        <div class="field-label">Type de repas</div>
+        <div class="chips" id="recetteTypeChips" style="margin-top:10px;">
+          <div class="chip selected" data-val="dejeuner" onclick="selectTypeRepas(this,'dejeuner')">☀️ Déjeuner</div>
+          <div class="chip" data-val="diner" onclick="selectTypeRepas(this,'diner')">🌙 Dîner</div>
+          <div class="chip" data-val="petit-dejeuner" onclick="selectTypeRepas(this,'petit-dejeuner')">🌅 Petit-déj</div>
+          <div class="chip" data-val="collation" onclick="selectTypeRepas(this,'collation')">🍎 Collation</div>
+        </div>
+      </div>
+
+      <!-- Ingrédients du frigo -->
+      <div>
+        <div class="field-label">Ingrédients du frigo <span style="font-size:10px;font-style:italic;text-transform:none;letter-spacing:0;font-weight:400;">(optionnel)</span></div>
+        <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:10px;">
+          <input type="text" id="frigoInput" placeholder="Ex : courgette, saumon…"
+            style="flex:1;background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.2);border-radius:12px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--deep-brown);outline:none;"
+            onkeydown="if(event.key==='Enter'){ajouterIngredientFrigo();event.preventDefault()}">
+          <button onclick="ajouterIngredientFrigo()"
+            style="background:var(--terracotta);color:white;border:none;border-radius:12px;padding:10px 18px;font-size:20px;cursor:pointer;flex-shrink:0;line-height:1;">+</button>
+        </div>
+        <div class="chips" id="frigoChips"></div>
+      </div>
+
+      <!-- Objectif nutritionnel -->
+      <div>
+        <div class="field-label">Objectif nutritionnel</div>
+        <div class="chips" id="recetteSymptomChips" style="margin-top:10px;">
+          <div class="chip selected" data-val="vitalite" onclick="toggleRecetteSymptom(this,'vitalite')">⚡ Vitalité</div>
+          <div class="chip selected" data-val="serenite" onclick="toggleRecetteSymptom(this,'serenite')">🧘 Sérénité</div>
+          <div class="chip" data-val="digestion" onclick="toggleRecetteSymptom(this,'digestion')">🌿 Digestion</div>
+          <div class="chip" data-val="sommeil" onclick="toggleRecetteSymptom(this,'sommeil')">🌙 Sommeil</div>
+          <div class="chip" data-val="mobilite" onclick="toggleRecetteSymptom(this,'mobilite')">💪 Mobilité</div>
+          <div class="chip" data-val="hormones" onclick="toggleRecetteSymptom(this,'hormones')">🌸 Hormones</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="recetteBtnGenerate" onclick="genererRecetteUnique()">
+        <span id="recetteBtnText">🍳 Générer une recette</span>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="recette-empty" id="recetteEmpty">
+      <div class="recette-empty-icon">🍳</div>
+      <div class="recette-empty-text">Votre recette personnalisée</div>
+      <div class="recette-empty-sub">Indiquez vos ingrédients<br>et recevez une recette sur mesure</div>
+    </div>
+
+    <!-- Result -->
+    <div class="recette-result" id="recetteResult" style="display:none;padding-bottom:calc(var(--tab-bar-height) + 24px);"></div>
+
+  </div>
+
+  <!-- ════════════════════════════════════ -->
+  <!--  TAB 4 — PROFIL                    -->
+  <!-- ════════════════════════════════════ -->
+  <div id="tab-profil" class="tab-content">
+
+    <!-- Sticky header -->
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div>
+        <div class="tab-header-title">Mon Profil</div>
+        <div class="tab-header-sub">Vos préférences et objectifs</div>
+      </div>
+      <div id="profilAvatarLg" style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0;">?</div>
+    </div>
+
+    <!-- Scrollable content -->
+    <div style="padding:20px 24px;padding-bottom:calc(var(--tab-bar-height) + 32px);display:flex;flex-direction:column;gap:28px;">
+
+      <!-- Identity card -->
+      <div style="background:var(--warm-white);border-radius:20px;border:1.5px solid rgba(196,113,74,0.1);padding:20px;box-shadow:0 4px 16px rgba(61,43,31,0.05);">
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">
+          <div id="profilAvatarCard" style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:white;flex-shrink:0;">?</div>
+          <div style="flex:1;min-width:0;">
+            <div id="profilNom" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--deep-brown);line-height:1.2;">Profil</div>
+            <div id="profilMetaBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"></div>
+          </div>
+        </div>
+        <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">✏️ Modifier mon profil complet</button>
+      </div>
+
+      <!-- Objectifs -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Mes objectifs santé</div>
+        <div class="chips" id="profilObjectifsChips">
+          <div class="chip" data-val="vitalite" onclick="toggleProfilObjectif(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
+          <div class="chip" data-val="serenite" onclick="toggleProfilObjectif(this,'serenite')">🧘 Stress &amp; Sérénité</div>
+          <div class="chip" data-val="digestion" onclick="toggleProfilObjectif(this,'digestion')">🌿 Digestion</div>
+          <div class="chip" data-val="sommeil" onclick="toggleProfilObjectif(this,'sommeil')">🌙 Sommeil</div>
+          <div class="chip" data-val="mobilite" onclick="toggleProfilObjectif(this,'mobilite')">💪 Mobilité</div>
+          <div class="chip" data-val="hormones" onclick="toggleProfilObjectif(this,'hormones')">🌸 Hormones</div>
+        </div>
+      </div>
+
+      <!-- Régimes -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Régimes alimentaires</div>
+        <div class="chips" id="profilRegimesChips">
+          <div class="chip" data-val="omnivore"    onclick="toggleProfilRegime(this,'omnivore')">🥩 Omnivore</div>
+          <div class="chip" data-val="vegan"       onclick="toggleProfilRegime(this,'vegan')">🌱 Végan</div>
+          <div class="chip" data-val="vegetarien"  onclick="toggleProfilRegime(this,'vegetarien')">🥗 Végétarien</div>
+          <div class="chip" data-val="sans_gluten" onclick="toggleProfilRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+          <div class="chip" data-val="sans_lactose" onclick="toggleProfilRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+          <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
+          <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
+          <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
+        </div>
+      </div>
+
+      <!-- Allergènes -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Allergènes à éviter</div>
+        <div class="chips" id="profilAllergiesChips">
+          <div class="chip" data-val="arachides" onclick="toggleProfilAllergie(this,'arachides')">🥜 Arachides</div>
+          <div class="chip" data-val="noix"      onclick="toggleProfilAllergie(this,'noix')">🌰 Noix</div>
+          <div class="chip" data-val="poisson"   onclick="toggleProfilAllergie(this,'poisson')">🐟 Poisson</div>
+          <div class="chip" data-val="crustaces" onclick="toggleProfilAllergie(this,'crustaces')">🦐 Crustacés</div>
+          <div class="chip" data-val="soja"      onclick="toggleProfilAllergie(this,'soja')">🫘 Soja</div>
+          <div class="chip" data-val="sesame"    onclick="toggleProfilAllergie(this,'sesame')">🌻 Sésame</div>
+          <div class="chip" data-val="gluten"    onclick="toggleProfilAllergie(this,'gluten')">🌾 Gluten</div>
+          <div class="chip" data-val="lactose"   onclick="toggleProfilAllergie(this,'lactose')">🥛 Lactose</div>
+        </div>
+      </div>
+
+      <!-- Temps de cuisine -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Temps de cuisine max</div>
+        <div class="chips" id="profilTempsCuisineChips">
+          <div class="chip"          data-val="15" onclick="selectProfilTempsCuisine(this,15)">⚡ 15 min</div>
+          <div class="chip selected" data-val="30" onclick="selectProfilTempsCuisine(this,30)">🕐 30 min</div>
+          <div class="chip"          data-val="45" onclick="selectProfilTempsCuisine(this,45)">🍳 45 min</div>
+          <div class="chip"          data-val="60" onclick="selectProfilTempsCuisine(this,60)">👨‍🍳 1h+</div>
+        </div>
+      </div>
+
+      <!-- Save button -->
+      <button class="btn-primary" id="profilSaveBtn" onclick="sauvegarderProfil()">
+        <span>💾 Enregistrer mes préférences</span>
+      </button>
+
+      <!-- Recettes sauvegardées -->
+      <div>
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Mes recettes sauvegardées</div>
+        <div id="recettesSauvegardeesListe" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Aucune recette sauvegardée</div>
+        </div>
+      </div>
+
+      <!-- Changer de compte -->
+      <div style="text-align:center;padding-top:4px;">
+        <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Tab bar ── -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-aujourdhui" onclick="switchTab('aujourdhui')">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">Aujourd'hui</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-semaine" onclick="switchTab('semaine')">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">Semaine</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-recette" onclick="switchTab('recette')">
+      <span class="tab-icon">🍳</span>
+      <span class="tab-label">Recette</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-profil" onclick="switchTab('profil')">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">Profil</span>
+    </button>
+  </nav>
+
+</div><!-- #app -->
+
+<script>
+var SUPABASE_URL      = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDY1NjUsImV4cCI6MjA4NTYyMjU2NX0.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4'
+
+// ── State ──
+var currentTab        = 'aujourdhui'
+var profil_id         = null
+var profilUtilisateur = null
+var currentPlan       = null
+var semaineData       = null
+var recetteGeneree    = null
+var selectedSymptoms  = ['vitalite', 'serenite']
+var selectedRegimes   = []
+var recipeServings    = { matin: 1, midi: 1, apres_midi: 1, soir: 1 }
+var recipeBaseIng     = {}
+var savedRecipes      = []
+var currentActiveAllies = []
+
+// Tag arrays for profile
+var ppAllergiesPresets   = []
+var ppAllergiesCustom    = []
+var ppPathologiesPresets = []
+var ppPathologiesCustom  = []
+var ppMedicaments        = []
+var recetteFrigoTags     = []
+
+// ── Tab switching ──
+function switchTab(name) {
+  if (currentTab === name) return
+  currentTab = name
+
+  document.querySelectorAll('.tab-content').forEach(function(el) {
+    el.classList.remove('active')
+  })
+  document.querySelectorAll('.tab-btn').forEach(function(el) {
+    el.classList.remove('active')
+  })
+
+  var content = document.getElementById('tab-' + name)
+  var btn     = document.getElementById('tab-btn-' + name)
+  if (content) content.classList.add('active')
+  if (btn)     btn.classList.add('active')
+
+  // FAB only visible on Aujourd'hui tab
+  var fab = document.getElementById('generateFab')
+  if (fab) fab.classList.toggle('visible', name === 'aujourdhui')
+
+  // Scroll to top of new tab
+  window.scrollTo({ top: 0, behavior: 'instant' })
+
+  // Sync chips / UI on tab switch
+  if (name === 'semaine') syncSemaineChips()
+  if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees() }
+
+  fermerConfig()
+}
+
+// ── Overlay / config panel ──
+function ouvrirConfig() {
+  document.getElementById('configPanel').classList.add('open')
+  document.getElementById('overlay').classList.add('active')
+}
+function fermerConfig() {
+  document.getElementById('configPanel').classList.remove('open')
+  document.getElementById('overlay').classList.remove('active')
+}
+function fermerTout() {
+  fermerConfig()
+  var ally = document.getElementById('allyModal')
+  if (ally) ally.style.display = 'none'
+}
+
+// ── Toast ──
+var toastTimer = null
+function afficherToast(msg) {
+  var t = document.getElementById('toast')
+  if (!t) return
+  t.textContent = msg
+  t.classList.add('show')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(function() { t.classList.remove('show') }, 2500)
+}
+
+// ── Chip helpers (config panel) ──
+function toggleSymptom(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val)
+  } else {
+    selectedSymptoms = selectedSymptoms.filter(function(v) { return v !== val })
+  }
+}
+function toggleRegime(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
+  } else {
+    selectedRegimes = selectedRegimes.filter(function(v) { return v !== val })
+  }
+}
+
+// ── Ally modal (stub — data & logic added in Step 2) ──
+function ouvrirAlly(name) {
+  var info = ALLY_INFO[name]; if (!info) return
+  document.getElementById('allyModalAvatar').style.background = info.bg
+  document.getElementById('allyModalSvg').setAttribute('href', '#mascot-' + name)
+  document.getElementById('allyModalName').textContent = info.name
+  document.getElementById('allyModalSubtitle').textContent = info.subtitle
+  document.getElementById('allyModalBenefits').innerHTML =
+    info.benefits.map(function(b) { return '<li>' + b + '</li>' }).join('')
+  document.getElementById('allyModalDetail').textContent = info.detail
+  document.getElementById('allyModalTip').textContent = info.tip
+  var footer = document.getElementById('allyModalFooter')
+  if (footer) footer.style.display = currentActiveAllies.includes(name) ? 'block' : 'none'
+  document.getElementById('allyModal').style.display = 'flex'
+  document.getElementById('overlay').classList.add('active')
+}
+function fermerAlly() {
+  document.getElementById('allyModal').style.display = 'none'
+  document.getElementById('overlay').classList.remove('active')
+}
+
+// ── Ally data ──
+var ALLY_INFO = {
+  goji:      { name:'Baies de Goji',   subtitle:'La superfruta de la vitalité',       bg:'linear-gradient(135deg,#FEE2E2,#FECACA)', benefits:['Source exceptionnelle d\'antioxydants (zéaxanthine)','Boostent l\'énergie et réduisent la fatigue','Soutiennent le système immunitaire et la vue'], detail:'Les baies de Goji contiennent 18 acides aminés essentiels et 21 minéraux dont zinc et fer. Leurs polysaccharides (LBP) stimulent la production d\'énergie cellulaire et protègent les cellules des radicaux libres.', tip:'💡 Consommer 15-30g par jour, idéalement le matin. Excellentes en infusion (10 min dans de l\'eau chaude) pour un effet vitaminant durable.' },
+  curcuma:   { name:'Curcuma',         subtitle:'L\'or anti-inflammatoire',            bg:'linear-gradient(135deg,#FEF3C7,#FDE68A)', benefits:['Puissant anti-inflammatoire naturel (curcumine)','Soutient la mobilité et le confort articulaire','Protège le foie et favorise la digestion'], detail:'La curcumine inhibe les enzymes pro-inflammatoires COX-2 et NF-κB. Son absorption est multipliée par 20 en présence de pipérine (poivre noir) et de matières grasses.', tip:'💡 Toujours associer avec une pincée de poivre noir et une matière grasse pour maximiser l\'absorption de la curcumine.' },
+  gingembre: { name:'Gingembre',       subtitle:'La racine digestive & tonifiante',   bg:'linear-gradient(135deg,#FFF7ED,#FED7AA)', benefits:['Stimule les enzymes digestives naturellement','Anti-nauséeux et anti-spasmodique reconnu','Propriétés anti-inflammatoires et réchauffantes'], detail:'Les gingérols et shogaols du gingembre stimulent la production d\'enzymes digestives et accélèrent la vidange gastrique. Des méta-analyses montrent une réduction des nausées de 40%.', tip:'💡 En infusion fraîche : 3-4 tranches dans 250ml d\'eau chaude, 10 min. Ajouter du citron et du miel pour décupler les bienfaits.' },
+  myrtille:  { name:'Myrtille',        subtitle:'La baie de la clarté mentale',       bg:'linear-gradient(135deg,#EDE9FE,#DDD6FE)', benefits:['Protège le cerveau et améliore la mémoire','Régule la glycémie et le stress oxydatif','Riche en anthocyanes aux effets anti-âge'], detail:'Les anthocyanes des myrtilles traversent la barrière hémato-encéphalique et protègent les neurones du stress oxydatif. Une amélioration de la mémoire à court terme de 5% après 12 semaines.', tip:'💡 Fraîches ou surgelées, leur valeur nutritive est identique. 80-100g par jour suffisent.' },
+  avocat:    { name:'Avocat',          subtitle:'Le fruit des hormones équilibrées',  bg:'linear-gradient(135deg,#DCFCE7,#BBF7D0)', benefits:['Riche en acides gras mono-insaturés (oméga-9)','Multiplie l\'absorption des vitamines liposolubles (A,D,E,K)','Soutient l\'équilibre hormonal naturellement'], detail:'L\'avocat facilite l\'absorption des vitamines A, D, E, K des autres aliments — multipliant leur biodisponibilité par 4. Ses phytostérols contribuent à l\'équilibre des hormones.', tip:'💡 Ne pas jeter la couche verte sous la peau : c\'est là que se concentrent la plupart des polyphénols.' },
+  banane:    { name:'Banane',          subtitle:'Le carburant de l\'énergie durable', bg:'linear-gradient(135deg,#FEF9C3,#FDE047)', benefits:['Source idéale de potassium pour les muscles','Libère l\'énergie progressivement','Riche en vitamine B6, précurseur de la sérotonine'], detail:'La banane contient du potassium, du magnésium et des glucides complexes. Sa vitamine B6 participe à la synthèse de sérotonine et dopamine, favorisant la bonne humeur.', tip:'💡 Une banane légèrement verte a un index glycémique plus bas. Attends qu\'elle soit jaune pour un maximum de vitamines.' },
+  patate:    { name:'Patate douce',    subtitle:'L\'alliée du sommeil & de l\'énergie',bg:'linear-gradient(135deg,#FED7AA,#FB923C)', benefits:['Riche en tryptophane, précurseur de la mélatonine','Béta-carotène puissant antioxydant','Index glycémique modéré — énergie longue durée'], detail:'Son tryptophane se convertit en sérotonine puis en mélatonine. Sa richesse en béta-carotène protège les cellules et sa peau contient des fibres prébiotiques précieuses.', tip:'💡 Cuire avec la peau pour préserver les fibres. Associée à la vitamine C, elle multiplie l\'absorption du fer.' },
+  miel:      { name:'Miel',            subtitle:'L\'or liquide apaisant & antibactérien',bg:'linear-gradient(135deg,#FEF3C7,#FCD34D)',benefits:['Antibactérien naturel','Adoucit la gorge et calme les voies respiratoires','Soutient le sommeil grâce au fructose'], detail:'Le miel brut contient des flavonoïdes et du méthylglyoxal aux propriétés antibactériennes prouvées. Une cuillère de miel le soir favorise le sommeil.', tip:'💡 Ne jamais chauffer au-delà de 40°C. Ajouter dans des boissons tièdes, jamais bouillantes.' },
+  epinards:  { name:'Épinards',        subtitle:'Le bouclier vert en fer & magnésium',bg:'linear-gradient(135deg,#DCFCE7,#86EFAC)', benefits:['Excellente source de fer non-héminique et de magnésium','Riches en lutéine pour la santé oculaire','Nitrates naturels qui améliorent l\'oxygénation musculaire'], detail:'Les épinards contiennent du fer, du magnésium, du calcium et des vitamines K et B9. Leurs nitrates naturels améliorent la circulation sanguine.', tip:'💡 Associer avec du citron pour tripler l\'absorption du fer. Cuits à la vapeur, ils concentrent leurs nutriments.' },
+  amandes:   { name:'Amandes',         subtitle:'La noix du magnésium & des bons gras',bg:'linear-gradient(135deg,#FEF3C7,#FDE68A)',benefits:['1ère source végétale de vitamine E antioxydante','Riches en magnésium — anti-stress et anti-crampes','Acides gras qui soutiennent le cœur'], detail:'30g d\'amandes apportent 75mg de magnésium, 7,3mg de vitamine E et 6g de protéines végétales. Des études montrent qu\'une poignée/jour réduit le LDL-cholestérol de 4 à 5%.', tip:'💡 Tremper les amandes une nuit dans l\'eau froide améliore leur digestibilité.' }
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+  var urlParams  = new URLSearchParams(window.location.search)
+  var idFromUrl  = urlParams.get('profil_id')
+  profil_id      = idFromUrl || localStorage.getItem('vitalia_profil_id')
+
+  if (!profil_id || profil_id === 'new') {
+    document.getElementById('loadingText').textContent = 'Bienvenue sur Vitalia ! 🌿'
+    setTimeout(function() { window.location.href = 'onboarding.html' }, 1200)
+    return
+  }
+
+  localStorage.setItem('vitalia_profil_id', profil_id)
+
+  // Load cached profile immediately
+  var cached = localStorage.getItem('vitalia_profil')
+  if (cached) {
+    try { profilUtilisateur = JSON.parse(cached); appliquerProfil(profilUtilisateur) } catch(e) {}
+  }
+
+  // Fetch fresh profile from Supabase
+  chargerProfilSupabase(profil_id)
+
+  // Date badge
+  var db = document.getElementById('dateBadge')
+  if (db) db.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' })
+
+  // Try to restore cached plan, else generate
+  var planSession = sessionStorage.getItem('vitalia_plan_session_home')
+  var planValide  = false
+  if (planSession) {
+    try {
+      var planRestaure = JSON.parse(planSession)
+      if (planRestaure && (planRestaure.matin || planRestaure.petit_dejeuner)) {
+        planValide = true
+        setTimeout(function() {
+          var ls = document.getElementById('loadingScreen')
+          var ap = document.getElementById('app')
+          if (ls) ls.classList.add('hidden')
+          if (ap) ap.style.opacity = '1'
+          document.getElementById('generateFab').classList.add('visible')
+          afficherPlan(planRestaure)
+        }, 600)
+      }
+    } catch(e) { sessionStorage.removeItem('vitalia_plan_session_home') }
+  }
+  if (!planValide) {
+    sessionStorage.removeItem('vitalia_plan_session_home')
+    setTimeout(function() { genererPlan() }, 400)
+  }
+})
+
+// ── Load profile from Supabase ──
+async function chargerProfilSupabase(id) {
+  try {
+    var r = await fetch(
+      SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + id + '&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    )
+    if (r.ok) {
+      var d = await r.json()
+      if (d && d[0]) {
+        profilUtilisateur = d[0]
+        appliquerProfil(d[0])
+        localStorage.setItem('vitalia_profil', JSON.stringify(d[0]))
+      }
+    }
+  } catch(e) { console.warn('Profile load error:', e) }
+}
+
+// ── Apply profile to UI ──
+function appliquerProfil(p) {
+  if (!p) return
+  // Sync symptoms
+  if (p.objectifs_generaux && p.objectifs_generaux.length) {
+    selectedSymptoms = p.objectifs_generaux
+    document.querySelectorAll('#symptomsChips .chip').forEach(function(el) {
+      var m = el.getAttribute('onclick').match(/'([^']+)'/)
+      if (m) el.classList.toggle('selected', selectedSymptoms.includes(m[1]))
+    })
+  }
+  // Sync regimes
+  if (p.regimes_alimentaires && p.regimes_alimentaires.length) {
+    selectedRegimes = p.regimes_alimentaires
+    document.querySelectorAll('#regimesChips .chip').forEach(function(el) {
+      var m = el.getAttribute('onclick').match(/'([^']+)'/)
+      if (m) el.classList.toggle('selected', selectedRegimes.includes(m[1]))
+    })
+  }
+  // Update Aujourd'hui profile button
+  var av = document.getElementById('profileAvatar')
+  var nm = document.getElementById('profileNameBadge')
+  if (p.prenom) {
+    if (av) av.textContent = p.prenom.charAt(0).toUpperCase()
+    if (nm) nm.textContent = p.prenom
+  }
+  // Refresh Profil tab if active
+  if (currentTab === 'profil') chargerProfilUI()
+}
+
+// ════════════════════════════════════════════
+//  TAB 1 — AUJOURD'HUI
+// ════════════════════════════════════════════
+
+// ── Stars display ──
+function afficherEtoiles(score) {
+  var c = document.getElementById('starsContainer'); if (!c) return
+  c.innerHTML = ''
+  for (var i = 1; i <= 5; i++) {
+    var s = document.createElement('span'); s.className = 'star'
+    s.textContent = i <= Math.round(score / 2) ? '⭐' : '☆'
+    c.appendChild(s)
+  }
+}
+
+// ── Toggle meal card expand ──
+function toggleInstructions(moment, event) {
+  if (event) {
+    var t = event.target
+    if (t.closest && (t.closest('.recipe-actions') || t.closest('.stepper-btn') || t.closest('.recipe-stars') || t.closest('.save-recipe-btn'))) return
+  }
+  var el  = document.getElementById('instructions-' + moment)
+  var btn = document.getElementById('btn-' + moment)
+  if (!el) return
+  var isOpen = el.classList.contains('open')
+  el.classList.toggle('open', !isOpen)
+  if (btn) btn.textContent = isOpen ? '▼' : '▲'
+}
+
+// ── Toggle routine item expand ──
+function toggleRoutineItem(key) {
+  var detail  = document.getElementById('detail-'   + key)
+  var chevron = document.getElementById('chevron-'  + key)
+  if (!detail) return
+  var isOpen = detail.classList.contains('open')
+  detail.classList.toggle('open',  !isOpen)
+  if (chevron) chevron.classList.toggle('open', !isOpen)
+}
+
+// ── setText helper ──
+function setText(id, val) { var e = document.getElementById(id); if (e) e.textContent = val }
+
+// ── Build recipe actions bar HTML ──
+function buildActionsBar(m) {
+  return '<div class="recipe-actions" onclick="event.stopPropagation()">' +
+    '<div class="servings-stepper">' +
+      '<span class="servings-label">Portions</span>' +
+      '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',-1)">&#8722;</button>' +
+      '<span class="stepper-count" id="count-' + m + '">1</span>' +
+      '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',1)">+</button>' +
+    '</div>' +
+    '<div class="recipe-rating">' +
+      '<span class="recipe-rating-label">Note</span>' +
+      '<div class="recipe-stars" id="stars-' + m + '">' +
+        [1,2,3,4,5].map(function(n) {
+          return '<span class="recipe-star" onclick="noterRecette(\'' + m + '\',' + n + ')">&#11088;</span>'
+        }).join('') +
+      '</div>' +
+    '</div>' +
+    '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">&#128278; Sauvegarder</button>' +
+  '</div>'
+}
+
+// ── Render instructions into a moment card ──
+function renderInstructions(moment, recette) {
+  var el = document.getElementById('instructions-' + moment); if (!el) return
+  var ingHtml = '', stepsHtml = '', tipHtml = '', timingHtml = ''
+  var instructions, ingredients, astuces, tempsPrep, tempsCuisson
+
+  if (recette && recette.nom !== undefined) {
+    instructions = recette.instructions    || []
+    ingredients  = recette.ingredients    || []
+    astuces      = recette.astuces        || []
+    tempsPrep    = recette.temps_preparation
+    tempsCuisson = recette.temps_cuisson
+  } else {
+    instructions = recette; ingredients = []; astuces = []
+  }
+
+  // Ingredients
+  if (Array.isArray(ingredients) && ingredients.length) {
+    var tags = ingredients.map(function(i) {
+      if (typeof i === 'string') return '<span class="ingredient-tag">' + i + '</span>'
+      var label = (i.quantite ? i.quantite + (i.unite ? i.unite + ' ' : ' ') : '') + (i.nom || '')
+      return '<span class="ingredient-tag">' + label.trim() + '</span>'
+    }).join('')
+    ingHtml = '<div class="instructions-section-label">Ingrédients</div>' +
+              '<div class="instructions-ingredients" id="ing-' + moment + '">' + tags + '</div>'
+  }
+
+  // Steps
+  if (Array.isArray(instructions) && instructions.length) {
+    stepsHtml = '<div class="instructions-section-label">Préparation</div><div class="instructions-steps">' +
+      instructions.map(function(s, n) {
+        return '<div class="instruction-step"><div class="step-num">' + (n+1) + '</div><div class="step-text">' + s + '</div></div>'
+      }).join('') + '</div>'
+  } else if (instructions && typeof instructions === 'object' && !Array.isArray(instructions) && instructions.steps) {
+    // Legacy {steps, ingredients, tip} format
+    if (instructions.ingredients && instructions.ingredients.length) {
+      ingHtml = '<div class="instructions-section-label">Ingrédients</div>' +
+                '<div class="instructions-ingredients" id="ing-' + moment + '">' +
+                instructions.ingredients.map(function(i){return '<span class="ingredient-tag">'+i+'</span>'}).join('') + '</div>'
+    }
+    stepsHtml = '<div class="instructions-section-label">Préparation</div><div class="instructions-steps">' +
+      instructions.steps.map(function(s,n){
+        return '<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>'
+      }).join('') + '</div>'
+    if (instructions.tip) tipHtml = '<div class="instructions-tip"><strong>Astuce :</strong> ' + instructions.tip + '</div>'
+  } else if (typeof instructions === 'string' && instructions.trim()) {
+    var t = instructions.trim()
+    var lines = t.indexOf('\n') >= 0 ? t.split('\n') : t.split('. ').map(function(s,i,a){return i<a.length-1?s+'.':s})
+    var steps = lines.map(function(l){return l.replace(/^\d+[.)]\s*/,'').trim()}).filter(function(l){return l.length>10})
+    stepsHtml = '<div class="instructions-section-label">Préparation</div><div class="instructions-steps">' +
+      (steps.length >= 2 ? steps : [t]).map(function(s,n){
+        return '<div class="instruction-step"><div class="step-num">'+(n+1)+'</div><div class="step-text">'+s+'</div></div>'
+      }).join('') + '</div>'
+  }
+
+  // Tip from astuces array
+  if (!tipHtml && Array.isArray(astuces) && astuces.length) {
+    tipHtml = '<div class="instructions-tip"><strong>Astuce :</strong> ' + astuces[0] + '</div>'
+  }
+
+  // Timing chips
+  if (tempsPrep || tempsCuisson) {
+    var chips = ''
+    if (tempsPrep)                   chips += '<span class="recipe-timing-chip">⏱ ' + tempsPrep + ' min prep</span>'
+    if (tempsCuisson && tempsCuisson > 0) chips += '<span class="recipe-timing-chip">🔥 ' + tempsCuisson + ' min cuisson</span>'
+    if (chips) timingHtml = '<div class="recipe-timing">' + chips + '</div>'
+  }
+
+  el.innerHTML = '<div class="instructions-content">' + ingHtml + timingHtml + stepsHtml + tipHtml + '</div>'
+  var content = el.querySelector('.instructions-content')
+  if (content) { var bar = document.createElement('div'); bar.innerHTML = buildActionsBar(moment); content.appendChild(bar.firstChild) }
+  var ingEl = el.querySelector('.instructions-ingredients')
+  if (ingEl) recipeBaseIng[moment] = ingEl.innerHTML
+}
+
+// ── Render routine detail panel ──
+function renderRoutineDetail(key, data) {
+  var el = document.getElementById('detail-' + key); if (!el) return
+  if (!data) { el.innerHTML = ''; return }
+  var chips = ''
+  if (data.duree)               chips += '<span class="routine-detail-chip">⏱ ' + data.duree + '</span>'
+  if (data.timing)              chips += '<span class="routine-detail-chip">🕐 ' + data.timing + '</span>'
+  else if (data.moment_optimal) chips += '<span class="routine-detail-chip">🕐 ' + data.moment_optimal + '</span>'
+  if (data.dosage)              chips += '<span class="routine-detail-chip">💊 ' + data.dosage + '</span>'
+  if (data.categorie)           chips += '<span class="routine-detail-chip">📂 ' + data.categorie + '</span>'
+  if (Array.isArray(data.contre_indications)) {
+    data.contre_indications.forEach(function(ci) {
+      chips += '<span class="routine-detail-chip routine-detail-chip-warn">⚠️ ' + ci + '</span>'
+    })
+  }
+  var raisonHtml = data.raison ? '<div class="routine-detail-raison">' + data.raison + '</div>' : ''
+  var protocoleHtml = ''
+  if (data.protocole && typeof data.protocole === 'string') {
+    var lignes = data.protocole
+      .split(/\n|\.\s+(?=[A-ZÀÉÈÊÎÙÛÂÔŒ])|(?:\d+[.)]\s+)/)
+      .map(function(l){return l.replace(/^\d+[.)]\s*/,'').trim()})
+      .filter(function(l){return l.length > 8})
+    protocoleHtml = lignes.length >= 2
+      ? '<div class="routine-detail-steps">' + lignes.map(function(s,n){
+          return '<div class="routine-detail-step"><div class="routine-detail-stepnum">'+(n+1)+'</div><span>'+s+'</span></div>'
+        }).join('') + '</div>'
+      : '<div class="routine-detail-protocole">' + data.protocole + '</div>'
+  }
+  el.innerHTML = '<div class="routine-detail-inner">' + raisonHtml + protocoleHtml +
+    (chips ? '<div class="routine-detail-chips">' + chips + '</div>' : '') + '</div>'
+}
+
+// ── Display plan ──
+function afficherPlan(plan) {
+  currentPlan = plan
+  // Normalize keys (edge function may use different names)
+  plan.matin      = plan.petit_dejeuner || plan.matin
+  plan.midi       = plan.dejeuner       || plan.midi
+  plan.soir       = plan.diner          || plan.soir
+  plan.apres_midi = plan.pause || plan.collation || plan.apres_midi
+
+  setText('heroMessage', plan.message_motivation || plan.message_personnalise || 'Ton plan est prêt ! 🌿')
+  var score = plan.score_nutritionnel || 7
+  setText('scoreValue', score + '/10')
+  afficherEtoiles(score)
+
+  var heures = { matin: '7h30', midi: '12h30', soir: '19h30' }
+  ;['matin', 'midi', 'soir'].forEach(function(m) {
+    var d = plan[m]; if (!d) return
+    setText(m + '-time',     heures[m])
+    setText(m + '-titre',    d.nom || d.titre || '')
+    var ings = d.ingredients || []
+    var desc = d.description || ings.slice(0,3).map(function(i){ return typeof i==='string' ? i : (i.nom||'') }).join(', ')
+    setText(m + '-desc',     desc)
+    setText(m + '-motivant', (d.astuces && d.astuces[0]) || d.message_motivant || '')
+    var cal = (d.valeurs_nutritionnelles && d.valeurs_nutritionnelles.calories) || d.calories_estimees
+    setText(m + '-cal',      cal ? cal + ' kcal' : '—')
+    renderInstructions(m, d)
+    recipeServings[m] = 1
+  })
+
+  // Pause / après-midi card
+  var pause = plan.pause || plan.collation || plan.apres_midi || null
+  if (pause) {
+    setText('apres_midi-time',     '15h30')
+    setText('apres_midi-titre',    pause.nom || pause.titre || 'Pause Gourmande')
+    var pIngs = pause.ingredients || []
+    var pDesc = pause.description || pIngs.slice(0,3).map(function(i){ return typeof i==='string'?i:(i.nom||'') }).join(', ')
+    setText('apres_midi-desc',     pDesc)
+    setText('apres_midi-motivant', (pause.astuces && pause.astuces[0]) || pause.message_motivant || 'Prends ce moment rien que pour toi 🙏')
+    var pCal = (pause.valeurs_nutritionnelles && pause.valeurs_nutritionnelles.calories) || pause.calories_estimees
+    setText('apres_midi-cal',      pCal ? pCal + ' kcal' : '—')
+    renderInstructions('apres_midi', pause)
+    recipeServings['apres_midi'] = 1
+  }
+
+  // Routine section
+  var nutris   = plan.nutraceutiques || []
+  var aromas   = plan.aromatherapie  || []
+  var routines = plan.routines       || []
+  var r        = plan.routine_du_jour || {}
+  ;['matin','complement','aroma','soir-routine'].forEach(function(k) {
+    var d = document.getElementById('detail-' + k);   if (d) d.classList.remove('open')
+    var c = document.getElementById('chevron-' + k);  if (c) c.classList.remove('open')
+  })
+  setText('routine-matin',      r.matin       || (routines[0] ? routines[0].nom + (routines[0].duree ? ' — ' + routines[0].duree : '') : ''))
+  renderRoutineDetail('matin',       routines[0] || null)
+  setText('routine-complement', r.complement_phare || (nutris[0]   ? nutris[0].nom + ' — ' + (nutris[0].dosage || '')   : ''))
+  renderRoutineDetail('complement',  nutris[0]   || null)
+  setText('routine-aroma',      r.aromatherapie    || (aromas[0]   ? aromas[0].nom + ' — ' + (aromas[0].dosage || '')   : ''))
+  renderRoutineDetail('aroma',       aromas[0]   || null)
+  setText('routine-soir',       r.soir        || (routines[1] ? routines[1].nom + (routines[1].duree ? ' — ' + routines[1].duree : '') : ''))
+  renderRoutineDetail('soir-routine', routines[1] || null)
+
+  // Conseil
+  var conseil = plan.conseil_du_jour || (plan.conseils_generaux && plan.conseils_generaux[0]) || ''
+  if (conseil) setText('conseilText', conseil)
+
+  // Allies highlight
+  updateAlliesFromPlan(plan)
+
+  // Feedback bar
+  var fb = document.getElementById('feedbackBar')
+  if (fb) {
+    fb.style.display = 'flex'
+    document.querySelectorAll('.feedback-star').forEach(function(s){ s.classList.remove('lit') })
+    var sent = document.getElementById('feedbackSent'); if (sent) sent.classList.remove('show')
+    var fstars = document.getElementById('feedbackStars'); if (fstars) fstars.style.display = 'flex'
+  }
+}
+
+// ── Highlight allies present in plan ──
+function updateAlliesFromPlan(plan) {
+  currentActiveAllies = []
+  var keywords = {
+    goji:'goji', curcuma:'curcuma', gingembre:'gingembre', myrtille:'myrtille',
+    avocat:'avocat', banane:'banane', patate:'patate douce', miel:'miel',
+    epinards:'épinard', amandes:'amande'
+  }
+  var planText = JSON.stringify(plan).toLowerCase()
+  Object.keys(keywords).forEach(function(ally) {
+    var active = planText.includes(keywords[ally])
+    if (active) currentActiveAllies.push(ally)
+    var el = document.getElementById('ally-' + ally)
+    if (el) el.classList.toggle('active', active)
+  })
+}
+
+// ── Portions stepper ──
+function changerPortions(m, delta) {
+  recipeServings[m] = Math.max(1, Math.min(8, (recipeServings[m] || 1) + delta))
+  var c = document.getElementById('count-' + m); if (c) c.textContent = recipeServings[m]
+  var ingEl = document.querySelector('#instructions-' + m + ' .instructions-ingredients')
+  if (ingEl && recipeBaseIng[m]) {
+    var tmp = document.createElement('div'); tmp.innerHTML = recipeBaseIng[m]
+    tmp.querySelectorAll('.ingredient-tag').forEach(function(tag) {
+      tag.textContent = ajusterQuantite(tag.textContent, recipeServings[m])
+    })
+    ingEl.innerHTML = tmp.innerHTML
+  }
+}
+
+function ajusterQuantite(text, portions) {
+  return text.replace(/(\d+(?:[.,]\d+)?)\s*(g|kg|ml|cl|l|c\.a\.s|c\.a\.c|tbsp|tsp)/gi, function(_, num, unit) {
+    return (Math.round(parseFloat(num.replace(',', '.')) * portions * 10) / 10) + ' ' + unit
+  })
+}
+
+// ── Rate recipe stars ──
+function noterRecette(m, note) {
+  var c = document.getElementById('stars-' + m); if (!c) return
+  c.querySelectorAll('.recipe-star').forEach(function(s, i) { s.classList.toggle('lit', i < note) })
+  afficherToast('Note sauvegardée !')
+}
+
+// ── Save recipe locally + Supabase ──
+function sauvegarderRecette(m) {
+  if (!currentPlan || !currentPlan[m]) { afficherToast('Génère un plan d\'abord !'); return }
+  var r     = currentPlan[m]
+  var titre = r.nom || r.titre || ''
+  if (savedRecipes.some(function(s){ return s.titre === titre && s.moment === m })) {
+    afficherToast('Déjà sauvegardée !'); return
+  }
+  savedRecipes.push({ id: Date.now(), titre: titre, moment: m,
+    ingredients: r.ingredients, steps: r.instructions,
+    tip: r.astuces && r.astuces[0], note: 0 })
+  localStorage.setItem('vitalia_saved_home', JSON.stringify(savedRecipes))
+  var btn = document.getElementById('save-btn-' + m)
+  if (btn) { btn.textContent = '✓ Sauvegardée'; btn.classList.add('saved') }
+  afficherToast('Recette sauvegardée ! 🔖')
+  sauvegarderRecetteSupabase(r, m)
+}
+
+async function sauvegarderRecetteSupabase(r, m) {
+  if (!profil_id || profil_id === 'new') return
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ profil_id: profil_id, titre: r.nom || r.titre, moment: m,
+        ingredients: r.ingredients, steps: r.instructions, tip: r.astuces && r.astuces[0], note: 0 })
+    })
+  } catch(e) {}
+}
+
+// ── Rate entire plan ──
+function noterPlan(note) {
+  document.querySelectorAll('.feedback-star').forEach(function(s, i) { s.classList.toggle('lit', i < note) })
+  var fstars = document.getElementById('feedbackStars'); if (fstars) fstars.style.display = 'none'
+  var sent   = document.getElementById('feedbackSent');  if (sent)   sent.classList.add('show')
+}
+
+// ── Generate daily plan ──
+async function genererPlan() {
+  fermerConfig()
+  sessionStorage.removeItem('vitalia_plan_session_home')
+  if (!profil_id || profil_id === 'new') { window.location.href = 'onboarding.html'; return }
+
+  var ls = document.getElementById('loadingScreen')
+  var ap = document.getElementById('app')
+  if (ls) { ls.classList.remove('hidden'); ls.style.opacity = '1' }
+  if (ap) ap.style.opacity = '0'
+
+  try {
+    var body = {
+      profil_id: profil_id,
+      symptomes: selectedSymptoms,
+      preferences_moment: {
+        temps_max:  parseInt((document.getElementById('tempsMax')  || {}).value  || '30'),
+        budget_max: parseInt((document.getElementById('budgetMax') || {}).value || '15')
+      },
+      force_regeneration: true,
+      meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false
+    }
+    var res  = await fetch(SUPABASE_URL + '/functions/v1/generer-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify(body)
+    })
+    if (!res.ok) throw new Error('Erreur serveur ' + res.status)
+    var data = await res.json()
+    if (data.success && data.plan) {
+      afficherPlan(data.plan)
+      sessionStorage.setItem('vitalia_plan_session_home', JSON.stringify(data.plan))
+      syncBesoinsVersProfil()
+    } else {
+      throw new Error(data.error || 'Plan invalide')
+    }
+  } catch(err) {
+    console.error(err)
+    afficherToast('Erreur : ' + err.message)
+  } finally {
+    if (ls) { ls.style.opacity = '0'; setTimeout(function(){ ls.classList.add('hidden') }, 400) }
+    if (ap) ap.style.opacity = '1'
+    document.getElementById('generateFab').classList.add('visible')
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// SEMAINE TAB
+// ══════════════════════════════════════════════════════
+
+var semainePlanData = null
+
+// Sync semaine chip UI from shared selectedSymptoms
+function syncSemaineChips() {
+  document.querySelectorAll('#semaineSymptomChips .chip').forEach(function(el) {
+    var val = el.dataset.val
+    el.classList.toggle('selected', selectedSymptoms.includes(val))
+  })
+}
+
+// Toggle symptom from Semaine tab (mirrors config panel)
+function toggleSemaineSymptom(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val)
+  } else {
+    selectedSymptoms = selectedSymptoms.filter(function(v) { return v !== val })
+  }
+  // Keep config panel chips in sync
+  document.querySelectorAll('#symptomsChips .chip').forEach(function(c) {
+    var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
+    if (m && m[1] === val) c.classList.toggle('selected', selectedSymptoms.includes(val))
+  })
+}
+
+// Toggle a day card open/close
+function toggleDay(jour) {
+  var meals   = document.getElementById('day-meals-'   + jour)
+  var chevron = document.getElementById('day-chevron-' + jour)
+  if (!meals) return
+  var isOpen = meals.classList.contains('open')
+  meals.classList.toggle('open',   !isOpen)
+  if (chevron) chevron.classList.toggle('open', !isOpen)
+}
+
+// Toggle an individual meal's detail
+function toggleDayMeal(jour, meal) {
+  var detail = document.getElementById('day-detail-' + jour + '-' + meal)
+  if (detail) detail.classList.toggle('open')
+}
+
+// Generate 7-day plan
+async function genererSemaine() {
+  if (!profil_id) { afficherToast('Profil non trouvé'); return }
+  var btn     = document.getElementById('semaineBtnGenerate')
+  var btnText = document.getElementById('semaineBtnText')
+  var empty   = document.getElementById('semaineEmpty')
+  var cards   = document.getElementById('dayCards')
+  if (btn)    { btn.disabled = true; btn.style.opacity = '0.7' }
+  if (btnText) btnText.textContent = '⏳ Génération en cours…'
+  if (cards)   cards.style.display = 'none'
+  if (empty)   empty.style.display = 'flex'
+  try {
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ profil_id: profil_id, symptomes: selectedSymptoms }),
+    })
+    var data = await resp.json()
+    if (data.success && data.semaine) {
+      semainePlanData = data
+      afficherSemaine(data)
+    } else {
+      afficherToast('Erreur lors de la génération de la semaine')
+    }
+  } catch(err) {
+    afficherToast('Erreur réseau : ' + err.message)
+  } finally {
+    if (btn)    { btn.disabled = false; btn.style.opacity = '1' }
+    if (btnText) btnText.textContent = '🔄 Regénérer la semaine'
+  }
+}
+
+// Render 7-day accordion
+function afficherSemaine(data) {
+  var JOURS   = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche']
+  var LABELS  = { lundi:'Lundi', mardi:'Mardi', mercredi:'Mercredi', jeudi:'Jeudi',
+                  vendredi:'Vendredi', samedi:'Samedi', dimanche:'Dimanche' }
+  var MEALS   = [
+    { key:'petit_dejeuner', label:'Petit-déjeuner', emoji:'🌅' },
+    { key:'dejeuner',       label:'Déjeuner',       emoji:'☀️' },
+    { key:'pause',          label:'Collation',      emoji:'🍎' },
+    { key:'diner',          label:'Dîner',          emoji:'🌙' },
+  ]
+
+  var html = ''
+  JOURS.forEach(function(jour) {
+    var day   = data.semaine[jour] || {}
+    var names = MEALS.map(function(m) { return day[m.key] && day[m.key].nom ? day[m.key].nom : null })
+                     .filter(Boolean)
+    var summary = names.slice(0,2).join(' · ')
+
+    html += '<div class="day-card" id="day-card-' + jour + '">'
+    html += '<div class="day-card-header" onclick="toggleDay(\'' + jour + '\')">'
+    html += '  <div>'
+    html += '    <div class="day-name">' + LABELS[jour] + '</div>'
+    if (summary) html += '    <div class="day-summary">' + summary + '</div>'
+    html += '  </div>'
+    html += '  <div class="day-chevron" id="day-chevron-' + jour + '">▼</div>'
+    html += '</div>'
+    html += '<div class="day-meals" id="day-meals-' + jour + '">'
+
+    MEALS.forEach(function(m) {
+      var recette = day[m.key]
+      if (!recette) return
+      var nv  = recette.valeurs_nutritionnelles || {}
+      var cal = nv.calories ? nv.calories + ' kcal' : ''
+      var id  = jour + '-' + m.key
+
+      html += '<div class="day-meal" onclick="toggleDayMeal(\'' + jour + '\',\'' + m.key + '\')">'
+      html += '  <div class="day-meal-header">'
+      html += '    <div>'
+      html += '      <div class="day-meal-type">' + m.emoji + ' ' + m.label + '</div>'
+      html += '      <div class="day-meal-name">' + (recette.nom || '—') + '</div>'
+      html += '    </div>'
+      if (cal) html += '    <div class="day-meal-cal">' + cal + '</div>'
+      html += '  </div>'
+
+      html += '  <div class="day-meal-detail" id="day-detail-' + id + '">'
+      html += '    <div class="day-meal-inner">'
+
+      // Ingredients
+      if (recette.ingredients && recette.ingredients.length) {
+        html += '<div class="day-meal-ingredients">'
+        recette.ingredients.forEach(function(ing) {
+          var lbl = ing.nom + (ing.quantite ? ' ' + ing.quantite + '\u202f' + (ing.unite || 'g') : '')
+          html += '<span class="day-meal-tag">' + lbl + '</span>'
+        })
+        html += '</div>'
+      }
+
+      // Steps (max 4)
+      if (recette.instructions && recette.instructions.length) {
+        html += '<div class="day-meal-steps">'
+        recette.instructions.slice(0,4).forEach(function(step, i) {
+          html += '<div class="day-meal-step">'
+          html += '  <div class="day-meal-stepnum">' + (i+1) + '</div>'
+          html += '  <div>' + step + '</div>'
+          html += '</div>'
+        })
+        html += '</div>'
+      }
+
+      // Tip
+      var tip = recette.astuces && recette.astuces[0]
+      if (tip) html += '<div class="day-meal-tip">💡 ' + tip + '</div>'
+
+      html += '    </div>'
+      html += '  </div>'
+      html += '</div>'
+    })
+
+    html += '</div>'  // day-meals
+    html += '</div>'  // day-card
+  })
+
+  var cards = document.getElementById('dayCards')
+  var empty = document.getElementById('semaineEmpty')
+  if (cards) { cards.innerHTML = html; cards.style.display = 'flex' }
+  if (empty) empty.style.display = 'none'
+
+  // Auto-open Monday
+  toggleDay('lundi')
+}
+
+// ══════════════════════════════════════════════════════
+// RECETTE TAB
+// ══════════════════════════════════════════════════════
+
+var recetteIngredientsFrigo  = []
+var recetteTypeRepas         = 'dejeuner'
+var recetteSelectedSymptoms  = ['vitalite', 'serenite']
+var recetteCourante          = null
+
+function selectTypeRepas(el, val) {
+  recetteTypeRepas = val
+  document.querySelectorAll('#recetteTypeChips .chip').forEach(function(c) { c.classList.remove('selected') })
+  el.classList.add('selected')
+}
+
+function toggleRecetteSymptom(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!recetteSelectedSymptoms.includes(val)) recetteSelectedSymptoms.push(val)
+  } else {
+    recetteSelectedSymptoms = recetteSelectedSymptoms.filter(function(v) { return v !== val })
+  }
+}
+
+function ajouterIngredientFrigo() {
+  var input = document.getElementById('frigoInput')
+  if (!input) return
+  var val = input.value.trim()
+  if (!val || recetteIngredientsFrigo.includes(val)) { input.value = ''; return }
+  recetteIngredientsFrigo.push(val)
+  input.value = ''
+  renderFrigoChips()
+}
+
+function supprimerIngredientFrigo(ing) {
+  recetteIngredientsFrigo = recetteIngredientsFrigo.filter(function(v) { return v !== ing })
+  renderFrigoChips()
+}
+
+function renderFrigoChips() {
+  var container = document.getElementById('frigoChips')
+  if (!container) return
+  container.innerHTML = recetteIngredientsFrigo.map(function(ing) {
+    var safeIng = ing.replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    return '<span class="chip selected" style="cursor:default;">' + ing +
+           ' <button onclick="supprimerIngredientFrigo(\'' + safeIng + '\')"' +
+           ' style="background:none;border:none;color:white;cursor:pointer;font-size:14px;margin-left:4px;padding:0;line-height:1;vertical-align:middle;">×</button></span>'
+  }).join('')
+}
+
+async function genererRecetteUnique() {
+  if (!profil_id) { afficherToast('Profil non trouvé'); return }
+  var btn     = document.getElementById('recetteBtnGenerate')
+  var btnText = document.getElementById('recetteBtnText')
+  var empty   = document.getElementById('recetteEmpty')
+  var result  = document.getElementById('recetteResult')
+  if (btn)    { btn.disabled = true; btn.style.opacity = '0.7' }
+  if (btnText) btnText.textContent = '⏳ Création en cours…'
+  if (result)  result.style.display = 'none'
+  if (empty)   empty.style.display = 'flex'
+  try {
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        profil_id:          profil_id,
+        type_repas:         recetteTypeRepas,
+        ingredients_frigo:  recetteIngredientsFrigo,
+        symptomes:          recetteSelectedSymptoms,
+      }),
+    })
+    var data = await resp.json()
+    if (data.success && data.recette) {
+      recetteCourante = data.recette
+      afficherRecetteUnique(data.recette)
+    } else {
+      afficherToast('Erreur lors de la génération')
+    }
+  } catch(err) {
+    afficherToast('Erreur réseau : ' + err.message)
+  } finally {
+    if (btn)    { btn.disabled = false; btn.style.opacity = '1' }
+    if (btnText) btnText.textContent = '🔄 Nouvelle recette'
+  }
+}
+
+function afficherRecetteUnique(recette) {
+  var typeLabels = {
+    'dejeuner':        'Déjeuner',
+    'diner':           'Dîner',
+    'petit-dejeuner':  'Petit-déjeuner',
+    'collation':       'Collation',
+  }
+  var typeLabel = typeLabels[recetteTypeRepas] || recetteTypeRepas
+  var nv = recette.valeurs_nutritionnelles || {}
+
+  var html = '<div class="recette-card">'
+
+  // Gradient header
+  html += '<div class="recette-card-header">'
+  html += '  <div class="recette-card-type">' + typeLabel + '</div>'
+  html += '  <div class="recette-card-name">' + (recette.nom || 'Recette') + '</div>'
+  html += '  <div class="recette-card-meta">'
+  if (recette.temps_preparation) html += '<span class="recette-meta-chip">⏱ ' + recette.temps_preparation + ' min</span>'
+  if (recette.temps_cuisson > 0) html += '<span class="recette-meta-chip">🔥 ' + recette.temps_cuisson + ' min cuisson</span>'
+  if (recette.portions)          html += '<span class="recette-meta-chip">🍽 ' + recette.portions + ' pers.</span>'
+  html += '  </div>'
+  html += '</div>'
+
+  html += '<div class="recette-card-body">'
+
+  // Nutrition
+  if (nv.calories) {
+    html += '<div><div class="recette-section-label">Valeurs nutritionnelles</div>'
+    html += '<div class="recette-nutrition">'
+    html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.calories||'—') + '</div><div class="recette-nutri-lbl">kcal</div></div>'
+    html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.proteines||'—') + 'g</div><div class="recette-nutri-lbl">Protéines</div></div>'
+    html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.glucides||'—') + 'g</div><div class="recette-nutri-lbl">Glucides</div></div>'
+    html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.lipides||'—') + 'g</div><div class="recette-nutri-lbl">Lipides</div></div>'
+    html += '</div></div>'
+  }
+
+  // Ingredients
+  if (recette.ingredients && recette.ingredients.length) {
+    html += '<div><div class="recette-section-label">Ingrédients</div>'
+    html += '<div class="recette-ingredients">'
+    recette.ingredients.forEach(function(ing) {
+      var lbl = ing.nom + (ing.quantite ? ' · ' + ing.quantite + '\u202f' + (ing.unite || 'g') : '')
+      html += '<span class="recette-ing-tag">' + lbl + '</span>'
+    })
+    html += '</div></div>'
+  }
+
+  // Instructions
+  if (recette.instructions && recette.instructions.length) {
+    html += '<div><div class="recette-section-label">Préparation</div>'
+    html += '<div class="recette-steps">'
+    recette.instructions.forEach(function(step, i) {
+      html += '<div class="recette-step">'
+      html += '  <div class="recette-stepnum">' + (i+1) + '</div>'
+      html += '  <div class="recette-step-text">' + step + '</div>'
+      html += '</div>'
+    })
+    html += '</div></div>'
+  }
+
+  // Tip
+  var tip = recette.astuces && recette.astuces[0]
+  if (tip) html += '<div class="recette-tip">💡 ' + tip + '</div>'
+
+  // Variantes
+  if (recette.variantes && recette.variantes.length) {
+    html += '<div><div class="recette-section-label">Variantes</div>'
+    html += '<div class="recette-variantes">'
+    recette.variantes.forEach(function(v) { html += '<div class="recette-variante">' + v + '</div>' })
+    html += '</div></div>'
+  }
+
+  // Save button
+  html += '<button onclick="sauvegarderRecetteUnique()"'
+  html += ' style="width:100%;background:var(--sage);color:white;border:none;border-radius:16px;padding:14px;'
+  html += ' font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;">'
+  html += '💚 Sauvegarder cette recette</button>'
+
+  html += '</div></div>'  // card-body + card
+
+  var resultEl = document.getElementById('recetteResult')
+  var emptyEl  = document.getElementById('recetteEmpty')
+  if (resultEl) { resultEl.innerHTML = html; resultEl.style.display = 'block' }
+  if (emptyEl)  emptyEl.style.display = 'none'
+}
+
+async function sauvegarderRecetteUnique() {
+  if (!recetteCourante) return
+  // localStorage
+  try {
+    var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
+    var entry = Object.assign({}, recetteCourante, {
+      id: 'recette_' + Date.now(),
+      saved_at: new Date().toISOString(),
+      note: 0,
+    })
+    saved.unshift(entry)
+    localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0,50)))
+  } catch(e) {}
+  // Supabase
+  if (profil_id && profil_id !== 'new') {
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          profil_id:   profil_id,
+          recette_json: recetteCourante,
+          nom:         recetteCourante.nom,
+          type_repas:  recetteTypeRepas,
+          note:        0,
+        }),
+      })
+    } catch(e) {}
+  }
+  afficherToast('Recette sauvegardée ! 💚')
+}
+
+// ══════════════════════════════════════════════════════
+// PROFIL TAB
+// ══════════════════════════════════════════════════════
+
+var profilAllergiesCourantes    = []
+var profilTempsCuisineCourant   = 30
+
+// Populate all Profil tab elements from profilUtilisateur
+function chargerProfilUI() {
+  var p = profilUtilisateur
+  if (!p) return
+
+  var initial = p.prenom ? p.prenom.charAt(0).toUpperCase() : '?'
+  var lgEl   = document.getElementById('profilAvatarLg')
+  var cardEl = document.getElementById('profilAvatarCard')
+  if (lgEl)   lgEl.textContent   = initial
+  if (cardEl) cardEl.textContent = initial
+
+  var nomEl = document.getElementById('profilNom')
+  if (nomEl) nomEl.textContent = p.prenom || 'Mon Profil'
+
+  // Meta badges (age + sexe)
+  var sexeLabels = { femme:'Femme', homme:'Homme', 'non-binaire':'Non-binaire' }
+  var badges = []
+  if (p.age_tranche) badges.push(p.age_tranche)
+  if (p.sexe)        badges.push(sexeLabels[p.sexe] || p.sexe)
+  var metaEl = document.getElementById('profilMetaBadges')
+  if (metaEl) {
+    metaEl.innerHTML = badges.map(function(b) {
+      return '<span style="background:var(--cream);border:1px solid rgba(196,113,74,0.15);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--mid-brown);">' + b + '</span>'
+    }).join('')
+  }
+
+  // Objectifs
+  var objectifs = (p.objectifs_generaux && p.objectifs_generaux.length) ? p.objectifs_generaux : selectedSymptoms
+  document.querySelectorAll('#profilObjectifsChips .chip').forEach(function(el) {
+    el.classList.toggle('selected', objectifs.includes(el.dataset.val))
+  })
+
+  // Régimes
+  var regimes = (p.regimes_alimentaires && p.regimes_alimentaires.length) ? p.regimes_alimentaires : selectedRegimes
+  document.querySelectorAll('#profilRegimesChips .chip').forEach(function(el) {
+    el.classList.toggle('selected', regimes.includes(el.dataset.val))
+  })
+
+  // Allergènes
+  profilAllergiesCourantes = (p.allergies || []).slice()
+  document.querySelectorAll('#profilAllergiesChips .chip').forEach(function(el) {
+    el.classList.toggle('selected', profilAllergiesCourantes.includes(el.dataset.val))
+  })
+
+  // Temps cuisine
+  profilTempsCuisineCourant = p.temps_cuisine_max || 30
+  document.querySelectorAll('#profilTempsCuisineChips .chip').forEach(function(el) {
+    el.classList.toggle('selected', parseInt(el.dataset.val) === profilTempsCuisineCourant)
+  })
+}
+
+// Toggle objectif (mirrors selectedSymptoms + config panel)
+function toggleProfilObjectif(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val)
+  } else {
+    selectedSymptoms = selectedSymptoms.filter(function(v) { return v !== val })
+  }
+  document.querySelectorAll('#symptomsChips .chip, #semaineSymptomChips .chip').forEach(function(c) {
+    var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
+    if (m && m[1] === val) c.classList.toggle('selected', selectedSymptoms.includes(val))
+  })
+}
+
+// Toggle régime (mirrors selectedRegimes + config panel)
+function toggleProfilRegime(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!selectedRegimes.includes(val)) selectedRegimes.push(val)
+  } else {
+    selectedRegimes = selectedRegimes.filter(function(v) { return v !== val })
+  }
+  document.querySelectorAll('#regimesChips .chip').forEach(function(c) {
+    var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
+    if (m && m[1] === val) c.classList.toggle('selected', selectedRegimes.includes(val))
+  })
+}
+
+// Toggle allergène (independent list)
+function toggleProfilAllergie(el, val) {
+  el.classList.toggle('selected')
+  if (el.classList.contains('selected')) {
+    if (!profilAllergiesCourantes.includes(val)) profilAllergiesCourantes.push(val)
+  } else {
+    profilAllergiesCourantes = profilAllergiesCourantes.filter(function(v) { return v !== val })
+  }
+}
+
+// Select cooking time (single-select)
+function selectProfilTempsCuisine(el, val) {
+  profilTempsCuisineCourant = val
+  document.querySelectorAll('#profilTempsCuisineChips .chip').forEach(function(c) { c.classList.remove('selected') })
+  el.classList.add('selected')
+}
+
+// Save profile preferences to Supabase
+async function sauvegarderProfil() {
+  var btn = document.getElementById('profilSaveBtn')
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7' }
+
+  if (profilUtilisateur) {
+    profilUtilisateur.objectifs_generaux   = selectedSymptoms.slice()
+    profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
+    profilUtilisateur.allergies            = profilAllergiesCourantes.slice()
+    profilUtilisateur.temps_cuisine_max    = profilTempsCuisineCourant
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+  }
+
+  if (profil_id && profil_id !== 'new') {
+    try {
+      var r = await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          objectifs_generaux:   selectedSymptoms,
+          regimes_alimentaires: selectedRegimes,
+          allergies:            profilAllergiesCourantes,
+          temps_cuisine_max:    profilTempsCuisineCourant,
+        }),
+      })
+      afficherToast(r.ok ? 'Profil enregistré ✓' : 'Erreur lors de la sauvegarde')
+    } catch(e) {
+      afficherToast('Erreur réseau')
+    }
+  } else {
+    afficherToast('Préférences sauvegardées ✓')
+  }
+
+  if (btn) { btn.disabled = false; btn.style.opacity = '1' }
+}
+
+// Load and display saved recipes from localStorage
+function afficherRecettesSauvegardees() {
+  var container = document.getElementById('recettesSauvegardeesListe')
+  if (!container) return
+
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+
+  if (!saved.length) {
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Aucune recette sauvegardée</div>'
+    return
+  }
+
+  container.innerHTML = saved.slice(0, 20).map(function(r) {
+    var nv  = r.valeurs_nutritionnelles || {}
+    var cal = nv.calories ? nv.calories + ' kcal' : ''
+    var type = r.type_repas || ''
+    var date = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
+    var stars = (r.note && r.note > 0) ? '★'.repeat(Math.min(r.note, 5)) : ''
+    return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(196,113,74,0.1);padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+           '  <div style="flex:1;min-width:0;">' +
+           '    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + '</div>' +
+           '    <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
+           (stars ? '<div style="font-size:13px;color:var(--golden);margin-top:4px;">' + stars + '</div>' : '') +
+           '  </div>' +
+           (cal ? '<div style="font-size:12px;color:var(--text-light);flex-shrink:0;margin-top:2px;">' + cal + '</div>' : '') +
+           '</div>'
+  }).join('')
+}
+
+// Redirect to full onboarding edit
+function modifierProfilComplet() {
+  window.location.href = 'onboarding.html?edit=true' + (profil_id ? '&profil_id=' + profil_id : '')
+}
+
+// Clear session and redirect to onboarding
+function deconnexion() {
+  if (!confirm('Changer de compte ? Vos données locales seront effacées.')) return
+  ['vitalia_user_id','vitalia_email','vitalia_profil_id','vitalia_profil',
+   'vitalia_profil_complet','vitalia_plan_session_home','vitalia_recettes_sauvegardees']
+    .forEach(function(k) { localStorage.removeItem(k); sessionStorage.removeItem(k) })
+  window.location.href = 'onboarding.html'
+}
+
+// ── Sync selected besoins back to Supabase profile ──
+async function syncBesoinsVersProfil() {
+  if (profilUtilisateur) {
+    profilUtilisateur.objectifs_generaux   = selectedSymptoms.slice()
+    profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+  }
+  if (!profil_id || profil_id === 'new') return
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ objectifs_generaux: selectedSymptoms, regimes_alimentaires: selectedRegimes })
+    })
+  } catch(e) {}
+}
+</script>
+
+</body>
+</html>

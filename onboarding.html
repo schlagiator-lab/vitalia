@@ -1107,7 +1107,7 @@ async function gererSessionUtilisateur(user) {
       localStorage.setItem('vitalia_profil',         JSON.stringify(profils[0]))
       localStorage.setItem('vitalia_profil_complet', 'true')
       masquerLoading()
-      window.location.href = 'index.html?profil_id=' + profilId
+      window.location.href = 'home.html?profil_id=' + profilId
     } else {
       masquerLoading()
       afficherProgressBar()
@@ -1394,9 +1394,9 @@ async function terminerOnboarding() {
     // 🎉 Rediriger vers l'app
     if (isEditMode) {
       afficherToastOnboarding('Profil mis à jour ! 🌿')
-      setTimeout(function() { window.location.href = 'index.html?profil_id=' + profilId }, 1000)
+      setTimeout(function() { window.location.href = 'home.html?profil_id=' + profilId }, 1000)
     } else {
-      window.location.href = 'index.html?profil_id=' + profilId
+      window.location.href = 'home.html?profil_id=' + profilId
     }
 
   } catch (err) {
