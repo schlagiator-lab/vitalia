@@ -209,6 +209,9 @@ function construirePrompt(
 
   const tempsMax = profil.temps_preparation || 45;
   const allergenes = profil.allergenes || [];
+  const budgetLabel = profil.budget === 'faible' ? '5-8€/pers.'
+                    : profil.budget === 'eleve'  ? '12-20€/pers.'
+                    : '8-12€/pers.';
 
   const frigoSection = ingredientsFrigo.length > 0
     ? `**INGRÉDIENTS DU FRIGO À UTILISER OBLIGATOIREMENT** :\n${ingredientsFrigo.map((i: string) => `- ${i}`).join('\n')}`
@@ -235,6 +238,7 @@ function construirePrompt(
 **Régime** : ${regimes.join(', ') || 'Aucune restriction'}
 **Allergènes à éviter** : ${allergenes.join(', ') || 'Aucun'}
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
+**Budget** : ${budgetLabel}
 **Objectif nutritionnel** : ${objectif}
 **Portions** : 2 personnes
 
@@ -381,6 +385,7 @@ serve(async (req: Request) => {
       regime_alimentaire: profil.regimes_alimentaires || profil.regime_alimentaire || [],
       allergenes: profil.allergies || profil.allergenes || [],
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
+      budget: profil.budget_complements || profil.budget || 'moyen',
     };
 
     console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}`);

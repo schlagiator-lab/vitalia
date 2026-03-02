@@ -266,6 +266,12 @@ ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 **Objectif nutritionnel** : ${objectifTexte}
 **Portions** : 2
 ${contraintesPetitDej}
+**QUALITÉ OBLIGATOIRE** :
+- Minimum 5 ingrédients avec quantités précises en grammes/ml/pièces
+- Chaque étape doit contenir une action culinaire précise (température, durée, technique)
+- Jamais d'instructions vagues comme "cuisiner selon méthode", "ajuster selon préférence", "comme souhaité"
+- Temps de cuisson cohérent avec la méthode (ex : poisson poêlé = 4-6 min, poulet rôti = 25-30 min)
+
 ## RÈGLES CRÉATIVES
 
 1. **Nom accrocheur** : Sois créatif, évite les noms génériques.

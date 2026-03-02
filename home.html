@@ -1229,6 +1229,12 @@
       <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine()">
         <span id="semaineBtnText">✨ Générer ma semaine</span>
       </button>
+      <div id="semaineProgressContainer" style="display:none;margin-top:14px;padding:0 2px;">
+        <div style="height:6px;background:rgba(196,113,74,0.15);border-radius:100px;overflow:hidden;">
+          <div id="semaineProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--terracotta),var(--sage));border-radius:100px;transition:width 0.8s ease;"></div>
+        </div>
+        <div id="semaineProgressText" style="text-align:center;font-size:12px;color:var(--text-light);margin-top:7px;font-family:'DM Sans',sans-serif;">Analyse du profil…</div>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -1301,6 +1307,13 @@
           <div class="chip" data-val="mobilite" onclick="toggleRecetteSymptom(this,'mobilite')">💪 Mobilité</div>
           <div class="chip" data-val="hormones" onclick="toggleRecetteSymptom(this,'hormones')">🌸 Hormones</div>
         </div>
+      </div>
+
+      <!-- Votre profil -->
+      <div id="recetteProfilSection" style="display:none;">
+        <div class="field-label">Votre profil</div>
+        <div id="recetteProfilContent" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-light);font-style:italic;">🔒 Ces contraintes sont prises en compte automatiquement</div>
       </div>
 
       <button class="btn-primary" id="recetteBtnGenerate" onclick="genererRecetteUnique()">
@@ -1506,6 +1519,7 @@ function switchTab(name) {
 
   // Sync chips / UI on tab switch
   if (name === 'semaine') syncSemaineChips()
+  if (name === 'recette') afficherProfilRecetteTab()
   if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
 
   fermerConfig()
@@ -1655,6 +1669,7 @@ async function chargerProfilSupabase(id) {
         profilUtilisateur = d[0]
         appliquerProfil(d[0])
         localStorage.setItem('vitalia_profil', JSON.stringify(d[0]))
+        if (currentTab === 'recette') afficherProfilRecetteTab()
       }
     }
   } catch(e) { console.warn('Profile load error:', e) }
@@ -2116,14 +2131,50 @@ function toggleDayMeal(jour, meal) {
 // Generate 7-day plan
 async function genererSemaine() {
   if (!profil_id) { afficherToast('Profil non trouvé'); return }
-  var btn     = document.getElementById('semaineBtnGenerate')
-  var btnText = document.getElementById('semaineBtnText')
-  var empty   = document.getElementById('semaineEmpty')
-  var cards   = document.getElementById('dayCards')
+  var btn          = document.getElementById('semaineBtnGenerate')
+  var btnText      = document.getElementById('semaineBtnText')
+  var empty        = document.getElementById('semaineEmpty')
+  var cards        = document.getElementById('dayCards')
+  var progressCont = document.getElementById('semaineProgressContainer')
+  var progressFill = document.getElementById('semaineProgressFill')
+  var progressText = document.getElementById('semaineProgressText')
+
   if (btn)    { btn.disabled = true; btn.style.opacity = '0.7' }
   if (btnText) btnText.textContent = '⏳ Génération en cours…'
   if (cards)   cards.style.display = 'none'
   if (empty)   empty.style.display = 'flex'
+
+  // Afficher et animer la barre de progression
+  if (progressCont) progressCont.style.display = 'block'
+  var progressTimers = []
+  var etapes = [
+    { pct: 15, label: 'Sélection des aliments…',           delai: 1000 },
+    { pct: 35, label: 'Génération des recettes en cours…', delai: 3000 },
+    { pct: 70, label: 'Création des plats…',               delai: 15000 },
+    { pct: 90, label: 'Finalisation…',                     delai: 30000 },
+  ]
+  if (progressFill) { progressFill.style.width = '0%' }
+  if (progressText) { progressText.textContent = 'Analyse du profil…' }
+  etapes.forEach(function(e) {
+    progressTimers.push(setTimeout(function() {
+      if (progressFill) progressFill.style.width = e.pct + '%'
+      if (progressText) progressText.textContent = e.label
+    }, e.delai))
+  })
+
+  function cacherProgress() {
+    progressTimers.forEach(clearTimeout)
+    if (progressFill) progressFill.style.width = '100%'
+    if (progressText) progressText.textContent = 'Votre semaine est prête !'
+    setTimeout(function() {
+      if (progressCont) progressCont.style.display = 'none'
+    }, 800)
+  }
+  function cacherProgressErreur() {
+    progressTimers.forEach(clearTimeout)
+    if (progressCont) progressCont.style.display = 'none'
+  }
+
   try {
     var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
       method: 'POST',
@@ -2137,16 +2188,54 @@ async function genererSemaine() {
     var data = await resp.json()
     if (data.success && data.semaine) {
       semainePlanData = data
+      cacherProgress()
       afficherSemaine(data)
     } else {
+      cacherProgressErreur()
       afficherToast('Erreur lors de la génération de la semaine')
     }
   } catch(err) {
+    cacherProgressErreur()
     afficherToast('Erreur réseau : ' + err.message)
   } finally {
     if (btn)    { btn.disabled = false; btn.style.opacity = '1' }
     if (btnText) btnText.textContent = '🔄 Regénérer la semaine'
   }
+}
+
+// Populate profil section in Recette tab
+function afficherProfilRecetteTab() {
+  var section = document.getElementById('recetteProfilSection')
+  var content = document.getElementById('recetteProfilContent')
+  if (!section || !content) return
+  var p = profilUtilisateur
+  if (!p) { section.style.display = 'none'; return }
+
+  var regimes  = p.regimes_alimentaires || p.regime_alimentaire || []
+  var temps    = p.temps_cuisine_max || p.temps_preparation || null
+  var budget   = p.budget_complements || p.budget || null
+  var budgetLabel = budget === 'faible' ? '💰 Budget serré (5-8€)'
+                  : budget === 'eleve'  ? '💰 Budget généreux (12-20€)'
+                  : budget === 'moyen'  ? '💰 Budget modéré (8-12€)'
+                  : null
+
+  var badges = []
+  var regimeLabels = { vegan:'🌱 Vegan', vegetarien:'🥗 Végétarien', 'sans-gluten':'🚫 Sans gluten',
+                       'sans_lactose':'🥛 Sans lactose', paleo:'🍖 Paléo', keto:'⚡ Keto' }
+  regimes.forEach(function(r) {
+    if (regimeLabels[r]) badges.push(regimeLabels[r])
+  })
+  if (temps)        badges.push('⏱ ' + temps + ' min max')
+  if (budgetLabel)  badges.push(budgetLabel)
+
+  if (!badges.length) {
+    content.innerHTML = '<span style="font-size:13px;color:var(--text-light);">Aucune restriction</span>'
+  } else {
+    content.innerHTML = badges.map(function(b) {
+      return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--terracotta);font-weight:500;">' + b + '</span>'
+    }).join('')
+  }
+  section.style.display = 'block'
 }
 
 // State for semaine meal interactions
@@ -2155,6 +2244,10 @@ var semaineBaseIng   = {}
 var semaineRatings   = {}
 var semaineSelected  = {}
 var semaineJourOuvert = 'lundi'  // track which day is currently open
+
+// State for saved recipes selection (shopping list)
+var savedSelected = {}   // { idx: true/false }
+var savedServings = {}   // { idx: number }
 
 // Render 7-day accordion (with portions, rating, save, shopping list, wellness)
 function afficherSemaine(data) {
@@ -2488,7 +2581,9 @@ function toggleSelectRecetteSemaine(id) {
 }
 
 function afficherBoutonListeCourses() {
-  var count = Object.values(semaineSelected).filter(Boolean).length
+  var countSemaine = Object.values(semaineSelected).filter(Boolean).length
+  var countSaved   = Object.values(savedSelected).filter(Boolean).length
+  var count = countSemaine + countSaved
   var bar   = document.getElementById('coursesBar')
   var cnt   = document.getElementById('coursesCount')
   if (!bar) return
@@ -2505,16 +2600,12 @@ function afficherBoutonListeCourses() {
   }
 }
 
-// Aggregate ingredients from selected recipes
+// Aggregate ingredients from selected recipes (semaine + saved)
 function aggregerIngredients() {
   var map = {}
-  Object.keys(semaineSelected).forEach(function(id) {
-    if (!semaineSelected[id]) return
-    var parts   = id.split('_'), jour = parts[0], mealKey = parts.slice(1).join('_')
-    var recette = semainePlanData && semainePlanData.semaine && semainePlanData.semaine[jour] && semainePlanData.semaine[jour][mealKey]
-    if (!recette || !recette.ingredients) return
-    var ratio = (semaineServings[id] || 2) / 2
-    recette.ingredients.forEach(function(ing) {
+
+  function ajouterIngredients(ingredients, ratio) {
+    ingredients.forEach(function(ing) {
       var key = ing.nom.toLowerCase().trim()
       if (map[key]) {
         if (map[key].unite === (ing.unite || 'g') && ing.quantite) map[key].quantite = Math.round((map[key].quantite || 0) + ing.quantite * ratio)
@@ -2522,7 +2613,30 @@ function aggregerIngredients() {
         map[key] = { nom: ing.nom, quantite: ing.quantite ? Math.round(ing.quantite * ratio) : null, unite: ing.unite || 'g' }
       }
     })
+  }
+
+  // Recettes du plan semaine
+  Object.keys(semaineSelected).forEach(function(id) {
+    if (!semaineSelected[id]) return
+    var parts   = id.split('_'), jour = parts[0], mealKey = parts.slice(1).join('_')
+    var recette = semainePlanData && semainePlanData.semaine && semainePlanData.semaine[jour] && semainePlanData.semaine[jour][mealKey]
+    if (!recette || !recette.ingredients) return
+    var ratio = (semaineServings[id] || 2) / 2
+    ajouterIngredients(recette.ingredients, ratio)
   })
+
+  // Recettes sauvegardées sélectionnées
+  var savedList = []
+  try { savedList = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  Object.keys(savedSelected).forEach(function(idx) {
+    if (!savedSelected[idx]) return
+    var recette = savedList[parseInt(idx)]
+    if (!recette || !recette.ingredients) return
+    var portions = recette.portions || 2
+    var ratio = (savedServings[parseInt(idx)] || 2) / Math.max(portions, 1)
+    ajouterIngredients(recette.ingredients, ratio)
+  })
+
   return Object.values(map).sort(function(a, b) { return a.nom.localeCompare(b.nom) })
 }
 
@@ -2961,6 +3075,10 @@ function afficherRecettesSauvegardees() {
     return
   }
 
+  // Init state for newly loaded saved recipes
+  savedSelected = {}
+  savedServings = {}
+
   container.innerHTML = saved.slice(0, 20).map(function(r, idx) {
     var nv    = r.valeurs_nutritionnelles || {}
     var cal   = nv.calories ? nv.calories + ' kcal' : ''
@@ -2988,6 +3106,19 @@ function afficherRecettesSauvegardees() {
       ? '<div style="margin-top:10px;background:rgba(122,158,126,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--sage);">💡 ' + r.astuces[0] + '</div>'
       : ''
 
+    // Stepper portions + bouton sélection panier
+    var portionsStepper =
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;">' +
+      '  <span style="font-size:12px;color:var(--text-light);flex:1;">Portions :</span>' +
+      '  <button onclick="changerPortionsSaved(' + idx + ',-1);event.stopPropagation();" class="stepper-btn">&#8722;</button>' +
+      '  <span id="saved-portions-' + idx + '" style="font-size:13px;font-weight:600;color:var(--deep-brown);min-width:20px;text-align:center;">' + (savedServings[idx] || 2) + '</span>' +
+      '  <button onclick="changerPortionsSaved(' + idx + ',1);event.stopPropagation();" class="stepper-btn">+</button>' +
+      '</div>'
+
+    var selectBtn =
+      '<button id="saved-select-btn-' + idx + '" onclick="toggleSelectSaved(' + idx + ');event.stopPropagation();" ' +
+      'style="margin-top:8px;width:100%;background:rgba(196,113,74,0.08);border:1.5px solid rgba(196,113,74,0.25);border-radius:10px;padding:9px;font-size:13px;font-weight:600;color:var(--terracotta);cursor:pointer;transition:all 0.2s;">🛒 Sélectionner pour la liste</button>'
+
     return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(196,113,74,0.1);overflow:hidden;">' +
            '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
            '    <div style="flex:1;min-width:0;">' +
@@ -3009,7 +3140,9 @@ function afficherRecettesSauvegardees() {
            (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions +
            astuces +
-           '    <button onclick="supprimerRecetteSauvegardee(' + idx + ');event.stopPropagation();" style="margin-top:12px;width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Supprimer cette recette</button>' +
+           portionsStepper +
+           selectBtn +
+           '    <button onclick="supprimerRecetteSauvegardee(' + idx + ');event.stopPropagation();" style="margin-top:8px;width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Supprimer cette recette</button>' +
            '  </div>' +
            '</div>'
   }).join('')
@@ -3032,6 +3165,36 @@ function supprimerRecetteSauvegardee(idx) {
     localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved))
   } catch(e) {}
   afficherRecettesSauvegardees()
+}
+
+// Toggle selection of a saved recipe for the shopping list
+function toggleSelectSaved(idx) {
+  savedSelected[idx] = !savedSelected[idx]
+  if (!savedServings[idx]) savedServings[idx] = 2
+  var btn = document.getElementById('saved-select-btn-' + idx)
+  if (btn) {
+    if (savedSelected[idx]) {
+      btn.textContent = '✓ Sélectionné'
+      btn.style.background = 'rgba(122,158,126,0.15)'
+      btn.style.borderColor = 'var(--sage)'
+      btn.style.color = 'var(--sage)'
+    } else {
+      btn.textContent = '🛒 Sélectionner pour la liste'
+      btn.style.background = 'rgba(196,113,74,0.08)'
+      btn.style.borderColor = 'rgba(196,113,74,0.25)'
+      btn.style.color = 'var(--terracotta)'
+    }
+  }
+  afficherBoutonListeCourses()
+}
+
+// Change portions for a saved recipe
+function changerPortionsSaved(idx, delta) {
+  savedServings[idx] = Math.max(1, Math.min(8, (savedServings[idx] || 2) + delta))
+  var el = document.getElementById('saved-portions-' + idx)
+  if (el) el.textContent = savedServings[idx]
+  // Update shopping list if this recipe is selected
+  if (savedSelected[idx]) afficherBoutonListeCourses()
 }
 
 // Display saved shopping list in Profil tab (with toggle-Vu per ingredient)

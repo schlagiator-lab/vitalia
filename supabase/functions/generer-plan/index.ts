@@ -58,18 +58,22 @@ const CORS_HEADERS = {
 // HELPERS STATIQUES
 // ============================================================================
 
-// Pool de secours (uniquement utilisé si la BDD renvoie 0 aliment)
-const INGREDIENTS_POOL_FALLBACK: Record<string, string[]> = {
-  'vitalite':          ['lentilles', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'œufs', 'flocons d\'avoine', 'noix de cajou'],
-  'serenite':          ['cacao', 'noix de cajou', 'épinards', 'avocat', 'graines de lin', 'banane', 'amandes'],
-  'digestion':         ['gingembre', 'fenouil', 'courgette', 'yaourt', 'artichaut', 'papaye', 'carotte', 'pomme'],
-  'sommeil':           ['banane', 'amandes', 'cerises', 'noix', 'graines de courge', 'kiwi'],
-  'mobilite':          ['curcuma', 'gingembre', 'myrtilles', 'noix', 'huile d\'olive', 'brocoli', 'graines de lin'],
-  'hormones':          ['avocat', 'graines de lin', 'noix', 'brocoli', 'quinoa', 'graines de courge'],
-  'energie':           ['lentilles', 'quinoa', 'épinards', 'patate douce', 'pois chiches', 'flocons d\'avoine'],
-  'stress':            ['cacao', 'épinards', 'avocat', 'graines de lin', 'banane', 'amandes'],
-  'bien-etre-general': ['lentilles', 'épinards', 'quinoa', 'avocat', 'brocoli', 'myrtilles', 'noix']
-};
+// Pools structurés pour le fallback statique (uniquement si la BDD renvoie 0 aliment)
+// Garantissent qu'un repas principal a toujours une vraie protéine + légume + féculent
+const PROTEINES_FALLBACK_ANIMALES: string[] = [
+  'Filet de poulet', 'Pavé de saumon', 'Bœuf haché', 'Filet de cabillaud',
+  'Dinde', 'Crevettes', 'Thon en conserve', 'Maquereau'
+];
+const PROTEINES_FALLBACK_VEGETALES: string[] = [
+  'Lentilles corail', 'Pois chiches', 'Tofu ferme', 'Tempeh', 'Haricots rouges', 'Edamame'
+];
+const LEGUMES_FALLBACK: string[] = [
+  'Courgette', 'Brocoli', 'Épinards', 'Haricots verts', 'Poivron rouge',
+  'Patate douce', 'Carotte', 'Chou-fleur', 'Aubergine'
+];
+const FECULENTS_FALLBACK: string[] = [
+  'Quinoa', 'Riz basmati', 'Pâtes complètes', 'Pain complet', "Flocons d'avoine"
+];
 
 // Détecte si une catégorie correspond à une protéine animale (viande, poisson, crustacé, abats)
 function estProtéineAnimale(categorie: string): boolean {
@@ -87,38 +91,49 @@ const PETIT_DEJ_POOL: string[] = [
   "yaourt grec", "fromage blanc", "ricotta", "abricots secs", "raisins secs"
 ];
 
-// FIX P1 BIS : Ingrédients différents pour chaque repas de la journée
-// Retourne 3 listes non-chevauchantes (petit-dej, déjeuner, dîner)
-// ingredientsBanis : ingrédients vus < 7j, exclus du pool (Faille 4)
+// Sélectionne les ingrédients pour les 3 repas du jour (fallback BDD vide)
+// Déjeuner & dîner : toujours 1 protéine + 1 légume + 1 féculent pour garantir
+// une recette nourrissante (évite "noix + cerises" comme repas principal).
+// ingredientsBanis : ingrédients vus < 7j, exclus du pool pour la rotation.
 function selectionnerIngredientsTroisRepas(
   objectif: string,
   besoinsActifs: string[],
-  ingredientsBanis: Set<string> = new Set()
+  ingredientsBanis: Set<string> = new Set(),
+  profil?: any
 ): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
-  // Combiner les pools de tous les besoins actifs pour plus de diversité
-  const tous = [...new Set(
-    besoinsActifs.flatMap(b => INGREDIENTS_POOL_FALLBACK[b] || [])
-    .concat(INGREDIENTS_POOL_FALLBACK[objectif] || INGREDIENTS_POOL_FALLBACK['vitalite'])
-  )];
+  // Pool protéines adapté au régime alimentaire
+  const estVegan      = profil?.regime_alimentaire?.some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())) ?? false;
+  const estVegetarien = profil?.regime_alimentaire?.some((r: string) => ['vegetarien', 'végétarien'].includes(r.toLowerCase())) ?? false;
+  const proteinesPool = (estVegan || estVegetarien)
+    ? PROTEINES_FALLBACK_VEGETALES
+    : [...PROTEINES_FALLBACK_ANIMALES, ...PROTEINES_FALLBACK_VEGETALES];
 
-  // Filtrer les ingrédients bannis (vus < 7j)
-  const disponibles = tous.filter(ing => !ingredientsBanis.has(ing.toLowerCase().trim()));
-  // Fallback si le pool filtré est trop petit (< 9 ingrédients)
-  const pool = disponibles.length >= 9 ? disponibles : tous;
-
-  // Shuffle Fisher-Yates unique pour garantir des ingrédients non répétés entre repas
-  const shuffled = [...pool];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  // Piocher un élément au hasard en excluant les bannis
+  function piocher(pool: string[], exclu: Set<string>): string | undefined {
+    const dispo = pool.filter(x => !exclu.has(x.toLowerCase().trim()));
+    const src   = dispo.length > 0 ? dispo : pool;
+    return src.length > 0 ? src[Math.floor(Math.random() * src.length)] : undefined;
   }
 
-  // Partitionner en 3 groupes distincts (3 ingrédients chacun)
-  return {
-    petitDej: shuffled.slice(0, 3),
-    dejeuner: shuffled.slice(3, 6),
-    diner:    shuffled.slice(6, 9)
-  };
+  // Déjeuner : 1 protéine + 1 légume + 1 féculent
+  const protDej     = piocher(proteinesPool, ingredientsBanis);
+  const legumeDej   = piocher(LEGUMES_FALLBACK, ingredientsBanis);
+  const feculentDej = piocher(FECULENTS_FALLBACK, ingredientsBanis);
+  const dejeuner    = [protDej, legumeDej, feculentDej].filter(Boolean) as string[];
+
+  // Dîner : varier la protéine et le légume par rapport au déjeuner
+  const excluDiner = new Set([
+    ...ingredientsBanis,
+    ...(protDej   ? [protDej.toLowerCase()]   : []),
+    ...(legumeDej ? [legumeDej.toLowerCase()]  : []),
+  ]);
+  const protDin     = piocher(proteinesPool, excluDiner);
+  const legumeDin   = piocher(LEGUMES_FALLBACK, excluDiner);
+  const feculentDin = piocher(FECULENTS_FALLBACK, ingredientsBanis);
+  const diner       = [protDin, legumeDin, feculentDin].filter(Boolean) as string[];
+
+  // Petit-déjeuner géré séparément via PETIT_DEJ_POOL (ne pas toucher ici)
+  return { petitDej: [], dejeuner, diner };
 }
 
 
@@ -182,8 +197,20 @@ async function genererRecetteAvecFallback(
     typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter
   );
   if (recetteLLM) {
-    console.log(`[LLM] Recette ${typeRepas} générée`);
-    return recetteLLM;
+    // Validation qualité : rejeter les recettes trop pauvres ou vagues
+    const PHRASES_VAGUES = ['selon la méthode', 'selon votre préférence', 'comme souhaité', 'adaptée', 'selon les goûts', 'à votre goût'];
+    const recettePauvre =
+      recetteLLM.ingredients.length < 4 ||
+      recetteLLM.instructions.length < 3 ||
+      recetteLLM.instructions.some((step: string) =>
+        PHRASES_VAGUES.some(p => step.toLowerCase().includes(p))
+      );
+    if (recettePauvre) {
+      console.warn(`[QUALITE] Recette ${typeRepas} insuffisante (${recetteLLM.ingredients.length} ings, ${recetteLLM.instructions.length} steps) → fallback BDD`);
+    } else {
+      console.log(`[LLM] Recette ${typeRepas} générée : ${recetteLLM.nom}`);
+      return recetteLLM;
+    }
   }
 
   // 3. BDD
@@ -648,7 +675,8 @@ serve(async (req) => {
       const troisRepas = selectionnerIngredientsTroisRepas(
         contexte.objectif_principal || 'bien-etre-general',
         besoinsUtilises,
-        ingredientsBanis
+        ingredientsBanis,
+        profil
       );
       ingDejeuner = troisRepas.dejeuner;
       ingDiner    = troisRepas.diner;
