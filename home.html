@@ -2104,6 +2104,7 @@ function toggleDay(jour) {
   var isOpen = meals.classList.contains('open')
   meals.classList.toggle('open',   !isOpen)
   if (chevron) chevron.classList.toggle('open', !isOpen)
+  if (!isOpen) semaineJourOuvert = jour
 }
 
 // Toggle an individual meal's detail
@@ -2149,10 +2150,11 @@ async function genererSemaine() {
 }
 
 // State for semaine meal interactions
-var semaineServings = {}
-var semaineBaseIng  = {}
-var semaineRatings  = {}
-var semaineSelected = {}
+var semaineServings  = {}
+var semaineBaseIng   = {}
+var semaineRatings   = {}
+var semaineSelected  = {}
+var semaineJourOuvert = 'lundi'  // track which day is currently open
 
 // Render 7-day accordion (with portions, rating, save, shopping list, wellness)
 function afficherSemaine(data) {
@@ -2211,7 +2213,7 @@ function afficherSemaine(data) {
       html += '<div class="day-meal-header" onclick="toggleDayMeal(\'' + jour + '\',\'' + m.key + '\')" style="cursor:pointer;">'
       html += '  <div style="flex:1;min-width:0;">'
       html += '    <div class="day-meal-type">' + m.emoji + ' ' + m.label + '</div>'
-      html += '    <div class="day-meal-name">' + (recette.nom || '—') + '</div>'
+      html += '    <div class="day-meal-name" id="meal-name-' + id + '">' + (recette.nom || '—') + (isFallback ? ' <span style="font-size:11px;opacity:0.5;">⏳</span>' : '') + '</div>'
       html += '  </div>'
       if (cal) html += '  <div class="day-meal-cal">' + cal + '</div>'
       html += '</div>'
@@ -2220,13 +2222,7 @@ function afficherSemaine(data) {
       html += '<div class="day-meal-detail" id="day-detail-' + id + '">'
       html += '<div class="day-meal-inner">'
 
-      // Fallback warning + regenerate
-      if (isFallback) {
-        html += '<div class="fallback-warning">'
-        html += '  <span class="fallback-warning-text">⚠️ Recette générée en mode basique</span>'
-        html += '  <button class="regen-btn" id="regen-btn-' + id + '" onclick="genererRecettePourRepas(\'' + jour + '\',\'' + m.key + '\',\'' + (recette.type_repas || m.key.replace('_','-')) + '\');event.stopPropagation();">✨ Regénérer</button>'
-        html += '</div>'
-      }
+      // (fallback warning removed — auto-regen triggered after render)
 
       // Timing chips
       var tPrep = recette.temps_preparation || 0
@@ -2305,8 +2301,59 @@ function afficherSemaine(data) {
   // Reset courses bar
   afficherBoutonListeCourses()
 
-  // Auto-open Monday
-  toggleDay('lundi')
+  // Auto-open Monday (only on first render, not on regen refresh)
+  if (!data._regenRefresh) {
+    semaineJourOuvert = 'lundi'
+    toggleDay('lundi')
+    // Auto-regenerate fallback recipes silently
+    autoRegenFallbacks(data)
+  } else {
+    toggleDay(semaineJourOuvert)
+  }
+}
+
+// Auto-regenerate all fallback recipes silently after first render
+async function autoRegenFallbacks(data) {
+  var JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche']
+  var MEAL_TYPES = {
+    petit_dejeuner: 'petit-dejeuner',
+    dejeuner:       'dejeuner',
+    diner:          'diner',
+    pause:          'collation',
+  }
+
+  // Collect all fallback slots
+  var fallbacks = []
+  JOURS.forEach(function(jour) {
+    Object.keys(MEAL_TYPES).forEach(function(mealKey) {
+      var r = data.semaine && data.semaine[jour] && data.semaine[jour][mealKey]
+      if (r && r.genere_par_llm === false) {
+        fallbacks.push({ jour: jour, mealKey: mealKey, typeRepas: MEAL_TYPES[mealKey] })
+      }
+    })
+  })
+
+  if (!fallbacks.length) return
+
+  // Launch all in parallel
+  await Promise.all(fallbacks.map(async function(f) {
+    try {
+      var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ profil_id: profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: selectedSymptoms }),
+      })
+      var d = await resp.json()
+      if (d.success && d.recette && semainePlanData && semainePlanData.semaine && semainePlanData.semaine[f.jour]) {
+        semainePlanData.semaine[f.jour][f.mealKey] = d.recette
+      }
+    } catch(e) {}
+  }))
+
+  // Re-render once all done, restoring the open day
+  semainePlanData._regenRefresh = true
+  afficherSemaine(semainePlanData)
+  semainePlanData._regenRefresh = false
 }
 
 // Render nutraceutique + routine at bottom of weekly plan
