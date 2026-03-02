@@ -539,15 +539,20 @@ async function chargerWellness(supabase: any, besoins: string[], profil: any): P
 
   const nutraceutiques = deduper(resNutra.data || [], 'nutraceutiques')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
-    .slice(0, 3);
+    .slice(0, 1);
 
   const aromatherapie = deduper(resAro.data || [], 'aromatherapie')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
-    .slice(0, 2);
+    .slice(0, 1);
 
   const routines = deduper(resRoutines.data || [], 'routines')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
-    .slice(0, 3);
+    .slice(0, 1);
+
+  // Si la BDD ne retourne rien, générer via LLM
+  if (!nutraceutiques.length && !aromatherapie.length && !routines.length) {
+    return await genererWellnessLLM(besoins);
+  }
 
   return { nutraceutiques, aromatherapie, routines };
 }
@@ -588,6 +593,104 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
   } catch (_) {}
 
   return { message: fallbackMessage, conseil: fallbackConseil };
+}
+
+// ─── Génération wellness via LLM (fallback si DB vide) ────────────────────
+
+async function genererWellnessLLM(symptomes: string[]): Promise<{
+  nutraceutiques: any[], aromatherapie: any[], routines: any[]
+}> {
+  const objectifLabel = symptomes.length > 0 ? symptomes.join(', ') : 'bien-être général';
+
+  const prompt = `Tu es un expert en nutrition et bien-être. Pour un plan alimentaire hebdomadaire axé sur : ${objectifLabel}
+
+Génère en JSON strict (sans backticks) :
+{
+  "nutraceutique": {
+    "nom": "Nom du complément alimentaire",
+    "description": "Description des bienfaits en 2-3 phrases",
+    "dosage": "ex: 500mg par jour",
+    "moment_optimal": "ex: Le matin à jeun",
+    "conseil": "Astuce pratique courte"
+  },
+  "aromatherapie": {
+    "nom": "Nom de l'huile essentielle ou du soin",
+    "description": "Description des bienfaits en 2 phrases",
+    "utilisation": "Mode d'utilisation précis",
+    "conseil": "Précaution ou astuce"
+  },
+  "routine": {
+    "nom": "Nom de la routine bien-être",
+    "description": "Description de la routine en 2-3 phrases",
+    "duree": "ex: 10 minutes",
+    "moment_optimal": "ex: Le soir avant le coucher",
+    "frequence": "ex: Quotidienne"
+  }
+}`;
+
+  try {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 600, temperature: 0.8, messages: [{ role: 'user', content: prompt }] }),
+    });
+
+    if (!response.ok) throw new Error('LLM wellness failed');
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON');
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      nutraceutiques: parsed.nutraceutique ? [parsed.nutraceutique] : [],
+      aromatherapie:  parsed.aromatherapie  ? [parsed.aromatherapie]  : [],
+      routines:       parsed.routine        ? [parsed.routine]        : [],
+    };
+  } catch (_) {
+    // Fallback statique minimal
+    const fallbacks: Record<string, { nutraceutique: any, aromatherapie: any, routine: any }> = {
+      vitalite: {
+        nutraceutique: { nom: 'Vitamine B12', description: 'Essentielle au métabolisme énergétique et à la formation des globules rouges. Réduit la fatigue persistante.', dosage: '1000 µg/jour', moment_optimal: 'Le matin au petit-déjeuner', conseil: 'Optez pour une forme méthylcobalamine pour une meilleure assimilation.' },
+        aromatherapie:  { nom: 'Huile essentielle de menthe poivrée', description: 'Stimulante et énergisante, elle combat la fatigue mentale et physique.', utilisation: '2 gouttes sur les poignets, à inhaler le matin.', conseil: 'Ne pas utiliser le soir, peut perturber le sommeil.' },
+        routine:        { nom: 'Marche énergisante matinale', description: 'Une marche rapide de 20 minutes le matin booste la sérotonine et l\'énergie pour toute la journée.', duree: '20 minutes', moment_optimal: 'Le matin au réveil', frequence: 'Quotidienne' },
+      },
+      serenite: {
+        nutraceutique: { nom: 'Magnésium bisglycinate', description: 'Le magnésium régule le système nerveux et réduit le stress et l\'anxiété. La forme bisglycinate est la mieux tolérée.', dosage: '300 mg/jour', moment_optimal: 'Le soir au dîner', conseil: 'À prendre avec un repas pour éviter les effets digestifs.' },
+        aromatherapie:  { nom: 'Huile essentielle de lavande vraie', description: 'Reconnue pour ses propriétés apaisantes et anxiolytiques. Favorise la détente profonde.', utilisation: '3 gouttes en diffusion 20 minutes le soir, ou 1 goutte sur les tempes.', conseil: 'La lavande vraie est la plus douce, safe pour un usage quotidien.' },
+        routine:        { nom: 'Respiration 4-7-8 anti-stress', description: 'Cette technique de cohérence cardiaque active le système nerveux parasympathique pour une détente immédiate.', duree: '5 minutes', moment_optimal: 'En cas de stress ou le soir', frequence: '2 fois par jour' },
+      },
+      sommeil: {
+        nutraceutique: { nom: 'Mélatonine + Valériane', description: 'La mélatonine régule le cycle circadien tandis que la valériane améliore la qualité du sommeil profond.', dosage: '0,5 mg mélatonine + 300 mg valériane', moment_optimal: '30 minutes avant le coucher', conseil: 'Commencez par la dose minimale de mélatonine efficace.' },
+        aromatherapie:  { nom: 'Huile essentielle de camomille romaine', description: 'Puissant sédatif naturel qui favorise l\'endormissement et réduit les réveils nocturnes.', utilisation: '2 gouttes sur l\'oreiller ou en diffusion 15 minutes avant le coucher.', conseil: 'Associer avec la lavande pour un effet renforcé.' },
+        routine:        { nom: 'Rituel de déconnexion numérique', description: 'Éteindre tous les écrans 1h avant de dormir et lire ou méditer pour préparer le cerveau au sommeil.', duree: '60 minutes', moment_optimal: '1h avant le coucher', frequence: 'Quotidienne' },
+      },
+      digestion: {
+        nutraceutique: { nom: 'Probiotiques Lactobacillus', description: 'Les probiotiques rééquilibrent le microbiome intestinal, réduisent les ballonnements et améliorent le transit.', dosage: '10 milliards UFC/jour', moment_optimal: 'Le matin à jeun', conseil: 'Conservez au réfrigérateur pour préserver les bactéries vivantes.' },
+        aromatherapie:  { nom: 'Huile essentielle de basilic tropical', description: 'Spasmolytique puissant, elle soulage les crampes abdominales, les ballonnements et les spasmes digestifs.', utilisation: '2 gouttes dans une huile végétale, masser le ventre dans le sens des aiguilles d\'une montre.', conseil: 'Diluer à 10% dans une huile de noisette ou d\'amande douce.' },
+        routine:        { nom: 'Yoga digestif du matin', description: 'Quelques postures spécifiques (torsions, position du chat-vache) activent le péristaltisme et soulagent les inconforts digestifs.', duree: '10 minutes', moment_optimal: 'Le matin à jeun', frequence: 'Quotidienne' },
+      },
+      mobilite: {
+        nutraceutique: { nom: 'Oméga-3 EPA/DHA', description: 'Les acides gras oméga-3 réduisent l\'inflammation articulaire et améliorent la souplesse. Essentiels pour la santé des articulations.', dosage: '2 g EPA+DHA/jour', moment_optimal: 'Avec les repas principaux', conseil: 'Choisissez une source certifiée sans métaux lourds (EPAX, MEG-3).' },
+        aromatherapie:  { nom: 'Huile essentielle de gaulthérie', description: 'Riche en salicylate de méthyle, elle soulage les douleurs musculaires et articulaires comme un anti-inflammatoire naturel.', utilisation: 'Diluer à 5% dans une huile végétale et masser les zones douloureuses.', conseil: 'Ne pas utiliser en cas d\'allergie à l\'aspirine.' },
+        routine:        { nom: 'Stretching articulaire quotidien', description: 'Une séance de mobilité douce préserve la santé articulaire, améliore la souplesse et réduit les raideurs.', duree: '15 minutes', moment_optimal: 'Le matin ou après l\'effort', frequence: 'Quotidienne' },
+      },
+      hormones: {
+        nutraceutique: { nom: 'Vitex Agnus Castus', description: 'Régule les hormones féminines, réduit les symptômes prémenstruels et contribue à l\'équilibre hormonal naturel.', dosage: '400 mg/jour', moment_optimal: 'Le matin', conseil: 'Prendre en cure de 3 mois minimum pour observer les effets.' },
+        aromatherapie:  { nom: 'Huile essentielle de sauge sclarée', description: 'Phytœstrogène naturel qui rééquilibre les hormones féminines et atténue les bouffées de chaleur.', utilisation: '2 gouttes diluées dans une huile végétale, appliquer sur le bas-ventre.', conseil: 'Déconseillé pendant la grossesse et l\'allaitement.' },
+        routine:        { nom: 'Marche méditative en nature', description: 'L\'exercice modéré régule le cortisol et les hormones sexuelles. La nature amplifie l\'effet anti-stress.', duree: '30 minutes', moment_optimal: 'En fin d\'après-midi', frequence: '5 fois par semaine' },
+      },
+    };
+
+    const key = symptomes[0] || 'vitalite';
+    const fb = fallbacks[key] || fallbacks['vitalite'];
+    return {
+      nutraceutiques: [fb.nutraceutique],
+      aromatherapie:  [fb.aromatherapie],
+      routines:       [fb.routine],
+    };
+  }
 }
 
 // ─── Handler principal ─────────────────────────────────────────────────────
