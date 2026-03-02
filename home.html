@@ -91,19 +91,20 @@
     position: fixed;
     bottom: calc(var(--tab-bar-height) + 16px);
     left: 50%;
-    transform: translateX(-50%) translateY(80px);
+    transform: translateX(-50%) translateY(20px);
     background: var(--deep-brown);
     color: white;
     border-radius: 14px;
     padding: 12px 20px;
     font-size: 14px;
     box-shadow: 0 8px 24px rgba(61,43,31,0.25);
-    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
     z-index: 300;
     white-space: nowrap;
     pointer-events: none;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
   /* ── App wrapper ── */
   #app { position: relative; z-index: 1; opacity: 0; transition: opacity 0.5s; }
@@ -1259,7 +1260,7 @@
     <!-- Header -->
     <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;border-bottom:1px solid rgba(196,113,74,0.08);">
       <div class="tab-header-title">Recette à la demande</div>
-      <div class="tab-header-sub">Créée spécialement pour vous par l'IA</div>
+      <div class="tab-header-sub">Créée spécialement pour vous par Vitalia</div>
     </div>
 
     <!-- Controls -->
@@ -2432,8 +2433,13 @@ function afficherBoutonListeCourses() {
   if (count > 0) {
     if (cnt) cnt.textContent = count + (count > 1 ? ' recettes sélectionnées' : ' recette sélectionnée')
     bar.style.display = 'flex'
+    // Auto-save immediately so Profil tab can show the list without modal
+    var liste = aggregerIngredients()
+    try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste })) } catch(e) {}
   } else {
     bar.style.display = 'none'
+    // No selection: clear the saved list
+    try { localStorage.removeItem('vitalia_liste_courses') } catch(e) {}
   }
 }
 
@@ -2893,21 +2899,61 @@ function afficherRecettesSauvegardees() {
     return
   }
 
-  container.innerHTML = saved.slice(0, 20).map(function(r) {
-    var nv  = r.valeurs_nutritionnelles || {}
-    var cal = nv.calories ? nv.calories + ' kcal' : ''
-    var type = r.type_repas || ''
-    var date = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
+  container.innerHTML = saved.slice(0, 20).map(function(r, idx) {
+    var nv    = r.valeurs_nutritionnelles || {}
+    var cal   = nv.calories ? nv.calories + ' kcal' : ''
+    var type  = r.type_repas || ''
+    var date  = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
     var stars = (r.note && r.note > 0) ? '★'.repeat(Math.min(r.note, 5)) : ''
-    return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(196,113,74,0.1);padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
-           '  <div style="flex:1;min-width:0;">' +
-           '    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + '</div>' +
-           '    <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
-           (stars ? '<div style="font-size:13px;color:var(--golden);margin-top:4px;">' + stars + '</div>' : '') +
+    var prep  = r.temps_preparation || 0
+    var cook  = r.temps_cuisson || 0
+    var temps = (prep + cook) > 0 ? (prep + cook) + ' min' : ''
+    var rid   = 'saved-r-' + idx
+
+    var ingredients = Array.isArray(r.ingredients) ? r.ingredients.map(function(i) {
+      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' +
+             i.nom + (i.quantite ? ' ' + i.quantite + '\u202f' + (i.unite || 'g') : '') + '</span>'
+    }).join('') : ''
+
+    var instructions = Array.isArray(r.instructions) ? r.instructions.map(function(step, si) {
+      return '<div style="display:flex;gap:10px;margin-bottom:8px;">' +
+             '<span style="flex-shrink:0;width:20px;height:20px;background:var(--terracotta);color:white;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (si+1) + '</span>' +
+             '<span style="font-size:13px;color:var(--deep-brown);line-height:1.5;">' + step + '</span>' +
+             '</div>'
+    }).join('') : ''
+
+    var astuces = Array.isArray(r.astuces) && r.astuces.length
+      ? '<div style="margin-top:10px;background:rgba(122,158,126,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--sage);">💡 ' + r.astuces[0] + '</div>'
+      : ''
+
+    return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(196,113,74,0.1);overflow:hidden;">' +
+           '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+           '    <div style="flex:1;min-width:0;">' +
+           '      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + (temps ? ' · ' + temps : '') + '</div>' +
+           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
+           (stars ? '      <div style="font-size:13px;color:var(--golden);margin-top:4px;">' + stars + '</div>' : '') +
+           '    </div>' +
+           '    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">' +
+           (cal ? '<span style="font-size:12px;color:var(--text-light);">' + cal + '</span>' : '') +
+           '      <span id="arrow-' + rid + '" style="font-size:14px;color:var(--text-light);transition:transform 0.2s;">▼</span>' +
+           '    </div>' +
            '  </div>' +
-           (cal ? '<div style="font-size:12px;color:var(--text-light);flex-shrink:0;margin-top:2px;">' + cal + '</div>' : '') +
+           '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
+           instructions +
+           astuces +
+           '  </div>' +
            '</div>'
   }).join('')
+}
+
+function toggleSavedRecette(id) {
+  var el    = document.getElementById(id)
+  var arrow = document.getElementById('arrow-' + id)
+  if (!el) return
+  var open  = el.style.display !== 'none'
+  el.style.display = open ? 'none' : 'block'
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(180deg)'
 }
 
 // Display saved shopping list in Profil tab
