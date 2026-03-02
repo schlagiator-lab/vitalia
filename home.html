@@ -3016,7 +3016,7 @@ function afficherListeCoursesProfile() {
     }).join('') +
     '<div style="display:flex;gap:8px;margin-top:12px;">' +
     '<button onclick="localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">↺ Réinitialiser</button>' +
-    '<button onclick="localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
+    '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
     '</div>'
 }
 
