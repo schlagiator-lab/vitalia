@@ -110,9 +110,12 @@ export async function genererRecetteLLM(
       return null;
     }
     
-    // Validation des champs obligatoires
-    if (!recetteJSON.nom || !recetteJSON.ingredients || !recetteJSON.instructions) {
-      console.error('[ERROR] JSON incomplet — champs manquants:', Object.keys(recetteJSON));
+    // Validation des champs obligatoires (présence + non-vide)
+    const nomValide        = recetteJSON.nom && recetteJSON.nom.trim() !== '';
+    const ingredientsValides = Array.isArray(recetteJSON.ingredients) && recetteJSON.ingredients.length > 0;
+    const instructionsValides = Array.isArray(recetteJSON.instructions) && recetteJSON.instructions.length > 0;
+    if (!nomValide || !ingredientsValides || !instructionsValides) {
+      console.error('[ERROR] JSON LLM invalide — nom:', nomValide, '| ings:', ingredientsValides, '| steps:', instructionsValides);
       return null;
     }
     

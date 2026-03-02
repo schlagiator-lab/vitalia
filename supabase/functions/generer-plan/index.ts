@@ -688,6 +688,53 @@ serve(async (req) => {
     ]);
 
     // ========================================================================
+    // VALIDATION RECETTES — garantit que chaque repas est complet avant envoi
+    // Un repas est considéré "vide" si : nom manquant, ou ingredients[], ou instructions[]
+    // En cas d'échec, le fallback statique garanti est appliqué.
+    // ========================================================================
+
+    function recetteEstValide(r: any): boolean {
+      if (!r) return false;
+      if (!r.nom || r.nom.trim() === '') return false;
+      if (!Array.isArray(r.ingredients) || r.ingredients.length === 0) return false;
+      if (!Array.isArray(r.instructions) || r.instructions.length === 0) return false;
+      // Au moins un ingrédient avec un nom non vide
+      return r.ingredients.some((i: any) => i?.nom && i.nom.trim() !== '');
+    }
+
+    function pauseEstValide(p: any): boolean {
+      if (!p) return false;
+      if (!p.nom || p.nom.trim() === '') return false;
+      if (!Array.isArray(p.ingredients) || p.ingredients.length === 0) return false;
+      if (!Array.isArray(p.instructions) || p.instructions.length === 0) return false;
+      return true;
+    }
+
+    let recettePetitDejFinal  = recettePetitDej;
+    let recetteDejeunerFinal  = recetteDejeuner;
+    let recetteDinerFinal     = recetteDiner;
+    let recettePauseFinal     = recettePause;
+
+    if (!recetteEstValide(recettePetitDej)) {
+      console.warn('[VALIDATION] Petit-déjeuner vide ou incomplet → fallback par défaut');
+      recettePetitDejFinal = genererRecetteParDefaut('petit-dejeuner', ingPetitDej);
+    }
+    if (!recetteEstValide(recetteDejeuner)) {
+      console.warn('[VALIDATION] Déjeuner vide ou incomplet → fallback par défaut');
+      recetteDejeunerFinal = genererRecetteParDefaut('dejeuner', ingDejeuner);
+    }
+    if (!recetteEstValide(recetteDiner)) {
+      console.warn('[VALIDATION] Dîner vide ou incomplet → fallback par défaut');
+      recetteDinerFinal = genererRecetteParDefaut('diner', ingDiner);
+    }
+    if (!pauseEstValide(recettePause)) {
+      console.warn('[VALIDATION] Pause vide ou incomplète → fallback pool statique');
+      recettePauseFinal = recettePauseParDefaut(contexte.objectif_principal || 'vitalite');
+    }
+
+    console.log(`[VALIDATION] Petit-dej OK=${recetteEstValide(recettePetitDejFinal)} | Déjeuner OK=${recetteEstValide(recetteDejeunerFinal)} | Dîner OK=${recetteEstValide(recetteDinerFinal)} | Pause OK=${pauseEstValide(recettePauseFinal)}`);
+
+    // ========================================================================
     // COMPOSITION PLAN FINAL
     // ========================================================================
 
@@ -696,10 +743,10 @@ serve(async (req) => {
       objectif:  contexte.objectif_principal || 'bien-etre-general',
       symptomes: contexte.symptomes_declares  || [],
 
-      petit_dejeuner: recettePetitDej,
-      dejeuner:       recetteDejeuner,
-      diner:          recetteDiner,
-      pause:          recettePause,
+      petit_dejeuner: recettePetitDejFinal,
+      dejeuner:       recetteDejeunerFinal,
+      diner:          recetteDinerFinal,
+      pause:          recettePauseFinal,
 
       nutraceutiques: nutraceutiquesSelectionnes.map(p => ({
         id:                 p.id,
@@ -758,29 +805,29 @@ serve(async (req) => {
           type: 'aromatherapie', id: p.id, nom: p.nom
         })),
         {
-          type: 'recette', id: recettePetitDej.id || `gen-matin-${Date.now()}`,
-          nom: recettePetitDej.nom, style_culinaire: recettePetitDej.style_culinaire,
+          type: 'recette', id: recettePetitDejFinal.id || `gen-matin-${Date.now()}`,
+          nom: recettePetitDejFinal.nom, style_culinaire: recettePetitDejFinal.style_culinaire,
           type_repas: 'petit-dejeuner',
-          ingredients: recettePetitDej.ingredients.map((i: any) => i.nom)
+          ingredients: recettePetitDejFinal.ingredients.map((i: any) => i.nom)
         },
         {
-          type: 'recette', id: recetteDejeuner.id || `gen-midi-${Date.now()}`,
-          nom: recetteDejeuner.nom, style_culinaire: recetteDejeuner.style_culinaire,
+          type: 'recette', id: recetteDejeunerFinal.id || `gen-midi-${Date.now()}`,
+          nom: recetteDejeunerFinal.nom, style_culinaire: recetteDejeunerFinal.style_culinaire,
           type_repas: 'dejeuner',
           // FIX anti-répétition inter-plans : ajouter les noms bruts DB en plus des noms LLM
           // (le LLM peut renommer "Maquereau" en "Filets de maquereau grillés" → ban cassé)
           ingredients: [
-            ...recetteDejeuner.ingredients.map((i: any) => i.nom),
+            ...recetteDejeunerFinal.ingredients.map((i: any) => i.nom),
             ...(protDej ? [protDej] : [])
           ]
         },
         {
-          type: 'recette', id: recetteDiner.id || `gen-soir-${Date.now()}`,
-          nom: recetteDiner.nom, style_culinaire: recetteDiner.style_culinaire,
+          type: 'recette', id: recetteDinerFinal.id || `gen-soir-${Date.now()}`,
+          nom: recetteDinerFinal.nom, style_culinaire: recetteDinerFinal.style_culinaire,
           type_repas: 'diner',
           // FIX idem pour le dîner
           ingredients: [
-            ...recetteDiner.ingredients.map((i: any) => i.nom),
+            ...recetteDinerFinal.ingredients.map((i: any) => i.nom),
             ...(protDin && protDin !== protDej ? [protDin] : [])
           ]
         },
