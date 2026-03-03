@@ -296,8 +296,8 @@ async function genererRecetteIA(
 
   const prompt = construirePromptRecette(typeRepas, styleCulinaire, proteineAssignee, profil, symptomes, proteinesAutresJours, nomsDejaUtilises);
 
-  // Tentative avec 1 retry automatique sur erreur 429 / 5xx
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // 3 tentatives avec backoff progressif sur 429 / 5xx
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
@@ -308,7 +308,7 @@ async function genererRecetteIA(
         },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 1800,
+          max_tokens: 900,   // tool_use produit du JSON compact — 1800 était inutile et consomme du TPM
           temperature: 0.85,
           tools: [RECETTE_TOOL],
           tool_choice: { type: 'tool', name: 'creer_recette' },
@@ -317,8 +317,9 @@ async function genererRecetteIA(
       });
 
       if (response.status === 429 || response.status >= 500) {
-        console.warn(`[FALLBACK:${typeRepas}] HTTP ${response.status} (tentative ${attempt + 1}/2) — rate limit ou erreur serveur — attente 3s...`);
-        await new Promise(r => setTimeout(r, 3000));
+        const waitMs = attempt === 0 ? 12000 : 20000; // backoff progressif
+        console.warn(`[FALLBACK:${typeRepas}] HTTP ${response.status} (tentative ${attempt + 1}/3) — attente ${waitMs / 1000}s...`);
+        await new Promise(r => setTimeout(r, waitMs));
         continue; // retry
       }
 
@@ -1082,14 +1083,18 @@ serve(async (req: Request) => {
         .filter((_, k) => k !== j)
         .flatMap(([a, b]) => [a, b]);
 
-      const [rPetitDej, rDejeuner, rDiner] = await Promise.all([
-        genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], [...nomsBreakfast])
-          .then(r => r || recetteFallback('petit-dejeuner', null, j)),
-        genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
-          .then(r => r || recetteFallback('dejeuner', protDej, j)),
-        genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
-          .then(r => r || recetteFallback('diner', protDin, j)),
-      ]);
+      // Stagger : fire les 3 requêtes avec 700ms d'écart pour éviter le burst TPM.
+      // On démarre chaque promesse séparément mais on les await toutes ensemble
+      // → délai total +1400ms par jour, en échange de ~0 rate limit.
+      const petitDejP = genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], [...nomsBreakfast])
+        .then(r => r || recetteFallback('petit-dejeuner', null, j));
+      await new Promise(r => setTimeout(r, 700));
+      const dejeunerP = genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
+        .then(r => r || recetteFallback('dejeuner', protDej, j));
+      await new Promise(r => setTimeout(r, 700));
+      const dinerP = genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
+        .then(r => r || recetteFallback('diner', protDin, j));
+      const [rPetitDej, rDejeuner, rDiner] = await Promise.all([petitDejP, dejeunerP, dinerP]);
 
       // Enregistrer séparément les noms par type
       if (rPetitDej?.nom) nomsBreakfast.push(rPetitDej.nom);
