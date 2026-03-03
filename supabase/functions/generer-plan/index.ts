@@ -137,18 +137,86 @@ function selectionnerIngredientsTroisRepas(
 }
 
 
+// Pool de petits-déjeuners de secours pour le plan journalier
+// Tourne aléatoirement pour éviter toujours le même nom si le LLM échoue
+const PETIT_DEJ_DEFAUT_POOL = [
+  {
+    nom: 'Porridge Avoine Banane & Miel',
+    ingredients: [
+      { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
+      { nom: 'Lait végétal', quantite: 200, unite: 'ml' },
+      { nom: 'Banane', quantite: 1, unite: 'pièce' },
+      { nom: 'Miel', quantite: 10, unite: 'g' },
+      { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
+    ],
+    instructions: [
+      "Chauffer le lait végétal dans une casserole à feu moyen.",
+      "Ajouter les flocons d'avoine et remuer 3 minutes jusqu'à consistance crémeuse.",
+      "Éplucher et trancher la banane. Déposer sur le porridge.",
+      "Arroser de miel et parsemer d'amandes effilées. Servir chaud.",
+    ],
+  },
+  {
+    nom: 'Smoothie Bowl Myrtilles & Granola',
+    ingredients: [
+      { nom: 'Myrtilles surgelées', quantite: 150, unite: 'g' },
+      { nom: 'Banane congelée', quantite: 1, unite: 'pièce' },
+      { nom: 'Lait végétal', quantite: 80, unite: 'ml' },
+      { nom: 'Granola', quantite: 40, unite: 'g' },
+      { nom: 'Graines de lin', quantite: 10, unite: 'g' },
+    ],
+    instructions: [
+      "Mixer les myrtilles, la banane et le lait végétal jusqu'à consistance épaisse.",
+      "Verser dans un bol large.",
+      "Parsemer de granola et de graines de lin.",
+      "Déguster immédiatement.",
+    ],
+  },
+  {
+    nom: 'Tartines Avocat & Citron sur Pain Complet',
+    ingredients: [
+      { nom: 'Pain complet', quantite: 2, unite: 'tranches' },
+      { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' },
+      { nom: 'Citron', quantite: 0.5, unite: 'pièce' },
+      { nom: 'Graines de sésame', quantite: 5, unite: 'g' },
+      { nom: 'Sel, poivre', quantite: 2, unite: 'g' },
+    ],
+    instructions: [
+      "Toaster les tranches de pain 2 minutes.",
+      "Écraser l'avocat à la fourchette avec le jus de citron, saler et poivrer.",
+      "Tartiner sur les toasts et parsemer de graines de sésame.",
+    ],
+  },
+];
+
 // Recette de dernier recours si LLM + BDD échouent tous les deux
-function genererRecetteParDefaut(typeRepas: string, ingredients: string[]): any {
+function genererRecetteParDefaut(typeRepas: string, _ingredients: string[]): any {
+  if (typeRepas === 'petit-dejeuner') {
+    // Choisir aléatoirement dans le pool pour ne pas toujours retourner la même recette
+    const opt = PETIT_DEJ_DEFAUT_POOL[Math.floor(Math.random() * PETIT_DEJ_DEFAUT_POOL.length)];
+    return {
+      ...opt,
+      type_repas: 'petit-dejeuner',
+      style_culinaire: 'maison',
+      temps_preparation: 5,
+      temps_cuisson: 3,
+      portions: 2,
+      valeurs_nutritionnelles: { calories: 370, proteines: 9, glucides: 58, lipides: 10 },
+      astuces: ["Un petit-déjeuner riche en fibres et protéines stabilise la glycémie jusqu'au déjeuner."],
+      variantes: ['Varier les fruits selon la saison.'],
+      genere_par_llm: false,
+    };
+  }
+
   const nomsRepas: Record<string, string> = {
-    'petit-dejeuner': 'Bol Énergie du Matin',
-    'dejeuner':       'Assiette Équilibrée du Midi',
-    'diner':          'Dîner Léger & Nutritif'
+    'dejeuner': 'Assiette Équilibrée du Midi',
+    'diner':    'Dîner Léger & Nutritif'
   };
   return {
     nom: nomsRepas[typeRepas] || `Recette ${typeRepas} équilibrée`,
     type_repas: typeRepas,
     style_culinaire: 'simple',
-    ingredients: ingredients.slice(0, 4).map((nom, i) => ({
+    ingredients: (_ingredients || []).slice(0, 4).map((nom, i) => ({
       nom,
       quantite: [100, 150, 80, 50][i] || 100,
       unite: 'g'
@@ -156,17 +224,18 @@ function genererRecetteParDefaut(typeRepas: string, ingredients: string[]): any 
     instructions: [
       'Préparer et laver soigneusement tous les ingrédients.',
       'Cuisiner selon la méthode adaptée à chaque ingrédient.',
-      'Assembler, assaisonner et déguster.'
+      'Assembler, assaisonner et déguster.',
     ],
     temps_preparation: 15,
     temps_cuisson: 20,
     portions: 2,
-    genere_par_llm: false
+    genere_par_llm: false,
   };
 }
 
 // Génération recette avec cascade : (cache) → LLM → BDD → défaut
 // force_regeneration=true : ignore le cache, toujours appeler le LLM
+// nomsDejaUtilises : noms des repas déjà générés dans la même journée (à éviter)
 async function genererRecetteAvecFallback(
   supabase: any,
   typeRepas: string,
@@ -176,7 +245,8 @@ async function genererRecetteAvecFallback(
   contexte: ContexteUtilisateur,
   historique: any,
   forceRegeneration: boolean = false,
-  ingredientsAEviter: string[] = []
+  ingredientsAEviter: string[] = [],
+  nomsDejaUtilises: string[] = []
 ): Promise<any> {
 
   // 1. Cache — skippé si force_regeneration
@@ -194,7 +264,7 @@ async function genererRecetteAvecFallback(
 
   // 2. LLM
   const recetteLLM = await genererRecetteLLM(
-    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter
+    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter, nomsDejaUtilises
   );
   if (recetteLLM) {
     // Validation qualité : rejeter les recettes trop pauvres ou vagues
@@ -706,14 +776,34 @@ serve(async (req) => {
     console.log('\n[NIVEAU 3] === GENERATION CREATIVE (LLM) ===');
 
     const forceRegen = force_regeneration === true;
-    const [recettePause, recettePetitDej, recetteDejeuner, recetteDiner, messageMotivation, conseilDuJour] = await Promise.all([
+
+    // Lancer pause + motivation + conseil en parallèle (indépendants des recettes)
+    const [recettePause, messageMotivation, conseilDuJour] = await Promise.all([
       genererPauseAvecFallback(profil, contexte),
-      genererRecetteAvecFallback(supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej, profil, contexte, historique, forceRegen, [...ingDejeuner, ...ingDiner]),
-      genererRecetteAvecFallback(supabase, 'dejeuner',       styleDejeuner, ingDejeuner, profil, contexte, historique, forceRegen, [...ingPetitDej, ...ingDiner]),
-      genererRecetteAvecFallback(supabase, 'diner',          styleDiner,    ingDiner,    profil, contexte, historique, forceRegen, [...ingPetitDej, ...ingDejeuner]),
       genererMessageMotivation(contexte, {}),
       genererConseilDuJour(contexte)
     ]);
+
+    // Générer les 3 repas séquentiellement pour passer les noms précédents au LLM
+    // → évite que le LLM répète le même concept d'un repas à l'autre dans la même journée
+    const recettePetitDej = await genererRecetteAvecFallback(
+      supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej,
+      profil, contexte, historique, forceRegen,
+      [...ingDejeuner, ...ingDiner],
+      []   // premier repas : aucun nom précédent
+    );
+    const recetteDejeuner = await genererRecetteAvecFallback(
+      supabase, 'dejeuner', styleDejeuner, ingDejeuner,
+      profil, contexte, historique, forceRegen,
+      [...ingPetitDej, ...ingDiner],
+      [recettePetitDej?.nom].filter(Boolean) as string[]
+    );
+    const recetteDiner = await genererRecetteAvecFallback(
+      supabase, 'diner', styleDiner, ingDiner,
+      profil, contexte, historique, forceRegen,
+      [...ingPetitDej, ...ingDejeuner],
+      [recettePetitDej?.nom, recetteDejeuner?.nom].filter(Boolean) as string[]
+    );
 
     // ========================================================================
     // VALIDATION RECETTES — garantit que chaque repas est complet avant envoi

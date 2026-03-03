@@ -27,128 +27,121 @@ export async function genererRecetteLLM(
   ingredientsObligatoires: string[],
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
-  ingredientsAEviter: string[] = []
+  ingredientsAEviter: string[] = [],
+  nomsDejaUtilises: string[] = []
 ): Promise<RecetteGeneree | null> {
-  
+
   console.log(`[NIVEAU 3] Génération recette Claude AI (${typeRepas}, ${styleCulinaire})...`);
-  
+
   if (!ANTHROPIC_API_KEY) {
     console.error('[ERROR] ANTHROPIC_API_KEY non configurée dans les secrets Supabase');
     return null;
   }
-  
-  try {
-    const prompt = construirePromptRecette(
-      typeRepas,
-      styleCulinaire,
-      ingredientsObligatoires,
-      profil,
-      contexte,
-      ingredientsAEviter
-    );
-    
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 2000,
-        temperature: 0.8,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[ERROR] API Claude ${response.status}:`, errorText);
-      // Log clair pour diagnostiquer les erreurs 400 (model invalide, etc.)
-      if (response.status === 400) {
-        console.error('[ERROR] Vérifier : model string, format body, clé API');
+
+  const prompt = construirePromptRecette(
+    typeRepas, styleCulinaire, ingredientsObligatoires,
+    profil, contexte, ingredientsAEviter, nomsDejaUtilises
+  );
+
+  // Retry 1× sur 429 / 5xx
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 2000,
+          temperature: 0.8,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (response.status === 429 || response.status >= 500) {
+        console.warn(`[WARN] Claude ${response.status} (tentative ${attempt + 1}/2) — attente 3s...`);
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
       }
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    // Vérifier que la réponse contient bien du contenu
-    if (!data.content || !data.content[0] || !data.content[0].text) {
-      console.error('[ERROR] Réponse Claude vide ou malformée');
-      return null;
-    }
-    
-    const textContent = data.content[0].text;
-    
-    // Parser le JSON (Claude peut retourner du texte avec ```json``` ou du JSON brut)
-    let recetteJSON: any = null;
-    
-    // Tentative 1 : blocs ```json ... ```
-    const jsonBlock = textContent.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlock) {
-      try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {}
-    }
-    
-    // Tentative 2 : JSON brut (objet complet)
-    if (!recetteJSON) {
-      const jsonRaw = textContent.match(/\{[\s\S]*\}/);
-      if (jsonRaw) {
-        try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {}
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[ERROR] API Claude ${response.status}:`, errorText);
+        if (response.status === 400) {
+          console.error('[ERROR] Vérifier : model string, format body, clé API');
+        }
+        return null;
       }
-    }
-    
-    if (!recetteJSON) {
-      console.error('[ERROR] Pas de JSON valide dans la réponse Claude');
-      console.error('[DEBUG] Début réponse:', textContent.substring(0, 200));
+
+      const data = await response.json();
+
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        console.error('[ERROR] Réponse Claude vide ou malformée');
+        return null;
+      }
+
+      const textContent = data.content[0].text;
+
+      let recetteJSON: any = null;
+      const jsonBlock = textContent.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonBlock) {
+        try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {}
+      }
+      if (!recetteJSON) {
+        const jsonRaw = textContent.match(/\{[\s\S]*\}/);
+        if (jsonRaw) {
+          try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {}
+        }
+      }
+
+      if (!recetteJSON) {
+        console.error('[ERROR] Pas de JSON valide dans la réponse Claude');
+        console.error('[DEBUG] Début réponse:', textContent.substring(0, 200));
+        return null;
+      }
+
+      const nomValide          = recetteJSON.nom && recetteJSON.nom.trim() !== '';
+      const ingredientsValides = Array.isArray(recetteJSON.ingredients) && recetteJSON.ingredients.length > 0;
+      const instructionsValides = Array.isArray(recetteJSON.instructions) && recetteJSON.instructions.length > 0;
+      if (!nomValide || !ingredientsValides || !instructionsValides) {
+        console.error('[ERROR] JSON LLM invalide — nom:', nomValide, '| ings:', ingredientsValides, '| steps:', instructionsValides);
+        return null;
+      }
+
+      const recette: RecetteGeneree = {
+        nom:             recetteJSON.nom,
+        type_repas:      typeRepas,
+        style_culinaire: styleCulinaire,
+        ingredients:     (recetteJSON.ingredients || []).map((ing: any) => ({
+          nom:      ing.nom      || ing.name || 'Ingrédient',
+          quantite: ing.quantite || ing.quantity || 0,
+          unite:    ing.unite    || ing.unit || 'g'
+        })),
+        instructions:    recetteJSON.instructions || [],
+        temps_preparation: recetteJSON.temps_preparation ?? 15,
+        temps_cuisson:   typeRepas === 'petit-dejeuner'
+          ? Math.min(recetteJSON.temps_cuisson ?? 0, 2)
+          : (recetteJSON.temps_cuisson ?? 20),
+        portions:        recetteJSON.portions || 2,
+        valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles || undefined,
+        astuces:         recetteJSON.astuces || [],
+        variantes:       recetteJSON.variantes || [],
+        genere_par_llm:  true
+      };
+
+      console.log(`[NIVEAU 3] Recette générée : ${recette.nom}`);
+      return recette;
+
+    } catch (error) {
+      console.error('[ERROR] Exception génération Claude AI:', error);
       return null;
     }
-    
-    // Validation des champs obligatoires (présence + non-vide)
-    const nomValide        = recetteJSON.nom && recetteJSON.nom.trim() !== '';
-    const ingredientsValides = Array.isArray(recetteJSON.ingredients) && recetteJSON.ingredients.length > 0;
-    const instructionsValides = Array.isArray(recetteJSON.instructions) && recetteJSON.instructions.length > 0;
-    if (!nomValide || !ingredientsValides || !instructionsValides) {
-      console.error('[ERROR] JSON LLM invalide — nom:', nomValide, '| ings:', ingredientsValides, '| steps:', instructionsValides);
-      return null;
-    }
-    
-    const recette: RecetteGeneree = {
-      nom:             recetteJSON.nom,
-      type_repas:      typeRepas,
-      style_culinaire: styleCulinaire,
-      ingredients:     (recetteJSON.ingredients || []).map((ing: any) => ({
-        nom:      ing.nom      || ing.name || 'Ingrédient',
-        quantite: ing.quantite || ing.quantity || 0,
-        unite:    ing.unite    || ing.unit || 'g'
-      })),
-      instructions:    recetteJSON.instructions || [],
-      temps_preparation: recetteJSON.temps_preparation ?? 15,
-      // ?? au lieu de || : 0 est une valeur valide (recette sans cuisson)
-      // || écrasait 0 par 20 car 0 est falsy en JS
-      temps_cuisson:   typeRepas === 'petit-dejeuner'
-        ? Math.min(recetteJSON.temps_cuisson ?? 0, 2)  // petit-dej : 0 ou max 2 min (grille-pain/micro-ondes)
-        : (recetteJSON.temps_cuisson ?? 20),
-      portions:        recetteJSON.portions || 2,
-      valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles || undefined,
-      astuces:         recetteJSON.astuces || [],
-      variantes:       recetteJSON.variantes || [],
-      genere_par_llm:  true
-    };
-    
-    console.log(`[NIVEAU 3] Recette générée : ${recette.nom}`);
-    return recette;
-    
-  } catch (error) {
-    console.error('[ERROR] Exception génération Claude AI:', error);
-    return null;
   }
+
+  return null;
 }
 
 // ============================================================================
@@ -161,7 +154,8 @@ function construirePromptRecette(
   ingredientsObligatoires: string[],
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
-  ingredientsAEviter: string[] = []
+  ingredientsAEviter: string[] = [],
+  nomsDejaUtilises: string[] = []
 ): string {
   
   const contraintesRegime: string[] = [];
@@ -249,6 +243,13 @@ function construirePromptRecette(
 ${ingredientsAEviter.map(i => `- ${i}`).join('\n')}
 ` : '';
 
+  // Recettes déjà générées dans le même plan (éviter les doublons de concept)
+  const consigneNoms = nomsDejaUtilises.length > 0 ? `
+**RECETTES DÉJÀ CRÉÉES DANS CE PLAN (interdites — ne pas reproduire ni imiter) :**
+${nomsDejaUtilises.map(n => `- "${n}"`).join('\n')}
+Crée quelque chose de complètement différent : autres ingrédients principaux, autre technique, autre concept.
+` : '';
+
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.
 
 ## CONTRAINTES STRICTES (NON NÉGOCIABLES)
@@ -257,7 +258,7 @@ ${ingredientsAEviter.map(i => `- ${i}`).join('\n')}
 **Style culinaire** : ${styleCulinaire}
 **Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
-${consigneEviter}
+${consigneNoms}${consigneEviter}
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 

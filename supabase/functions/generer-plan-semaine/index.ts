@@ -103,7 +103,8 @@ function construirePromptRecette(
   proteineAssignee: string | null,
   profil: any,
   symptomes: string[],
-  proteinesAutresJours: string[]
+  proteinesAutresJours: string[],
+  nomsDejaUtilises: string[] = []   // noms générés pour les jours précédents
 ): string {
 
   const estPetitDej = typeRepas === 'petit-dejeuner';
@@ -131,6 +132,12 @@ function construirePromptRecette(
     ? `\n**Protéines à ÉVITER** (déjà utilisées dans d'autres jours) :\n${proteinesAutresJours.map(p => `- ${p}`).join('\n')}`
     : '';
 
+  // Noms des recettes déjà générées cette semaine — le LLM ne doit pas les répéter
+  // ni s'en inspirer (même concept, même technique, même ingrédient principal)
+  const nomsDejaConsigne = nomsDejaUtilises.length > 0
+    ? `\n**RECETTES DÉJÀ CRÉÉES CETTE SEMAINE (interdites — ne pas reproduire ni imiter) :**\n${nomsDejaUtilises.map(n => `- "${n}"`).join('\n')}\nCrée quelque chose de complètement différent en termes d'ingrédients, de technique et de concept.\n`
+    : '';
+
   const contraintes_petit_dej = estPetitDej ? `
 ## CONTRAINTES PETIT-DÉJEUNER
 - Saveur SUCRÉE (fruits, céréales, miel${estSansLactose ? '' : ', yaourt'})
@@ -153,7 +160,7 @@ ${estSansLactose ? '- Aucun produit laitier (lait végétal uniquement)' : ''}
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
 **Objectif** : ${objectif}
 **Portions** : 2
-${contraintes_petit_dej}
+${nomsDejaConsigne}${contraintes_petit_dej}
 **EXACTEMENT ${nbEtapes} étapes** dans les instructions.
 
 ## FORMAT JSON STRICT (sans backticks, sans texte autour)
@@ -179,103 +186,255 @@ async function genererRecetteIA(
   proteineAssignee: string | null,
   profil: any,
   symptomes: string[],
-  proteinesAutresJours: string[]
+  proteinesAutresJours: string[],
+  nomsDejaUtilises: string[] = []
 ): Promise<any | null> {
 
   if (!ANTHROPIC_API_KEY) return null;
 
-  const prompt = construirePromptRecette(typeRepas, styleCulinaire, proteineAssignee, profil, symptomes, proteinesAutresJours);
+  const prompt = construirePromptRecette(typeRepas, styleCulinaire, proteineAssignee, profil, symptomes, proteinesAutresJours, nomsDejaUtilises);
 
-  try {
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 1200,
-        temperature: 0.85,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+  // Tentative avec 1 retry automatique sur erreur 429 / 5xx
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 1800,  // augmenté pour éviter les troncatures JSON
+          temperature: 0.85,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
 
-    if (!response.ok) {
-      console.error(`[ERROR] Claude ${response.status}`);
+      if (response.status === 429 || response.status >= 500) {
+        console.warn(`[WARN] Claude ${response.status} (tentative ${attempt + 1}/2) — attente 3s...`);
+        await new Promise(r => setTimeout(r, 3000));
+        continue; // retry
+      }
+
+      if (!response.ok) {
+        console.error(`[ERROR] Claude ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '';
+
+      let recetteJSON: any = null;
+      const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonBlock) { try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
+      if (!recetteJSON) {
+        const jsonRaw = text.match(/\{[\s\S]*\}/);
+        if (jsonRaw) { try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
+      }
+
+      if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
+        console.warn(`[WARN] JSON LLM invalide pour ${typeRepas} — fallback`);
+        return null;
+      }
+
+      // Validation qualité minimale : rejeter les recettes trop pauvres
+      const PHRASES_VAGUES = ['selon la méthode', 'selon votre préférence', 'comme souhaité', 'selon les goûts'];
+      const recettePauvre =
+        recetteJSON.ingredients.length < 3 ||
+        recetteJSON.instructions.length < 3 ||
+        recetteJSON.instructions.some((step: string) =>
+          PHRASES_VAGUES.some(p => step.toLowerCase().includes(p))
+        );
+      if (recettePauvre) {
+        console.warn(`[WARN] Recette LLM de faible qualité (${recetteJSON.ingredients.length} ings) — fallback`);
+        return null;
+      }
+
+      return {
+        nom: recetteJSON.nom,
+        type_repas: typeRepas,
+        style_culinaire: styleCulinaire,
+        ingredients: (recetteJSON.ingredients || []).map((ing: any) => ({
+          nom: ing.nom || 'Ingrédient',
+          quantite: ing.quantite || 0,
+          unite: ing.unite || 'g',
+        })),
+        instructions: recetteJSON.instructions || [],
+        temps_preparation: recetteJSON.temps_preparation ?? 15,
+        temps_cuisson: recetteJSON.temps_cuisson ?? 0,
+        portions: recetteJSON.portions || 2,
+        valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles,
+        astuces: recetteJSON.astuces || [],
+        variantes: recetteJSON.variantes || [],
+        genere_par_llm: true,
+      };
+
+    } catch (error) {
+      console.error('[ERROR] Exception Claude recette:', error);
       return null;
     }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text || '';
-
-    let recetteJSON: any = null;
-    const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlock) { try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
-    if (!recetteJSON) {
-      const jsonRaw = text.match(/\{[\s\S]*\}/);
-      if (jsonRaw) { try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
-    }
-
-    if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
-      return null;
-    }
-
-    return {
-      nom: recetteJSON.nom,
-      type_repas: typeRepas,
-      style_culinaire: styleCulinaire,
-      ingredients: (recetteJSON.ingredients || []).map((ing: any) => ({
-        nom: ing.nom || 'Ingrédient',
-        quantite: ing.quantite || 0,
-        unite: ing.unite || 'g',
-      })),
-      instructions: recetteJSON.instructions || [],
-      temps_preparation: recetteJSON.temps_preparation ?? 15,
-      temps_cuisson: recetteJSON.temps_cuisson ?? 0,
-      portions: recetteJSON.portions || 2,
-      valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles,
-      astuces: recetteJSON.astuces || [],
-      variantes: recetteJSON.variantes || [],
-      genere_par_llm: true,
-    };
-
-  } catch (error) {
-    console.error('[ERROR] Exception Claude recette:', error);
-    return null;
   }
+
+  return null;
 }
 
 // ─── Fallbacks recettes ────────────────────────────────────────────────────
 
-function recetteFallback(typeRepas: string, proteineAssignee: string | null): any {
+// Pool de 7 petits-déjeuners de secours — 1 par jour, tous différents.
+// Activé uniquement si le LLM échoue. Chaque option est complète et variée.
+const PETIT_DEJ_FALLBACKS = [
+  {
+    nom: 'Porridge Avoine Banane & Amandes',
+    ingredients: [
+      { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
+      { nom: 'Lait végétal', quantite: 200, unite: 'ml' },
+      { nom: 'Banane', quantite: 1, unite: 'pièce' },
+      { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
+      { nom: 'Miel', quantite: 10, unite: 'g' },
+    ],
+    instructions: [
+      "Chauffer le lait végétal dans une casserole à feu moyen.",
+      "Verser les flocons d'avoine et remuer 3 minutes jusqu'à consistance crémeuse.",
+      "Éplucher et couper la banane en rondelles, déposer sur le porridge.",
+      "Parsemer d'amandes effilées et arroser de miel. Servir chaud.",
+    ],
+    temps_preparation: 3, temps_cuisson: 5, portions: 1,
+    valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 },
+    astuces: ["Les bêta-glucanes de l'avoine stabilisent la glycémie pour une énergie durable."],
+    variantes: ['Remplacer la banane par des myrtilles surgelées décongelées.'],
+  },
+  {
+    nom: 'Smoothie Bowl Fruits Rouges & Granola',
+    ingredients: [
+      { nom: 'Fruits rouges surgelés', quantite: 150, unite: 'g' },
+      { nom: 'Banane congelée', quantite: 1, unite: 'pièce' },
+      { nom: 'Lait végétal', quantite: 80, unite: 'ml' },
+      { nom: 'Granola', quantite: 40, unite: 'g' },
+      { nom: 'Graines de chia', quantite: 10, unite: 'g' },
+    ],
+    instructions: [
+      "Mixer les fruits rouges, la banane et le lait végétal jusqu'à consistance épaisse.",
+      "Verser dans un bol large.",
+      "Parsemer de granola et de graines de chia sur le dessus.",
+      "Déguster immédiatement avant que le smoothie ne fonde.",
+    ],
+    temps_preparation: 5, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 360, proteines: 8, glucides: 58, lipides: 10 },
+    astuces: ["Les anthocyanes des fruits rouges sont de puissants antioxydants protecteurs."],
+    variantes: ['Ajouter 1 c.à.s. de beurre d\'amande pour plus de protéines.'],
+  },
+  {
+    nom: 'Tartines Pain Complet Avocat & Citron',
+    ingredients: [
+      { nom: 'Pain complet', quantite: 2, unite: 'tranches' },
+      { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' },
+      { nom: 'Citron', quantite: 0.5, unite: 'pièce' },
+      { nom: 'Graines de sésame', quantite: 5, unite: 'g' },
+      { nom: 'Sel, poivre', quantite: 2, unite: 'g' },
+    ],
+    instructions: [
+      "Toaster les tranches de pain au grille-pain 2 minutes.",
+      "Couper l'avocat en deux, retirer le noyau et écraser la chair à la fourchette.",
+      "Ajouter le jus du demi-citron, saler et poivrer. Mélanger.",
+      "Tartiner généreusement sur les toasts. Parsemer de graines de sésame.",
+    ],
+    temps_preparation: 5, temps_cuisson: 2, portions: 1,
+    valeurs_nutritionnelles: { calories: 340, proteines: 9, glucides: 38, lipides: 18 },
+    astuces: ["Les acides gras mono-insaturés de l'avocat favorisent l'absorption des vitamines liposolubles."],
+    variantes: ['Ajouter un œuf poché pour un apport protéique supplémentaire.'],
+  },
+  {
+    nom: 'Overnight Oats Mangue & Noix de Coco',
+    ingredients: [
+      { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
+      { nom: 'Lait de coco', quantite: 150, unite: 'ml' },
+      { nom: 'Mangue', quantite: 100, unite: 'g' },
+      { nom: 'Noix de coco râpée', quantite: 10, unite: 'g' },
+      { nom: 'Miel', quantite: 5, unite: 'g' },
+    ],
+    instructions: [
+      "La veille : mélanger les flocons avec le lait de coco et le miel dans un bocal.",
+      "Fermer et réfrigérer toute la nuit (au moins 6 heures).",
+      "Le matin : éplucher et couper la mangue en dés.",
+      "Disposer la mangue sur les oats et parsemer de noix de coco râpée.",
+    ],
+    temps_preparation: 5, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 400, proteines: 9, glucides: 65, lipides: 12 },
+    astuces: ["Les enzymes de la mangue facilitent la digestion des protéines et glucides."],
+    variantes: ['Remplacer la mangue par de l\'ananas ou de la papaye.'],
+  },
+  {
+    nom: 'Bol Yaourt Grec Kiwi & Graines',
+    ingredients: [
+      { nom: 'Yaourt grec nature', quantite: 150, unite: 'g' },
+      { nom: 'Kiwi', quantite: 2, unite: 'pièces' },
+      { nom: 'Graines de courge', quantite: 15, unite: 'g' },
+      { nom: 'Miel d\'acacia', quantite: 10, unite: 'g' },
+      { nom: 'Cannelle', quantite: 1, unite: 'pincée' },
+    ],
+    instructions: [
+      "Verser le yaourt grec dans un bol.",
+      "Éplucher et trancher les kiwis en rondelles. Disposer sur le yaourt.",
+      "Parsemer de graines de courge.",
+      "Arroser de miel et saupoudrer de cannelle.",
+    ],
+    temps_preparation: 4, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 290, proteines: 14, glucides: 35, lipides: 9 },
+    astuces: ["Le kiwi contient de l'actinidine, enzyme qui améliore la digestion des protéines."],
+    variantes: ['Remplacer le kiwi par des fraises ou des framboises.'],
+  },
+  {
+    nom: 'Crêpe Sarrasin Pomme & Cannelle',
+    ingredients: [
+      { nom: 'Farine de sarrasin', quantite: 60, unite: 'g' },
+      { nom: 'Lait végétal', quantite: 120, unite: 'ml' },
+      { nom: 'Pomme', quantite: 1, unite: 'pièce' },
+      { nom: 'Cannelle', quantite: 1, unite: 'c.à.c' },
+      { nom: 'Sirop d\'érable', quantite: 10, unite: 'ml' },
+    ],
+    instructions: [
+      "Mélanger la farine de sarrasin avec le lait végétal jusqu'à obtenir une pâte lisse.",
+      "Chauffer une poêle légèrement huilée à feu moyen. Verser la pâte et cuire 2 min de chaque côté.",
+      "Éplucher et râper la pomme. Mélanger avec la cannelle.",
+      "Garnir la crêpe de pomme râpée et arroser de sirop d'érable.",
+    ],
+    temps_preparation: 5, temps_cuisson: 4, portions: 1,
+    valeurs_nutritionnelles: { calories: 330, proteines: 8, glucides: 60, lipides: 5 },
+    astuces: ["Le sarrasin est naturellement sans gluten et riche en rutine, un antioxydant vasculaire."],
+    variantes: ['Garnir de compote de pommes maison à la place de la pomme râpée.'],
+  },
+  {
+    nom: 'Tartine Ricotta Fraises & Basilic',
+    ingredients: [
+      { nom: 'Pain de campagne', quantite: 2, unite: 'tranches' },
+      { nom: 'Ricotta', quantite: 80, unite: 'g' },
+      { nom: 'Fraises fraîches', quantite: 100, unite: 'g' },
+      { nom: 'Basilic frais', quantite: 5, unite: 'feuilles' },
+      { nom: 'Miel', quantite: 8, unite: 'g' },
+    ],
+    instructions: [
+      "Toaster les tranches de pain 2 minutes au grille-pain.",
+      "Étaler la ricotta généreusement sur chaque tranche.",
+      "Laver et couper les fraises en deux. Disposer sur la ricotta.",
+      "Déchirer les feuilles de basilic et parsemer. Arroser de miel.",
+    ],
+    temps_preparation: 5, temps_cuisson: 2, portions: 1,
+    valeurs_nutritionnelles: { calories: 320, proteines: 11, glucides: 45, lipides: 9 },
+    astuces: ["La vitamine C des fraises améliore l'absorption du fer non héminique du pain complet."],
+    variantes: ['Remplacer la ricotta par du fromage blanc 0% pour une version plus légère.'],
+  },
+];
+
+function recetteFallback(typeRepas: string, proteineAssignee: string | null, jourIndex: number = 0): any {
   if (typeRepas === 'petit-dejeuner') {
+    // Rotation sur le pool de 7 : un petit-déjeuner différent chaque jour
+    const idx = jourIndex % PETIT_DEJ_FALLBACKS.length;
     return {
-      nom: 'Bol Énergie du Matin',
+      ...PETIT_DEJ_FALLBACKS[idx],
       type_repas: 'petit-dejeuner',
       style_culinaire: 'maison',
-      ingredients: [
-        { nom: 'Flocons d\'avoine', quantite: 60, unite: 'g' },
-        { nom: 'Lait végétal ou animal', quantite: 150, unite: 'ml' },
-        { nom: 'Banane', quantite: 1, unite: 'pièce' },
-        { nom: 'Miel', quantite: 10, unite: 'g' },
-        { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
-      ],
-      instructions: [
-        'Verser les flocons d\'avoine dans un bol et couvrir avec le lait froid ou chaud.',
-        'Laisser gonfler 3 minutes si vous utilisez du lait chaud, ou préparer la veille avec du lait froid pour un porridge overnight.',
-        'Éplucher la banane et la couper en rondelles.',
-        'Déposer les rondelles de banane sur les flocons d\'avoine gonflés.',
-        'Arroser de miel et parsemer d\'amandes effilées.',
-        'Déguster immédiatement pour profiter de la texture crémeuse.',
-      ],
-      temps_preparation: 5,
-      temps_cuisson: 3,
-      portions: 1,
-      valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 },
-      astuces: ['Les flocons d\'avoine à index glycémique bas libèrent l\'énergie progressivement pour tenir jusqu\'au déjeuner.'],
-      variantes: ['Remplacez la banane par des fruits rouges surgelés décongelés la veille.'],
       genere_par_llm: false,
     };
   }
@@ -801,42 +960,44 @@ serve(async (req: Request) => {
     // Charger les données wellness
     const wellness = await chargerWellness(supabase, symptomesArr, profilNorm);
 
-    // Générer les recettes par batch de 4 pour éviter les rate limits Claude
-    // 7 jours × 3 repas = 21 appels → batches de 4 avec 400ms entre chaque
-    console.log('[generer-plan-semaine] Génération 21 recettes en batches...');
+    // Génération jour par jour (séquentielle) avec 1200ms entre chaque jour.
+    // Chaque jour reçoit la liste des noms déjà générés → le LLM ne répète pas.
+    // Les 3 repas d'un même jour sont lancés en parallèle (ils ne se dupliquent pas
+    // car les types de repas et les protéines sont distincts).
+    console.log('[generer-plan-semaine] Génération 21 recettes — 1 jour à la fois...');
 
-    type RecetteThunk = () => Promise<any>;
-    const recettesThunks: RecetteThunk[] = [];
+    const recettesResultats: any[] = [];
+    // Accumule les noms au fil des jours pour les passer aux jours suivants
+    const nomsGeneres: string[] = [];
 
     for (let j = 0; j < 7; j++) {
+      if (j > 0) await new Promise(resolve => setTimeout(resolve, 1200));
+
       const style = stylesJours[j];
       const [protDej, protDin] = pairesProteines[j];
       const autresProteines = pairesProteines
         .filter((_, k) => k !== j)
         .flatMap(([a, b]) => [a, b]);
+      // Snapshot des noms connus avant ce jour (les 3 repas du jour courant s'ignorent entre eux,
+      // ce n'est pas un problème car ils ont des types de repas différents)
+      const nomsSnapshot = [...nomsGeneres];
 
-      recettesThunks.push(() =>
-        genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [])
-          .then(r => r || recetteFallback('petit-dejeuner', null))
-      );
-      recettesThunks.push(() =>
-        genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines)
-          .then(r => r || recetteFallback('dejeuner', protDej))
-      );
-      recettesThunks.push(() =>
-        genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines)
-          .then(r => r || recetteFallback('diner', protDin))
-      );
-    }
+      const [rPetitDej, rDejeuner, rDiner] = await Promise.all([
+        genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], nomsSnapshot)
+          .then(r => r || recetteFallback('petit-dejeuner', null, j)),
+        genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, nomsSnapshot)
+          .then(r => r || recetteFallback('dejeuner', protDej, j)),
+        genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, nomsSnapshot)
+          .then(r => r || recetteFallback('diner', protDin, j)),
+      ]);
 
-    const BATCH_SIZE = 4;
-    const BATCH_DELAY_MS = 400;
-    const recettesResultats: any[] = [];
-    for (let b = 0; b < recettesThunks.length; b += BATCH_SIZE) {
-      if (b > 0) await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
-      const batch = recettesThunks.slice(b, b + BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map(fn => fn()));
-      recettesResultats.push(...batchResults);
+      // Enregistrer les noms obtenus pour les jours suivants
+      if (rPetitDej?.nom) nomsGeneres.push(rPetitDej.nom);
+      if (rDejeuner?.nom) nomsGeneres.push(rDejeuner.nom);
+      if (rDiner?.nom)    nomsGeneres.push(rDiner.nom);
+
+      recettesResultats.push(rPetitDej, rDejeuner, rDiner);
+      console.log(`[generer-plan-semaine] Jour ${j + 1}/7 : ${rPetitDej?.nom} | ${rDejeuner?.nom} | ${rDiner?.nom}`);
     }
 
     // Motivation + conseil en parallèle
