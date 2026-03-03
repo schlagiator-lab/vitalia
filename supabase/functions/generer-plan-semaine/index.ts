@@ -12,6 +12,49 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
+// ─── Tool_use structuré : garantit un JSON 100% valide sans parsing fragile ─
+const RECETTE_TOOL = {
+  name: 'creer_recette',
+  description: 'Crée une recette nutritive originale selon les contraintes du plan alimentaire',
+  input_schema: {
+    type: 'object',
+    properties: {
+      nom: { type: 'string', description: 'Nom créatif et appétissant de la recette' },
+      ingredients: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nom:      { type: 'string' },
+            quantite: { type: 'number' },
+            unite:    { type: 'string' }
+          },
+          required: ['nom', 'quantite', 'unite']
+        },
+        minItems: 3
+      },
+      instructions:       { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 7 },
+      temps_preparation:  { type: 'integer' },
+      temps_cuisson:      { type: 'integer' },
+      portions:           { type: 'integer' },
+      valeurs_nutritionnelles: {
+        type: 'object',
+        properties: {
+          calories:  { type: 'integer' },
+          proteines: { type: 'number' },
+          glucides:  { type: 'number' },
+          lipides:   { type: 'number' }
+        },
+        required: ['calories', 'proteines', 'glucides', 'lipides']
+      },
+      astuces:   { type: 'array', items: { type: 'string' } },
+      variantes: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['nom', 'ingredients', 'instructions', 'temps_preparation', 'temps_cuisson',
+               'portions', 'valeurs_nutritionnelles', 'astuces', 'variantes']
+  }
+};
+
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -232,19 +275,9 @@ ${estSansLactose ? '- Aucun produit laitier (lait végétal uniquement)' : ''}
 ${nomsDejaConsigne}${contraintes_petit_dej}
 **EXACTEMENT ${nbEtapes} étapes** dans les instructions.
 
-## FORMAT JSON STRICT (sans backticks, sans texte autour)
-
-{
-  "nom": "Nom créatif et original",
-  "ingredients": [{"nom": "ingrédient", "quantite": 150, "unite": "g"}],
-  "instructions": ["Étape 1", "Étape 2", "Étape 3"],
-  "temps_preparation": ${estPetitDej ? 8 : 15},
-  "temps_cuisson": ${estPetitDej ? 0 : 20},
-  "portions": 2,
-  "valeurs_nutritionnelles": {"calories": ${estPetitDej ? 350 : 450}, "proteines": ${estPetitDej ? 10 : 20}, "glucides": ${estPetitDej ? 45 : 50}, "lipides": ${estPetitDej ? 10 : 15}},
-  "astuces": ["Astuce nutritionnelle liée à : ${symptomes.join(', ') || 'bien-être général'}"],
-  "variantes": ["Variante 1"]
-}`;
+**Valeurs nutritionnelles** : vise ${estPetitDej ? '~350 kcal, ~10 g protéines, ~45 g glucides, ~10 g lipides' : '~450 kcal, ~20 g protéines, ~50 g glucides, ~15 g lipides'} — ajuster selon les vrais ingrédients.
+**Astuces** : 1 à 2, en lien avec "${symptomes.join(', ') || 'bien-être général'}".
+**Variantes** : 1 à 2 suggestions de remplacement ou de variation créative.`;
 }
 
 // ─── Appel Claude AI (une recette) ────────────────────────────────────────
@@ -275,8 +308,10 @@ async function genererRecetteIA(
         },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 1800,  // augmenté pour éviter les troncatures JSON
+          max_tokens: 1800,
           temperature: 0.85,
+          tools: [RECETTE_TOOL],
+          tool_choice: { type: 'tool', name: 'creer_recette' },
           messages: [{ role: 'user', content: prompt }],
         }),
       });
@@ -288,23 +323,19 @@ async function genererRecetteIA(
       }
 
       if (!response.ok) {
-        console.error(`[ERROR] Claude ${response.status}`);
+        const errTxt = await response.text();
+        console.error(`[ERROR] Claude ${response.status}:`, errTxt.substring(0, 200));
         return null;
       }
 
       const data = await response.json();
-      const text = data.content?.[0]?.text || '';
-
-      let recetteJSON: any = null;
-      const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonBlock) { try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
-      if (!recetteJSON) {
-        const jsonRaw = text.match(/\{[\s\S]*\}/);
-        if (jsonRaw) { try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
-      }
+      // tool_use : l'API garantit un JSON valide — pas de regex fragile
+      const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
+      const recetteJSON = toolUse?.input;
 
       if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
-        console.warn(`[WARN] JSON LLM invalide pour ${typeRepas} — fallback`);
+        console.warn(`[WARN] Réponse tool_use vide/invalide pour ${typeRepas} — fallback`);
+        console.warn('[DEBUG] stop_reason:', data.stop_reason, '| content types:', data.content?.map((c: any) => c.type).join(','));
         return null;
       }
 

@@ -17,6 +17,91 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // Utiliser claude-haiku-4-5-20251001 pour coût réduit, ou claude-sonnet-4-5-20251022 pour qualité
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
+// ─── Tool_use structuré : garantit un JSON 100% valide sans parsing fragile ─
+const RECETTE_TOOL = {
+  name: 'creer_recette',
+  description: 'Crée une recette nutritive originale selon les contraintes du plan alimentaire',
+  input_schema: {
+    type: 'object',
+    properties: {
+      nom: { type: 'string', description: 'Nom créatif et appétissant de la recette' },
+      ingredients: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nom:      { type: 'string' },
+            quantite: { type: 'number' },
+            unite:    { type: 'string' }
+          },
+          required: ['nom', 'quantite', 'unite']
+        },
+        minItems: 3
+      },
+      instructions:       { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 7 },
+      temps_preparation:  { type: 'integer' },
+      temps_cuisson:      { type: 'integer' },
+      portions:           { type: 'integer' },
+      valeurs_nutritionnelles: {
+        type: 'object',
+        properties: {
+          calories:  { type: 'integer' },
+          proteines: { type: 'number' },
+          glucides:  { type: 'number' },
+          lipides:   { type: 'number' }
+        },
+        required: ['calories', 'proteines', 'glucides', 'lipides']
+      },
+      astuces:   { type: 'array', items: { type: 'string' } },
+      variantes: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['nom', 'ingredients', 'instructions', 'temps_preparation', 'temps_cuisson',
+               'portions', 'valeurs_nutritionnelles', 'astuces', 'variantes']
+  }
+};
+
+// ─── Tool_use pour collation ────────────────────────────────────────────────
+const PAUSE_TOOL = {
+  name: 'creer_collation',
+  description: 'Crée une collation de 15h30 saine et originale',
+  input_schema: {
+    type: 'object',
+    properties: {
+      nom: { type: 'string' },
+      ingredients: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nom:      { type: 'string' },
+            quantite: { type: 'number' },
+            unite:    { type: 'string' }
+          },
+          required: ['nom', 'quantite', 'unite']
+        },
+        minItems: 2
+      },
+      instructions:      { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 3 },
+      temps_preparation: { type: 'integer' },
+      temps_cuisson:     { type: 'integer' },
+      portions:          { type: 'integer' },
+      valeurs_nutritionnelles: {
+        type: 'object',
+        properties: {
+          calories:  { type: 'integer' },
+          proteines: { type: 'number' },
+          glucides:  { type: 'number' },
+          lipides:   { type: 'number' }
+        },
+        required: ['calories', 'proteines', 'glucides', 'lipides']
+      },
+      astuces: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['nom', 'ingredients', 'instructions', 'temps_preparation', 'temps_cuisson',
+               'portions', 'valeurs_nutritionnelles', 'astuces']
+  }
+};
+
 // ============================================================================
 // GENERATION RECETTE VIA CLAUDE AI
 // ============================================================================
@@ -57,6 +142,8 @@ export async function genererRecetteLLM(
           model: ANTHROPIC_MODEL,
           max_tokens: 2000,
           temperature: 0.8,
+          tools: [RECETTE_TOOL],
+          tool_choice: { type: 'tool', name: 'creer_recette' },
           messages: [{ role: 'user', content: prompt }]
         })
       });
@@ -69,45 +156,18 @@ export async function genererRecetteLLM(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[ERROR] API Claude ${response.status}:`, errorText);
-        if (response.status === 400) {
-          console.error('[ERROR] Vérifier : model string, format body, clé API');
-        }
+        console.error(`[ERROR] API Claude ${response.status}:`, errorText.substring(0, 200));
         return null;
       }
 
       const data = await response.json();
+      // tool_use : l'API garantit un JSON valide — pas de regex fragile
+      const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
+      const recetteJSON = toolUse?.input;
 
-      if (!data.content || !data.content[0] || !data.content[0].text) {
-        console.error('[ERROR] Réponse Claude vide ou malformée');
-        return null;
-      }
-
-      const textContent = data.content[0].text;
-
-      let recetteJSON: any = null;
-      const jsonBlock = textContent.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonBlock) {
-        try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {}
-      }
-      if (!recetteJSON) {
-        const jsonRaw = textContent.match(/\{[\s\S]*\}/);
-        if (jsonRaw) {
-          try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {}
-        }
-      }
-
-      if (!recetteJSON) {
-        console.error('[ERROR] Pas de JSON valide dans la réponse Claude');
-        console.error('[DEBUG] Début réponse:', textContent.substring(0, 200));
-        return null;
-      }
-
-      const nomValide          = recetteJSON.nom && recetteJSON.nom.trim() !== '';
-      const ingredientsValides = Array.isArray(recetteJSON.ingredients) && recetteJSON.ingredients.length > 0;
-      const instructionsValides = Array.isArray(recetteJSON.instructions) && recetteJSON.instructions.length > 0;
-      if (!nomValide || !ingredientsValides || !instructionsValides) {
-        console.error('[ERROR] JSON LLM invalide — nom:', nomValide, '| ings:', ingredientsValides, '| steps:', instructionsValides);
+      if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
+        console.error('[ERROR] Réponse tool_use vide/invalide');
+        console.error('[DEBUG] stop_reason:', data.stop_reason, '| content types:', data.content?.map((c: any) => c.type).join(','));
         return null;
       }
 
@@ -285,35 +345,9 @@ ${contraintesPetitDej}
 
 4. **Variantes** : Propose 2 variations pour éviter la monotonie
 
-## FORMAT DE SORTIE (JSON STRICT - SANS BACKTICKS)
-
-Réponds UNIQUEMENT avec cet objet JSON exact, sans texte avant ou après :
-
-{
-  "nom": "Nom créatif",
-  "ingredients": [
-    {"nom": "Nom ingrédient", "quantite": 150, "unite": "g"}
-  ],
-  "instructions": [
-    "Étape 1 détaillée...",
-    "Étape 2 détaillée..."
-  ],
-  "temps_preparation": ${estPetitDej ? 8 : 15},
-  "temps_cuisson": ${estPetitDej ? 0 : 20},
-  "portions": 2,
-  "valeurs_nutritionnelles": {
-    "calories": ${estPetitDej ? 350 : 450},
-    "proteines": ${estPetitDej ? 12 : 18},
-    "glucides": ${estPetitDej ? 40 : 55},
-    "lipides": ${estPetitDej ? 10 : 12}
-  },
-  "astuces": [
-    "Astuce nutritionnelle 1"
-  ],
-  "variantes": [
-    "Variante 1 : remplacer X par Y"
-  ]
-}`;
+**Valeurs nutritionnelles** : vise ${estPetitDej ? '~350 kcal, ~12 g protéines, ~40 g glucides, ~10 g lipides' : '~450 kcal, ~18 g protéines, ~55 g glucides, ~12 g lipides'} — ajuster selon les vrais ingrédients.
+**Astuces** : 1 à 2, en lien avec "${contexte.symptomes_declares?.join(', ') || 'bien-être général'}".
+**Variantes** : 1 à 2 suggestions de remplacement ou de variation créative.`;
 }
 
 // ============================================================================
@@ -368,21 +402,8 @@ export async function genererPauseLLM(
 **Objectif nutritionnel** : ${objectifTexte}
 **Temps de préparation max** : 5 minutes, sans cuisson ou cuisson très rapide
 **Portions** : 1 personne
-
-## FORMAT JSON STRICT (sans backticks, sans texte autour)
-
-{
-  "nom": "Nom créatif et appétissant",
-  "ingredients": [
-    {"nom": "ingrédient", "quantite": 30, "unite": "g"}
-  ],
-  "instructions": ["Étape 1", "Étape 2"],
-  "temps_preparation": 3,
-  "temps_cuisson": 0,
-  "portions": 1,
-  "valeurs_nutritionnelles": {"calories": 150, "proteines": 4, "glucides": 18, "lipides": 7},
-  "astuces": ["Pourquoi cette collation est bonne pour : ${contexte.objectif_principal || 'le bien-être'}"]
-}`;
+**Valeurs nutritionnelles visées** : ~150 kcal, ~4 g protéines, ~18 g glucides, ~7 g lipides.
+**Astuces** : expliquer en quoi cette collation aide pour "${contexte.objectif_principal || 'le bien-être'}".`;
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -396,6 +417,8 @@ export async function genererPauseLLM(
         model: ANTHROPIC_MODEL,
         max_tokens: 800,
         temperature: 0.9,
+        tools: [PAUSE_TOOL],
+        tool_choice: { type: 'tool', name: 'creer_collation' },
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -406,18 +429,11 @@ export async function genererPauseLLM(
     }
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || '';
+    const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
+    const pauseJSON = toolUse?.input;
 
-    let pauseJSON: any = null;
-    const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlock) { try { pauseJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
-    if (!pauseJSON) {
-      const jsonRaw = text.match(/\{[\s\S]*\}/);
-      if (jsonRaw) { try { pauseJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
-    }
-
-    if (!pauseJSON?.nom || !pauseJSON?.ingredients) {
-      console.error('[ERROR] JSON pause invalide');
+    if (!pauseJSON?.nom || !Array.isArray(pauseJSON?.ingredients)) {
+      console.error('[ERROR] Réponse tool_use pause invalide');
       return null;
     }
 
