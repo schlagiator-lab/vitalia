@@ -317,14 +317,14 @@ async function genererRecetteIA(
       });
 
       if (response.status === 429 || response.status >= 500) {
-        console.warn(`[WARN] Claude ${response.status} (tentative ${attempt + 1}/2) — attente 3s...`);
+        console.warn(`[FALLBACK:${typeRepas}] HTTP ${response.status} (tentative ${attempt + 1}/2) — rate limit ou erreur serveur — attente 3s...`);
         await new Promise(r => setTimeout(r, 3000));
         continue; // retry
       }
 
       if (!response.ok) {
         const errTxt = await response.text();
-        console.error(`[ERROR] Claude ${response.status}:`, errTxt.substring(0, 200));
+        console.error(`[FALLBACK:${typeRepas}] HTTP ${response.status} — ${errTxt.substring(0, 300)}`);
         return null;
       }
 
@@ -334,8 +334,7 @@ async function genererRecetteIA(
       const recetteJSON = toolUse?.input;
 
       if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
-        console.warn(`[WARN] Réponse tool_use vide/invalide pour ${typeRepas} — fallback`);
-        console.warn('[DEBUG] stop_reason:', data.stop_reason, '| content types:', data.content?.map((c: any) => c.type).join(','));
+        console.error(`[FALLBACK:${typeRepas}] tool_use absent — stop_reason="${data.stop_reason}" | content_types=[${data.content?.map((c: any) => c.type).join(',')}]`);
         return null;
       }
 
@@ -348,7 +347,7 @@ async function genererRecetteIA(
           PHRASES_VAGUES.some(p => step.toLowerCase().includes(p))
         );
       if (recettePauvre) {
-        console.warn(`[WARN] Recette LLM de faible qualité (${recetteJSON.ingredients.length} ings) — fallback`);
+        console.error(`[FALLBACK:${typeRepas}] qualité insuffisante — ${recetteJSON.ingredients.length} ingrédients, ${recetteJSON.instructions.length} étapes`);
         return null;
       }
 
@@ -1119,6 +1118,22 @@ serve(async (req: Request) => {
 
     const { message: messageMotivation, conseil: conseilDuJour } = await motivationPromise;
 
+    // ─── Diagnostic : compter LLM vs fallback ─────────────────────────────
+    const TYPES_REPAS = ['petit_dejeuner', 'dejeuner', 'diner'];
+    const fallbackDetails: { jour: string; type_repas: string }[] = [];
+    let llmCount = 0;
+    recettesResultats.forEach((recette, i) => {
+      const jour = JOURS_SEMAINE[Math.floor(i / 3)];
+      const type = TYPES_REPAS[i % 3];
+      if (recette?.genere_par_llm === false) {
+        fallbackDetails.push({ jour, type_repas: type });
+      } else {
+        llmCount++;
+      }
+    });
+    const stats = { llm: llmCount, fallback: fallbackDetails.length, total: 21, details: fallbackDetails };
+    console.log(`[STATS] LLM=${llmCount}/21 | Fallback=${fallbackDetails.length}/21 | ${JSON.stringify(fallbackDetails)}`);
+
     console.log('[generer-plan-semaine] ✅ Plan semaine généré avec succès');
 
     return new Response(
@@ -1130,6 +1145,7 @@ serve(async (req: Request) => {
         routines: wellness.routines,
         message_motivation: messageMotivation,
         conseil_du_jour: conseilDuJour,
+        _stats: stats,
       }),
       { status: 200, headers: CORS_HEADERS }
     );
