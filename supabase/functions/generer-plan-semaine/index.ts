@@ -49,46 +49,115 @@ function normaliserArray(valeur: any): string[] {
 
 // ─── Collation par défaut (sans LLM) ──────────────────────────────────────
 
-function collationParDefaut(profil: any): any {
+// Pool de 7 collations — une par jour, toutes différentes.
+// Sans lactose / végane : les options marquées sont filtrées au moment de l'appel.
+const COLLATIONS_POOL: Array<{
+  nom: string;
+  ingredients: { nom: string; quantite: number; unite: string }[];
+  instructions: string[];
+  temps_preparation: number;
+  temps_cuisson: number;
+  portions: number;
+  valeurs_nutritionnelles: { calories: number; proteines: number; glucides: number; lipides: number };
+  astuces: string[];
+  contientLaitier?: boolean;
+}> = [
+  {
+    nom: 'Pomme & Beurre d\'Amande',
+    ingredients: [
+      { nom: 'Pomme', quantite: 1, unite: 'pièce' },
+      { nom: 'Beurre d\'amande', quantite: 20, unite: 'g' },
+    ],
+    instructions: ['Laver la pomme et la couper en quartiers.', 'Tremper chaque quartier dans le beurre d\'amande.'],
+    temps_preparation: 3, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 180, proteines: 4, glucides: 22, lipides: 9 },
+    astuces: ['La pectine de la pomme nourrit le microbiome ; les graisses de l\'amande prolongent la satiété.'],
+  },
+  {
+    nom: 'Carré de Chocolat Noir & Noix du Brésil',
+    ingredients: [
+      { nom: 'Chocolat noir 70%+', quantite: 20, unite: 'g' },
+      { nom: 'Noix du Brésil', quantite: 3, unite: 'pièces' },
+    ],
+    instructions: ['Laisser fondre lentement le chocolat en bouche.', 'Croquer les noix du Brésil.'],
+    temps_preparation: 1, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 145, proteines: 3, glucides: 10, lipides: 11 },
+    astuces: ['3 noix du Brésil couvrent 100% des besoins en sélénium. Le cacao apporte 64mg de magnésium.'],
+  },
+  {
+    nom: 'Banane & Noix de Cajou',
+    ingredients: [
+      { nom: 'Banane', quantite: 1, unite: 'pièce' },
+      { nom: 'Noix de cajou', quantite: 25, unite: 'g' },
+    ],
+    instructions: ['Éplucher la banane et la couper en rondelles.', 'Servir avec les noix de cajou dans un petit bol.'],
+    temps_preparation: 2, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 200, proteines: 5, glucides: 30, lipides: 8 },
+    astuces: ['Le tryptophane de la banane et le magnésium des noix de cajou soutiennent la sérotonine.'],
+  },
+  {
+    nom: 'Kiwi & Amandes Effilées',
+    ingredients: [
+      { nom: 'Kiwi', quantite: 2, unite: 'pièces' },
+      { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
+    ],
+    instructions: ['Éplucher et couper les kiwis en dés.', 'Disposer dans un bol et parsemer d\'amandes effilées.'],
+    temps_preparation: 3, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 150, proteines: 4, glucides: 20, lipides: 6 },
+    astuces: ['2 kiwis par jour améliorent la qualité du sommeil grâce à leur teneur en sérotonine et antioxydants.'],
+  },
+  {
+    nom: 'Dattes Medjool & Noix',
+    ingredients: [
+      { nom: 'Dattes Medjool', quantite: 2, unite: 'pièces' },
+      { nom: 'Noix', quantite: 20, unite: 'g' },
+    ],
+    instructions: ['Dénoyauter les dattes si nécessaire.', 'Déguster avec les noix en mâchant lentement.'],
+    temps_preparation: 1, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 190, proteines: 3, glucides: 28, lipides: 8 },
+    astuces: ['Les dattes offrent un index glycémique modéré et les oméga-3 des noix réduisent l\'inflammation.'],
+  },
+  {
+    nom: 'Yaourt Nature & Myrtilles',
+    ingredients: [
+      { nom: 'Yaourt nature entier', quantite: 125, unite: 'g' },
+      { nom: 'Myrtilles fraîches ou surgelées', quantite: 60, unite: 'g' },
+      { nom: 'Graines de chia', quantite: 5, unite: 'g' },
+    ],
+    instructions: ['Verser le yaourt dans un bol.', 'Ajouter les myrtilles et les graines de chia.'],
+    temps_preparation: 2, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 160, proteines: 7, glucides: 18, lipides: 5 },
+    astuces: ['Les probiotiques du yaourt et les polyphénols des myrtilles forment un duo gagnant pour le microbiome.'],
+    contientLaitier: true,
+  },
+  {
+    nom: 'Crackers Seigle & Houmous',
+    ingredients: [
+      { nom: 'Crackers au seigle', quantite: 3, unite: 'pièces' },
+      { nom: 'Houmous', quantite: 40, unite: 'g' },
+      { nom: 'Rondelles de concombre', quantite: 5, unite: 'pièces' },
+    ],
+    instructions: ['Étaler l\'houmous sur les crackers.', 'Déposer les rondelles de concombre par-dessus.'],
+    temps_preparation: 3, temps_cuisson: 0, portions: 1,
+    valeurs_nutritionnelles: { calories: 170, proteines: 6, glucides: 22, lipides: 6 },
+    astuces: ['Les fibres du seigle et les protéines végétales des pois chiches assurent une satiété durable.'],
+  },
+];
+
+function collationParDefaut(profil: any, jourIndex: number = 0): any {
   const estSansLactose = profil.estSansLactose;
-  const estVegan = profil.estVegan;
 
-  const options = [
-    {
-      nom: 'Pomme & Amandes',
-      ingredients: [{ nom: 'Pomme', quantite: 1, unite: 'pièce' }, { nom: 'Amandes', quantite: 20, unite: 'g' }],
-      instructions: ['Laver la pomme et la couper en tranches.', 'Servir avec les amandes.'],
-      temps_preparation: 2, temps_cuisson: 0, portions: 1,
-      valeurs_nutritionnelles: { calories: 130, proteines: 3, glucides: 20, lipides: 6 },
-      astuces: ['Les amandes apportent des acides gras bénéfiques pour le cœur.'],
-    },
-    {
-      nom: 'Carré de Chocolat Noir & Noix',
-      ingredients: [{ nom: 'Chocolat noir 70%', quantite: 20, unite: 'g' }, { nom: 'Noix', quantite: 15, unite: 'g' }],
-      instructions: ['Laisser fondre le chocolat en bouche.', 'Manger les noix lentement.'],
-      temps_preparation: 1, temps_cuisson: 0, portions: 1,
-      valeurs_nutritionnelles: { calories: 140, proteines: 3, glucides: 9, lipides: 11 },
-      astuces: ['Le chocolat noir 70%+ contient 64mg de magnésium anti-stress.'],
-    },
-    {
-      nom: 'Banane & Beurre d\'Amande',
-      ingredients: [{ nom: 'Banane', quantite: 1, unite: 'pièce' }, { nom: 'Beurre d\'amande', quantite: 15, unite: 'g' }],
-      instructions: ['Éplucher la banane.', 'Étaler le beurre d\'amande dessus.'],
-      temps_preparation: 2, temps_cuisson: 0, portions: 1,
-      valeurs_nutritionnelles: { calories: 170, proteines: 4, glucides: 25, lipides: 7 },
-      astuces: ['La banane est riche en potassium et en tryptophane, précurseur de la sérotonine.'],
-    },
-  ];
+  // Filtrer les options incompatibles avec le profil
+  const pool = COLLATIONS_POOL.filter(c => !(estSansLactose && c.contientLaitier));
+  // Sécurité : si tout est filtré (cas edge), utiliser le pool complet
+  const poolEffectif = pool.length > 0 ? pool : COLLATIONS_POOL;
 
-  const pool = options.filter(o => {
-    if (estVegan && o.ingredients.some(i => i.nom.toLowerCase().includes('chocolat'))) return true;
-    if (estSansLactose) return true;
-    return true;
-  });
+  // Rotation par index de jour pour garantir 7 collations différentes
+  const idx = jourIndex % poolEffectif.length;
 
+  const { contientLaitier: _, ...collation } = poolEffectif[idx];
   return {
-    ...pool[Math.floor(Math.random() * pool.length)],
-    nom: pool[Math.floor(Math.random() * pool.length)].nom,
+    ...collation,
     type_repas: 'collation',
     style_culinaire: 'maison',
     genere_par_llm: false,
@@ -967,8 +1036,12 @@ serve(async (req: Request) => {
     console.log('[generer-plan-semaine] Génération 21 recettes — 1 jour à la fois...');
 
     const recettesResultats: any[] = [];
-    // Accumule les noms au fil des jours pour les passer aux jours suivants
-    const nomsGeneres: string[] = [];
+    // Noms séparés par type : le petit-déjeuner ne reçoit que des noms de petits-déjeuners,
+    // le déjeuner/dîner ne reçoit que des noms de déjeuners/dîners.
+    // Cela évite de surcharger le prompt avec des noms de repas sans rapport
+    // (ex : "Saumon poêlé" n'aide pas à diversifier un petit-déjeuner).
+    const nomsBreakfast: string[] = [];
+    const nomsMeals: string[] = [];
 
     for (let j = 0; j < 7; j++) {
       if (j > 0) await new Promise(resolve => setTimeout(resolve, 1200));
@@ -978,23 +1051,20 @@ serve(async (req: Request) => {
       const autresProteines = pairesProteines
         .filter((_, k) => k !== j)
         .flatMap(([a, b]) => [a, b]);
-      // Snapshot des noms connus avant ce jour (les 3 repas du jour courant s'ignorent entre eux,
-      // ce n'est pas un problème car ils ont des types de repas différents)
-      const nomsSnapshot = [...nomsGeneres];
 
       const [rPetitDej, rDejeuner, rDiner] = await Promise.all([
-        genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], nomsSnapshot)
+        genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], [...nomsBreakfast])
           .then(r => r || recetteFallback('petit-dejeuner', null, j)),
-        genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, nomsSnapshot)
+        genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
           .then(r => r || recetteFallback('dejeuner', protDej, j)),
-        genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, nomsSnapshot)
+        genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
           .then(r => r || recetteFallback('diner', protDin, j)),
       ]);
 
-      // Enregistrer les noms obtenus pour les jours suivants
-      if (rPetitDej?.nom) nomsGeneres.push(rPetitDej.nom);
-      if (rDejeuner?.nom) nomsGeneres.push(rDejeuner.nom);
-      if (rDiner?.nom)    nomsGeneres.push(rDiner.nom);
+      // Enregistrer séparément les noms par type
+      if (rPetitDej?.nom) nomsBreakfast.push(rPetitDej.nom);
+      if (rDejeuner?.nom) nomsMeals.push(rDejeuner.nom);
+      if (rDiner?.nom)    nomsMeals.push(rDiner.nom);
 
       recettesResultats.push(rPetitDej, rDejeuner, rDiner);
       console.log(`[generer-plan-semaine] Jour ${j + 1}/7 : ${rPetitDej?.nom} | ${rDejeuner?.nom} | ${rDiner?.nom}`);
@@ -1012,7 +1082,7 @@ serve(async (req: Request) => {
         petit_dejeuner: recettesResultats[offset],
         dejeuner: recettesResultats[offset + 1],
         diner: recettesResultats[offset + 2],
-        pause: collationParDefaut(profilNorm),
+        pause: collationParDefaut(profilNorm, j),
       };
     }
 
