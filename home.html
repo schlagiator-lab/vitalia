@@ -931,6 +931,101 @@
   <button class="btn-primary" style="margin-top:16px;" onclick="genererPlan(true)">✨ Générer mon plan</button>
 </div>
 
+<!-- ── Profil panel (slide-in) — DOIT être hors de #app pour z-index correct ── -->
+<div class="config-panel" id="profilPanel">
+  <div class="config-handle"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div class="config-title" style="margin-bottom:0;">Mon Profil</div>
+    <button onclick="fermerProfilPanel()" style="background:var(--cream);border:none;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--mid-brown);">✕</button>
+  </div>
+
+  <!-- Identity card -->
+  <div style="background:var(--warm-white);border-radius:20px;border:1.5px solid rgba(196,113,74,0.1);padding:16px;margin-bottom:20px;">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+      <div id="profilAvatarCard" style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0;">?</div>
+      <div style="flex:1;min-width:0;">
+        <div id="profilNom" style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--deep-brown);line-height:1.2;">Profil</div>
+        <div id="profilMetaBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Objectifs -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Mes objectifs santé</div>
+    <div class="chips" id="profilObjectifsChips">
+      <div class="chip" data-val="vitalite" onclick="toggleProfilObjectif(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
+      <div class="chip" data-val="serenite" onclick="toggleProfilObjectif(this,'serenite')">🧘 Stress &amp; Sérénité</div>
+      <div class="chip" data-val="digestion" onclick="toggleProfilObjectif(this,'digestion')">🌿 Digestion</div>
+      <div class="chip" data-val="sommeil" onclick="toggleProfilObjectif(this,'sommeil')">🌙 Sommeil</div>
+      <div class="chip" data-val="mobilite" onclick="toggleProfilObjectif(this,'mobilite')">💪 Mobilité</div>
+      <div class="chip" data-val="hormones" onclick="toggleProfilObjectif(this,'hormones')">🌸 Hormones</div>
+    </div>
+  </div>
+
+  <!-- Régimes -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Régimes alimentaires</div>
+    <div class="chips" id="profilRegimesChips">
+      <div class="chip" data-val="omnivore"    onclick="toggleProfilRegime(this,'omnivore')">🥩 Omnivore</div>
+      <div class="chip" data-val="vegan"       onclick="toggleProfilRegime(this,'vegan')">🌱 Végan</div>
+      <div class="chip" data-val="vegetarien"  onclick="toggleProfilRegime(this,'vegetarien')">🥗 Végétarien</div>
+      <div class="chip" data-val="sans_gluten" onclick="toggleProfilRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+      <div class="chip" data-val="sans_lactose" onclick="toggleProfilRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+      <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
+      <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
+      <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
+    </div>
+  </div>
+
+  <!-- Allergènes -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Allergènes à éviter</div>
+    <div class="chips" id="profilAllergiesChips">
+      <div class="chip" data-val="arachides" onclick="toggleProfilAllergie(this,'arachides')">🥜 Arachides</div>
+      <div class="chip" data-val="noix"      onclick="toggleProfilAllergie(this,'noix')">🌰 Noix</div>
+      <div class="chip" data-val="poisson"   onclick="toggleProfilAllergie(this,'poisson')">🐟 Poisson</div>
+      <div class="chip" data-val="crustaces" onclick="toggleProfilAllergie(this,'crustaces')">🦐 Crustacés</div>
+      <div class="chip" data-val="soja"      onclick="toggleProfilAllergie(this,'soja')">🫘 Soja</div>
+      <div class="chip" data-val="sesame"    onclick="toggleProfilAllergie(this,'sesame')">🌻 Sésame</div>
+      <div class="chip" data-val="gluten"    onclick="toggleProfilAllergie(this,'gluten')">🌾 Gluten</div>
+      <div class="chip" data-val="lactose"   onclick="toggleProfilAllergie(this,'lactose')">🥛 Lactose</div>
+    </div>
+  </div>
+
+  <!-- Temps de cuisine -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Temps de cuisine max</div>
+    <div class="chips" id="profilTempsCuisineChips">
+      <div class="chip"          data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+      <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+      <div class="chip"          data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+      <div class="chip"          data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
+    </div>
+  </div>
+
+  <!-- Budget repas -->
+  <div style="margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Budget repas</div>
+    <div class="chips" id="profilBudgetChips">
+      <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit &lt; 10chf</div>
+      <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen 10-20 chf</div>
+      <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand &gt; 20 chf</div>
+    </div>
+  </div>
+
+  <!-- Save button -->
+  <button class="btn-primary" id="profilSaveBtn" onclick="sauvegarderProfil()" style="margin-bottom:12px;">
+    <span>💾 Enregistrer mes préférences</span>
+  </button>
+
+  <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;">✏️ Modifier profil complet</button>
+
+  <div style="text-align:center;">
+    <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════ -->
 <!--                   APP                         -->
 <!-- ══════════════════════════════════════════════ -->
@@ -1397,101 +1492,6 @@
         </div>
       </div>
 
-    </div>
-  </div>
-
-  <!-- ── Profil panel (slide-in) ── -->
-  <div class="config-panel" id="profilPanel">
-    <div class="config-handle"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div class="config-title" style="margin-bottom:0;">Mon Profil</div>
-      <button onclick="fermerProfilPanel()" style="background:var(--cream);border:none;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--mid-brown);">✕</button>
-    </div>
-
-    <!-- Identity card -->
-    <div style="background:var(--warm-white);border-radius:20px;border:1.5px solid rgba(196,113,74,0.1);padding:16px;margin-bottom:20px;">
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
-        <div id="profilAvatarCard" style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0;">?</div>
-        <div style="flex:1;min-width:0;">
-          <div id="profilNom" style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--deep-brown);line-height:1.2;">Profil</div>
-          <div id="profilMetaBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Objectifs -->
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Mes objectifs santé</div>
-      <div class="chips" id="profilObjectifsChips">
-        <div class="chip" data-val="vitalite" onclick="toggleProfilObjectif(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
-        <div class="chip" data-val="serenite" onclick="toggleProfilObjectif(this,'serenite')">🧘 Stress &amp; Sérénité</div>
-        <div class="chip" data-val="digestion" onclick="toggleProfilObjectif(this,'digestion')">🌿 Digestion</div>
-        <div class="chip" data-val="sommeil" onclick="toggleProfilObjectif(this,'sommeil')">🌙 Sommeil</div>
-        <div class="chip" data-val="mobilite" onclick="toggleProfilObjectif(this,'mobilite')">💪 Mobilité</div>
-        <div class="chip" data-val="hormones" onclick="toggleProfilObjectif(this,'hormones')">🌸 Hormones</div>
-      </div>
-    </div>
-
-    <!-- Régimes -->
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Régimes alimentaires</div>
-      <div class="chips" id="profilRegimesChips">
-        <div class="chip" data-val="omnivore"    onclick="toggleProfilRegime(this,'omnivore')">🥩 Omnivore</div>
-        <div class="chip" data-val="vegan"       onclick="toggleProfilRegime(this,'vegan')">🌱 Végan</div>
-        <div class="chip" data-val="vegetarien"  onclick="toggleProfilRegime(this,'vegetarien')">🥗 Végétarien</div>
-        <div class="chip" data-val="sans_gluten" onclick="toggleProfilRegime(this,'sans_gluten')">🌾 Sans gluten</div>
-        <div class="chip" data-val="sans_lactose" onclick="toggleProfilRegime(this,'sans_lactose')">🥛 Sans lactose</div>
-        <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
-        <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
-        <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
-      </div>
-    </div>
-
-    <!-- Allergènes -->
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Allergènes à éviter</div>
-      <div class="chips" id="profilAllergiesChips">
-        <div class="chip" data-val="arachides" onclick="toggleProfilAllergie(this,'arachides')">🥜 Arachides</div>
-        <div class="chip" data-val="noix"      onclick="toggleProfilAllergie(this,'noix')">🌰 Noix</div>
-        <div class="chip" data-val="poisson"   onclick="toggleProfilAllergie(this,'poisson')">🐟 Poisson</div>
-        <div class="chip" data-val="crustaces" onclick="toggleProfilAllergie(this,'crustaces')">🦐 Crustacés</div>
-        <div class="chip" data-val="soja"      onclick="toggleProfilAllergie(this,'soja')">🫘 Soja</div>
-        <div class="chip" data-val="sesame"    onclick="toggleProfilAllergie(this,'sesame')">🌻 Sésame</div>
-        <div class="chip" data-val="gluten"    onclick="toggleProfilAllergie(this,'gluten')">🌾 Gluten</div>
-        <div class="chip" data-val="lactose"   onclick="toggleProfilAllergie(this,'lactose')">🥛 Lactose</div>
-      </div>
-    </div>
-
-    <!-- Temps de cuisine -->
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Temps de cuisine max</div>
-      <div class="chips" id="profilTempsCuisineChips">
-        <div class="chip"          data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
-        <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
-        <div class="chip"          data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
-        <div class="chip"          data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
-      </div>
-    </div>
-
-    <!-- Budget repas -->
-    <div style="margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Budget repas</div>
-      <div class="chips" id="profilBudgetChips">
-        <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit &lt; 10chf</div>
-        <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen 10-20 chf</div>
-        <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand &gt; 20 chf</div>
-      </div>
-    </div>
-
-    <!-- Save button -->
-    <button class="btn-primary" id="profilSaveBtn" onclick="sauvegarderProfil()" style="margin-bottom:12px;">
-      <span>💾 Enregistrer mes préférences</span>
-    </button>
-
-    <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;">✏️ Modifier profil complet</button>
-
-    <div style="text-align:center;">
-      <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
     </div>
   </div>
 
