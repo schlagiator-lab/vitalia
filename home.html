@@ -1545,8 +1545,11 @@ function switchTab(name) {
   syncAllPreferencesChips()
   if (name === 'semaine') {
     syncSemaineChips()
-    // Auto-charger depuis le cache Supabase si aucun plan local
-    if (!semainePlanData) genererSemaine(false)
+    // Always check Supabase once per session for cross-device sync
+    if (!semaineCheckedThisSession) {
+      semaineCheckedThisSession = true
+      genererSemaine(false)
+    }
   }
   if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
 
@@ -1762,10 +1765,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // Try to restore cached plan, else generate
   var planSession = sessionStorage.getItem('vitalia_plan_session_home')
   var planValide  = false
+  var today       = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
   if (planSession) {
     try {
       var planRestaure = JSON.parse(planSession)
-      if (planRestaure && (planRestaure.matin || planRestaure.petit_dejeuner)) {
+      // Only restore if plan is from today (stale = new Supabase cache may exist)
+      var planDate = planRestaure && planRestaure._date
+      if (planRestaure && (planRestaure.matin || planRestaure.petit_dejeuner) && planDate === today) {
         planValide = true
         setTimeout(function() {
           var ls = document.getElementById('loadingScreen')
@@ -2228,7 +2234,8 @@ async function genererPlan(forcer) {
     var data = await res.json()
     if (data.success && data.plan) {
       afficherPlan(data.plan)
-      sessionStorage.setItem('vitalia_plan_session_home', JSON.stringify(data.plan))
+      var planAvecDate = Object.assign({}, data.plan, { _date: new Date().toISOString().slice(0, 10) })
+      sessionStorage.setItem('vitalia_plan_session_home', JSON.stringify(planAvecDate))
       syncBesoinsVersProfil()
     } else {
       throw new Error(data.error || 'Plan invalide')
@@ -2248,6 +2255,7 @@ async function genererPlan(forcer) {
 // ══════════════════════════════════════════════════════
 
 var semainePlanData = null
+var semaineCheckedThisSession = false  // Ensure Supabase is checked once per session for cross-device sync
 
 // Sync semaine chip UI from shared selectedSymptoms
 function syncSemaineChips() {
@@ -2292,6 +2300,8 @@ function toggleDayMeal(jour, meal) {
 // Generate 7-day plan
 async function genererSemaine(forcer) {
   if (!profil_id) { afficherToast('Profil non trouvé'); return }
+  // Silent mode = background refresh when data already displayed (for cross-device sync)
+  var silentMode   = !forcer && semainePlanData !== null
   var btn          = document.getElementById('semaineBtnGenerate')
   var btnText      = document.getElementById('semaineBtnText')
   var empty        = document.getElementById('semaineEmpty')
@@ -2300,13 +2310,15 @@ async function genererSemaine(forcer) {
   var progressFill = document.getElementById('semaineProgressFill')
   var progressText = document.getElementById('semaineProgressText')
 
-  if (btn)    { btn.disabled = true; btn.style.opacity = '0.7' }
-  if (btnText) btnText.textContent = '⏳ Génération en cours…'
-  if (cards)   cards.style.display = 'none'
-  if (empty)   empty.style.display = 'flex'
+  if (!silentMode) {
+    if (btn)    { btn.disabled = true; btn.style.opacity = '0.7' }
+    if (btnText) btnText.textContent = '⏳ Génération en cours…'
+    if (cards)   cards.style.display = 'none'
+    if (empty)   empty.style.display = 'flex'
+  }
 
-  // Afficher et animer la barre de progression
-  if (progressCont) progressCont.style.display = 'block'
+  // Afficher et animer la barre de progression (sauf en mode silencieux)
+  if (!silentMode && progressCont) progressCont.style.display = 'block'
   var progressTimers = []
   var etapes = [
     { pct: 15, label: 'Sélection des aliments…',           delai: 1000 },
@@ -2314,16 +2326,19 @@ async function genererSemaine(forcer) {
     { pct: 70, label: 'Création des plats…',               delai: 15000 },
     { pct: 90, label: 'Finalisation…',                     delai: 30000 },
   ]
-  if (progressFill) { progressFill.style.width = '0%' }
-  if (progressText) { progressText.textContent = 'Analyse du profil…' }
-  etapes.forEach(function(e) {
-    progressTimers.push(setTimeout(function() {
-      if (progressFill) progressFill.style.width = e.pct + '%'
-      if (progressText) progressText.textContent = e.label
-    }, e.delai))
-  })
+  if (!silentMode) {
+    if (progressFill) { progressFill.style.width = '0%' }
+    if (progressText) { progressText.textContent = 'Analyse du profil…' }
+    etapes.forEach(function(e) {
+      progressTimers.push(setTimeout(function() {
+        if (progressFill) progressFill.style.width = e.pct + '%'
+        if (progressText) progressText.textContent = e.label
+      }, e.delai))
+    })
+  }
 
   function cacherProgress() {
+    if (silentMode) return
     progressTimers.forEach(clearTimeout)
     if (progressFill) progressFill.style.width = '100%'
     if (progressText) progressText.textContent = 'Votre semaine est prête !'
@@ -2332,6 +2347,7 @@ async function genererSemaine(forcer) {
     }, 800)
   }
   function cacherProgressErreur() {
+    if (silentMode) return
     progressTimers.forEach(clearTimeout)
     if (progressCont) progressCont.style.display = 'none'
   }
@@ -2360,8 +2376,10 @@ async function genererSemaine(forcer) {
     cacherProgressErreur()
     afficherToast('Erreur réseau : ' + err.message)
   } finally {
-    if (btn)    { btn.disabled = false; btn.style.opacity = '1' }
-    if (btnText) btnText.textContent = '🔄 Regénérer la semaine'
+    if (!silentMode) {
+      if (btn)    { btn.disabled = false; btn.style.opacity = '1' }
+      if (btnText) btnText.textContent = '🔄 Regénérer la semaine'
+    }
   }
 }
 
