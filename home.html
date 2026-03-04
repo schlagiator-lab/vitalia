@@ -445,12 +445,16 @@
     border-radius: 20px;
     padding: 5px 12px 5px 5px;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
     transition: all 0.2s;
     min-width: 0;
     flex-shrink: 1;
     overflow: hidden;
+    font-family: inherit;
+    outline: none;
   }
-  .profile-badge-btn:hover { background: var(--peach); border-color: var(--terracotta); }
+  .profile-badge-btn:hover, .profile-badge-btn:active { background: var(--peach); border-color: var(--terracotta); }
   .profile-avatar {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -951,10 +955,10 @@
         <span style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--terracotta);">Vitalia</span>
       </div>
       <div class="header-actions">
-        <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
+        <button class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
           <div class="profile-avatar" id="profileAvatar">?</div>
           <span class="profile-name" id="profileNameBadge">Profil</span>
-        </div>
+        </button>
         <div class="date-badge" id="dateBadge"></div>
       </div>
     </div>
@@ -1191,13 +1195,10 @@
         <div class="tab-header-title">Ma Semaine</div>
         <div class="tab-header-sub">Plan nutritionnel sur 7 jours</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
-          <div class="profile-avatar" id="profileAvatarSemaine">?</div>
-          <span class="profile-name" id="profileNameBadgeSemaine">Profil</span>
-        </div>
-        <button onclick="ouvrirConfig()" style="background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.18);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:16px;color:var(--mid-brown);">⚙️</button>
-      </div>
+      <button class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
+        <div class="profile-avatar" id="profileAvatarSemaine">?</div>
+        <span class="profile-name" id="profileNameBadgeSemaine">Profil</span>
+      </button>
     </div>
 
     <!-- Controls -->
@@ -1269,10 +1270,10 @@
         <div class="tab-header-title">Recette à la demande</div>
         <div class="tab-header-sub">Créée spécialement pour vous par Vitalia</div>
       </div>
-      <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
+      <button class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
         <div class="profile-avatar" id="profileAvatarRecette">?</div>
         <span class="profile-name" id="profileNameBadgeRecette">Profil</span>
-      </div>
+      </button>
     </div>
 
     <!-- Controls -->
@@ -1865,6 +1866,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } catch(e) { localStorage.removeItem('vitalia_semaine_session') }
   }
+
+  // Pre-load shopping list for À faire > Courses section
+  afficherListeCoursesProfile()
 
   // Restore on-demand recipe from localStorage
   var recetteSession = localStorage.getItem('vitalia_recette_session')
@@ -2461,7 +2465,8 @@ var semaineJourOuvert = 'lundi'  // track which day is currently open
 // State for saved recipes selection (shopping list)
 var savedSelected = {}   // { idx: true/false }
 var savedServings = {}   // { idx: number }
-var coursesChecked = {}  // { nom: true/false } — état checkboxes modale courses
+var coursesChecked    = {}  // { idx: true/false } — état checkboxes modale courses
+var _coursesIngredients = []  // référence des ingrédients courants de la modale
 
 // Render 7-day accordion (with portions, rating, save, shopping list, wellness)
 function afficherSemaine(data) {
@@ -2856,8 +2861,21 @@ function aggregerIngredients() {
 }
 
 function afficherListeCourses() {
-  coursesChecked = {}
-  var ingredients = aggregerIngredients()
+  coursesChecked    = {}
+  _coursesIngredients = aggregerIngredients()
+  var ingredients   = _coursesIngredients
+
+  // Auto-save the list to localStorage so it persists in À faire > Courses
+  if (ingredients.length) {
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: ingredients }))
+    afficherListeCoursesProfile()
+  }
+
+  // Restore checked state from localStorage (shared with the profile list)
+  try { var vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}')
+    ingredients.forEach(function(ing, idx) { if (vu[ing.nom]) coursesChecked[idx] = true })
+  } catch(e) {}
+
   var html = '<div class="courses-modal" id="coursesModal" onclick="if(event.target===this)fermerListeCourses()">'
   html += '<div class="courses-modal-inner">'
   html += '<div class="courses-modal-handle"></div>'
@@ -2869,12 +2887,12 @@ function afficherListeCourses() {
     html += '<p style="color:var(--text-light);text-align:center;padding:24px 0;">Aucun ingrédient sélectionné</p>'
   } else {
     html += '<div id="coursesModalList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">'
-    ingredients.forEach(function(ing) {
-      var key  = encodeURIComponent(ing.nom)
+    ingredients.forEach(function(ing, idx) {
+      var done = !!coursesChecked[idx]
       var qte  = ing.quantite ? (Math.round(ing.quantite) + '\u202f' + (ing.unite || 'g')) : ''
-      html += '<div onclick="toggleCoursesModalItem(\'' + key + '\')" style="cursor:pointer;background:var(--cream);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid transparent;transition:all 0.2s;" id="courses-item-' + key + '">' +
-              '<span style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(196,113,74,0.3);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;"></span>' +
-              '<span style="flex:1;font-size:13px;font-weight:500;color:var(--deep-brown);">' + ing.nom + '</span>' +
+      html += '<div onclick="toggleCoursesModalItem(' + idx + ')" style="cursor:pointer;background:' + (done ? 'rgba(122,158,126,0.08)' : 'var(--cream)') + ';border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid ' + (done ? 'rgba(122,158,126,0.3)' : 'transparent') + ';transition:all 0.2s;" id="courses-item-' + idx + '">' +
+              '<span style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)') + ';background:' + (done ? 'var(--sage)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;">' + (done ? '✓' : '') + '</span>' +
+              '<span style="flex:1;font-size:13px;font-weight:500;color:' + (done ? 'var(--text-light)' : 'var(--deep-brown)') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';">' + ing.nom + '</span>' +
               (qte ? '<span style="font-size:12px;color:var(--text-light);flex-shrink:0;">' + qte + '</span>' : '') +
               '</div>'
     })
@@ -2887,25 +2905,34 @@ function afficherListeCourses() {
   document.body.insertAdjacentHTML('beforeend', html)
 }
 
-function toggleCoursesModalItem(encodedNom) {
-  var nom = decodeURIComponent(encodedNom)
-  coursesChecked[nom] = !coursesChecked[nom]
-  var el = document.getElementById('courses-item-' + encodedNom)
-  if (!el) return
-  var done = !!coursesChecked[nom]
-  el.style.background = done ? 'rgba(122,158,126,0.08)' : 'var(--cream)'
-  el.style.borderColor = done ? 'rgba(122,158,126,0.3)' : 'transparent'
-  var circle = el.querySelector('span')
-  if (circle) {
-    circle.style.border = '2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)')
-    circle.style.background = done ? 'var(--sage)' : 'transparent'
-    circle.textContent = done ? '✓' : ''
+function toggleCoursesModalItem(idx) {
+  var ing = _coursesIngredients[idx]
+  if (!ing) return
+  coursesChecked[idx] = !coursesChecked[idx]
+  var done = !!coursesChecked[idx]
+
+  var el = document.getElementById('courses-item-' + idx)
+  if (el) {
+    el.style.background  = done ? 'rgba(122,158,126,0.08)' : 'var(--cream)'
+    el.style.borderColor = done ? 'rgba(122,158,126,0.3)'  : 'transparent'
+    var spans = el.querySelectorAll('span')
+    if (spans[0]) {
+      spans[0].style.border     = '2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)')
+      spans[0].style.background = done ? 'var(--sage)' : 'transparent'
+      spans[0].textContent      = done ? '✓' : ''
+    }
+    if (spans[1]) {
+      spans[1].style.color          = done ? 'var(--text-light)' : 'var(--deep-brown)'
+      spans[1].style.textDecoration = done ? 'line-through' : 'none'
+    }
   }
-  var textSpan = el.querySelectorAll('span')[1]
-  if (textSpan) {
-    textSpan.style.color = done ? 'var(--text-light)' : 'var(--deep-brown)'
-    textSpan.style.textDecoration = done ? 'line-through' : 'none'
-  }
+
+  // Persist checked state to localStorage (shared with profile list)
+  var vu = {}
+  try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+  vu[ing.nom] = done
+  if (!done) delete vu[ing.nom]
+  localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
 }
 
 function fermerListeCourses() {
