@@ -537,6 +537,31 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
+    // Activé si force_regeneration !== true
+    if (!force_regeneration) {
+      try {
+        const { data: cached } = await supabase
+          .from('plans_generes_cache')
+          .select('plan_json, created_at')
+          .eq('profil_id', profil_id)
+          .eq('source', 'journalier')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (cached?.plan_json) {
+          console.log(`[CACHE] Plan journalier trouvé — généré le ${cached.created_at}`);
+          return new Response(
+            JSON.stringify({ ...cached.plan_json, _source: 'cache' }),
+            { status: 200, headers: CORS_HEADERS }
+          );
+        }
+      } catch (cacheErr) {
+        console.warn('[CACHE] Lecture cache journalier échouée (non bloquant):', cacheErr);
+      }
+    }
+
     // ── Charger le profil complet depuis la BDD ─────────────────────────────
     console.log(`[P1] Chargement profil ${profil_id}...`);
 
@@ -962,8 +987,29 @@ serve(async (req) => {
 
     console.log('\n[SUCCESS] Plan généré avec succès\n');
 
+    // ── SAUVEGARDE CACHE JOURNALIER (upsert — contrainte UNIQUE(profil_id, source)) ──
+    const planFormatePourCache = formaterReponseAPI(plan, planId);
+    const { error: cacheError } = await supabase
+      .from('plans_generes_cache')
+      .upsert(
+        {
+          profil_id,
+          source: 'journalier',
+          symptomes: Array.isArray(symptomes) ? symptomes : [],
+          plan_json: planFormatePourCache,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        { onConflict: 'profil_id,source' }
+      );
+    if (cacheError) {
+      console.error('[CACHE] Erreur upsert plan journalier:', cacheError.message, cacheError.code);
+    } else {
+      console.log('[CACHE] Plan journalier sauvegardé (upsert ok)');
+    }
+
     return new Response(
-      JSON.stringify(formaterReponseAPI(plan, planId), null, 2),
+      JSON.stringify(planFormatePourCache, null, 2),
       { status: 200, headers: CORS_HEADERS }
     );
 

@@ -924,7 +924,7 @@
     <div id="configProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
     <button onclick="fermerConfig();setTimeout(function(){switchTab('profil')},200)" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
   </div>
-  <button class="btn-primary" style="margin-top:16px;" onclick="genererPlan()">✨ Générer mon plan</button>
+  <button class="btn-primary" style="margin-top:16px;" onclick="genererPlan(true)">✨ Générer mon plan</button>
 </div>
 
 <!-- ══════════════════════════════════════════════ -->
@@ -1226,7 +1226,7 @@
         <div id="semaineProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
         <button onclick="switchTab('profil')" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
       </div>
-      <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine()">
+      <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine(true)">
         <span id="semaineBtnText">✨ Générer ma semaine</span>
       </button>
       <div id="semaineProgressContainer" style="display:none;margin-top:14px;padding:0 2px;">
@@ -1543,7 +1543,11 @@ function switchTab(name) {
 
   // Sync chips / UI on tab switch
   syncAllPreferencesChips()
-  if (name === 'semaine') syncSemaineChips()
+  if (name === 'semaine') {
+    syncSemaineChips()
+    // Auto-charger depuis le cache Supabase si aucun plan local
+    if (!semainePlanData) genererSemaine(false)
+  }
   if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
 
   fermerConfig()
@@ -1776,7 +1780,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if (!planValide) {
     sessionStorage.removeItem('vitalia_plan_session_home')
-    setTimeout(function() { genererPlan() }, 400)
+    setTimeout(function() { genererPlan(false) }, 400)
   }
 
   // Restore week plan from localStorage
@@ -2193,9 +2197,9 @@ function noterPlan(note) {
 }
 
 // ── Generate daily plan ──
-async function genererPlan() {
+async function genererPlan(forcer) {
   fermerConfig()
-  sessionStorage.removeItem('vitalia_plan_session_home')
+  if (forcer) sessionStorage.removeItem('vitalia_plan_session_home')
   if (!profil_id || profil_id === 'new') { window.location.href = 'onboarding.html'; return }
 
   var ls = document.getElementById('loadingScreen')
@@ -2212,7 +2216,7 @@ async function genererPlan() {
         temps_max:  profilTempsCuisineCourant,
         budget_max: budgetMap[selectedBudget] || 25
       },
-      force_regeneration: true,
+      force_regeneration: forcer === true,
       meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false
     }
     var res  = await fetch(SUPABASE_URL + '/functions/v1/generer-plan', {
@@ -2286,7 +2290,7 @@ function toggleDayMeal(jour, meal) {
 }
 
 // Generate 7-day plan
-async function genererSemaine() {
+async function genererSemaine(forcer) {
   if (!profil_id) { afficherToast('Profil non trouvé'); return }
   var btn          = document.getElementById('semaineBtnGenerate')
   var btnText      = document.getElementById('semaineBtnText')
@@ -2340,7 +2344,7 @@ async function genererSemaine() {
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ profil_id: profil_id, symptomes: selectedSymptoms }),
+      body: JSON.stringify({ profil_id: profil_id, symptomes: selectedSymptoms, force_refresh: forcer === true }),
     })
     var data = await resp.json()
     if (data.success && data.semaine) {

@@ -1,7 +1,8 @@
 // supabase/functions/generer-plan-semaine/index.ts
-// Génère un plan alimentaire sur 7 jours
-// Input : { profil_id, symptomes }
-// Output: { success, semaine: { lundi, mardi, ... }, nutraceutiques, aromatherapie, routines, message_motivation, conseil_du_jour }
+// BATCH v2.1 :
+// - 1 appel LLM pour les 21 repas complets (instructions incluses)
+// - Mémoire persistante : await du save pour garantir l'écriture en base
+// - force_refresh: true pour forcer une nouvelle génération
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -12,49 +13,6 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
-// ─── Tool_use structuré : garantit un JSON 100% valide sans parsing fragile ─
-const RECETTE_TOOL = {
-  name: 'creer_recette',
-  description: 'Crée une recette nutritive originale selon les contraintes du plan alimentaire',
-  input_schema: {
-    type: 'object',
-    properties: {
-      nom: { type: 'string', description: 'Nom créatif et appétissant de la recette' },
-      ingredients: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            nom:      { type: 'string' },
-            quantite: { type: 'number' },
-            unite:    { type: 'string' }
-          },
-          required: ['nom', 'quantite', 'unite']
-        },
-        minItems: 3
-      },
-      instructions:       { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 7 },
-      temps_preparation:  { type: 'integer' },
-      temps_cuisson:      { type: 'integer' },
-      portions:           { type: 'integer' },
-      valeurs_nutritionnelles: {
-        type: 'object',
-        properties: {
-          calories:  { type: 'integer' },
-          proteines: { type: 'number' },
-          glucides:  { type: 'number' },
-          lipides:   { type: 'number' }
-        },
-        required: ['calories', 'proteines', 'glucides', 'lipides']
-      },
-      astuces:   { type: 'array', items: { type: 'string' } },
-      variantes: { type: 'array', items: { type: 'string' } }
-    },
-    required: ['nom', 'ingredients', 'instructions', 'temps_preparation', 'temps_cuisson',
-               'portions', 'valeurs_nutritionnelles', 'astuces', 'variantes']
-  }
-};
-
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -63,10 +21,9 @@ const CORS_HEADERS = {
 };
 
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-
 const STYLES_CULINAIRES = ['mediterraneen', 'asiatique', 'francais', 'italien', 'mexicain', 'nordique', 'oriental'];
 
-// ─── Utilitaires ───────────────────────────────────────────────────────────
+// ─── Utilitaires ────────────────────────────────────────────────────────────
 
 function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -90,10 +47,24 @@ function normaliserArray(valeur: any): string[] {
   return [];
 }
 
-// ─── Collation par défaut (sans LLM) ──────────────────────────────────────
+function estPoisson(nom: string): boolean {
+  const n = nom.toLowerCase();
+  return ['saumon', 'maquereau', 'sardine', 'thon', 'truite', 'cabillaud', 'dorade', 'flétan', 'bar', 'sole'].some(p => n.includes(p));
+}
 
-// Pool de 7 collations — une par jour, toutes différentes.
-// Sans lactose / végane : les options marquées sont filtrées au moment de l'appel.
+function estCategorieAnimale(cat: string): boolean {
+  const c = cat.toLowerCase();
+  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
+    'abats', 'gibier', 'œuf', 'oeuf', 'produit laitier', 'fromage', 'laitier'].some(m => c.includes(m));
+}
+
+function estViandePoissonCrustace(cat: string): boolean {
+  const c = cat.toLowerCase();
+  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque', 'abats', 'gibier'].some(m => c.includes(m));
+}
+
+// ─── Collation par défaut (sans LLM) ───────────────────────────────────────
+
 const COLLATIONS_POOL: Array<{
   nom: string;
   ingredients: { nom: string; quantite: number; unite: string }[];
@@ -189,519 +160,141 @@ const COLLATIONS_POOL: Array<{
 
 function collationParDefaut(profil: any, jourIndex: number = 0): any {
   const estSansLactose = profil.estSansLactose;
-
-  // Filtrer les options incompatibles avec le profil
   const pool = COLLATIONS_POOL.filter(c => !(estSansLactose && c.contientLaitier));
-  // Sécurité : si tout est filtré (cas edge), utiliser le pool complet
   const poolEffectif = pool.length > 0 ? pool : COLLATIONS_POOL;
-
-  // Rotation par index de jour pour garantir 7 collations différentes
   const idx = jourIndex % poolEffectif.length;
-
   const { contientLaitier: _, ...collation } = poolEffectif[idx];
-  return {
-    ...collation,
-    type_repas: 'collation',
-    style_culinaire: 'maison',
-    genere_par_llm: false,
-  };
+  return { ...collation, type_repas: 'collation', style_culinaire: 'maison', genere_par_llm: false };
 }
 
-// ─── Construction du prompt recette ───────────────────────────────────────
+// ─── Fallback semaine complet ──────────────────────────────────────────────
 
-function construirePromptRecette(
+function recetteFallbackUnitaire(
   typeRepas: string,
-  styleCulinaire: string,
   proteineAssignee: string | null,
-  profil: any,
-  symptomes: string[],
-  proteinesAutresJours: string[],
-  nomsDejaUtilises: string[] = []   // noms générés pour les jours précédents
-): string {
-
-  const estPetitDej = typeRepas === 'petit-dejeuner';
-  const regimes = profil.contraintesRegime || [];
-  const allergenes = profil.allergenes || [];
-  const tempsMax = profil.temps_preparation || 45;
-
-  const objectifMap: Record<string, string> = {
-    vitalite: 'Riche en fer, vitamines B et magnésium pour booster la vitalité',
-    serenite: 'Riche en magnésium et tryptophane pour la sérénité',
-    digestion: 'Riche en fibres et prébiotiques pour la digestion',
-    sommeil: 'Riche en tryptophane et mélatonine pour le sommeil',
-    mobilite: 'Anti-inflammatoire, riche en oméga-3 pour la mobilité',
-    hormones: 'Riche en acides gras et phytoestrogènes pour l\'équilibre hormonal',
-  };
-  const objectif = symptomes.length > 0 ? (objectifMap[symptomes[0]] || 'Équilibrée et nutritive') : 'Équilibrée et nutritive';
-
-  const estSansLactose = profil.estSansLactose;
-
-  const proteineConsigne = (!estPetitDej && proteineAssignee && !profil.estVegan && !profil.estVegetarien)
-    ? `\n**PROTÉINE PRINCIPALE OBLIGATOIRE** : ${proteineAssignee}. Ne pas la remplacer. Dans le JSON, le nom de cet ingrédient doit être EXACTEMENT "${proteineAssignee}".`
-    : '';
-
-  const eviterConsigne = proteinesAutresJours.length > 0 && !estPetitDej
-    ? `\n**Protéines à ÉVITER** (déjà utilisées dans d'autres jours) :\n${proteinesAutresJours.map(p => `- ${p}`).join('\n')}`
-    : '';
-
-  // Noms des recettes déjà générées cette semaine — le LLM ne doit pas les répéter
-  // ni s'en inspirer (même concept, même technique, même ingrédient principal)
-  const nomsDejaConsigne = nomsDejaUtilises.length > 0
-    ? `\n**RECETTES DÉJÀ CRÉÉES CETTE SEMAINE (interdites — ne pas reproduire ni imiter) :**\n${nomsDejaUtilises.map(n => `- "${n}"`).join('\n')}\nCrée quelque chose de complètement différent en termes d'ingrédients, de technique et de concept.\n`
-    : '';
-
-  const contraintes_petit_dej = estPetitDej ? `
-## CONTRAINTES PETIT-DÉJEUNER
-- Saveur SUCRÉE (fruits, céréales, miel${estSansLactose ? '' : ', yaourt'})
-- PAS de recette salée, pas de légumes
-- Maximum 5 ingrédients, temps ≤ 10 min
-- Zéro cuisson longue (cru, blender, ou grille-pain max)
-${estSansLactose ? '- Aucun produit laitier (lait végétal uniquement)' : ''}
-` : '';
-
-  const nbEtapes = estPetitDej ? (Math.floor(Math.random() * 3) + 3) : (Math.floor(Math.random() * 2) + 4);
-
-  return `Tu es un chef nutritionniste expert. Crée une recette ORIGINALE.
-
-## CONTRAINTES STRICTES
-
-**Type de repas** : ${typeRepas}
-**Style culinaire** : ${styleCulinaire}
-**Régime** : ${regimes.join(', ') || 'Aucune restriction'}${proteineConsigne}${eviterConsigne}
-**Allergènes à éviter** : ${allergenes.join(', ') || 'Aucun'}
-**Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
-**Objectif** : ${objectif}
-**Portions** : 2
-${nomsDejaConsigne}${contraintes_petit_dej}
-**EXACTEMENT ${nbEtapes} étapes** dans les instructions.
-
-**Valeurs nutritionnelles** : vise ${estPetitDej ? '~350 kcal, ~10 g protéines, ~45 g glucides, ~10 g lipides' : '~450 kcal, ~20 g protéines, ~50 g glucides, ~15 g lipides'} — ajuster selon les vrais ingrédients.
-**Astuces** : 1 à 2, en lien avec "${symptomes.join(', ') || 'bien-être général'}".
-**Variantes** : 1 à 2 suggestions de remplacement ou de variation créative.`;
-}
-
-// ─── Appel Claude AI (une recette) ────────────────────────────────────────
-
-async function genererRecetteIA(
-  typeRepas: string,
   styleCulinaire: string,
-  proteineAssignee: string | null,
-  profil: any,
-  symptomes: string[],
-  proteinesAutresJours: string[],
-  nomsDejaUtilises: string[] = []
-): Promise<any | null> {
-
-  if (!ANTHROPIC_API_KEY) return null;
-
-  const prompt = construirePromptRecette(typeRepas, styleCulinaire, proteineAssignee, profil, symptomes, proteinesAutresJours, nomsDejaUtilises);
-
-  // 3 tentatives avec backoff progressif sur 429 / 5xx
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const response = await fetch(ANTHROPIC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
-          max_tokens: 900,   // tool_use produit du JSON compact — 1800 était inutile et consomme du TPM
-          temperature: 0.85,
-          tools: [RECETTE_TOOL],
-          tool_choice: { type: 'tool', name: 'creer_recette' },
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-
-      if (response.status === 429 || response.status >= 500) {
-        const waitMs = attempt === 0 ? 12000 : 20000; // backoff progressif
-        console.warn(`[FALLBACK:${typeRepas}] HTTP ${response.status} (tentative ${attempt + 1}/3) — attente ${waitMs / 1000}s...`);
-        await new Promise(r => setTimeout(r, waitMs));
-        continue; // retry
-      }
-
-      if (!response.ok) {
-        const errTxt = await response.text();
-        console.error(`[FALLBACK:${typeRepas}] HTTP ${response.status} — ${errTxt.substring(0, 300)}`);
-        return null;
-      }
-
-      const data = await response.json();
-      // tool_use : l'API garantit un JSON valide — pas de regex fragile
-      const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
-      const recetteJSON = toolUse?.input;
-
-      if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
-        console.error(`[FALLBACK:${typeRepas}] tool_use absent — stop_reason="${data.stop_reason}" | content_types=[${data.content?.map((c: any) => c.type).join(',')}]`);
-        return null;
-      }
-
-      // Validation qualité minimale : rejeter les recettes trop pauvres
-      const PHRASES_VAGUES = ['selon la méthode', 'selon votre préférence', 'comme souhaité', 'selon les goûts'];
-      const recettePauvre =
-        recetteJSON.ingredients.length < 3 ||
-        recetteJSON.instructions.length < 3 ||
-        recetteJSON.instructions.some((step: string) =>
-          PHRASES_VAGUES.some(p => step.toLowerCase().includes(p))
-        );
-      if (recettePauvre) {
-        console.error(`[FALLBACK:${typeRepas}] qualité insuffisante — ${recetteJSON.ingredients.length} ingrédients, ${recetteJSON.instructions.length} étapes`);
-        return null;
-      }
-
-      return {
-        nom: recetteJSON.nom,
-        type_repas: typeRepas,
-        style_culinaire: styleCulinaire,
-        ingredients: (recetteJSON.ingredients || []).map((ing: any) => ({
-          nom: ing.nom || 'Ingrédient',
-          quantite: ing.quantite || 0,
-          unite: ing.unite || 'g',
-        })),
-        instructions: recetteJSON.instructions || [],
-        temps_preparation: recetteJSON.temps_preparation ?? 15,
-        temps_cuisson: recetteJSON.temps_cuisson ?? 0,
-        portions: recetteJSON.portions || 2,
-        valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles,
-        astuces: recetteJSON.astuces || [],
-        variantes: recetteJSON.variantes || [],
-        genere_par_llm: true,
-      };
-
-    } catch (error) {
-      console.error('[ERROR] Exception Claude recette:', error);
-      return null;
-    }
-  }
-
-  return null;
-}
-
-// ─── Fallbacks recettes ────────────────────────────────────────────────────
-
-// Pool de 7 petits-déjeuners de secours — 1 par jour, tous différents.
-// Activé uniquement si le LLM échoue. Chaque option est complète et variée.
-const PETIT_DEJ_FALLBACKS = [
-  {
-    nom: 'Porridge Avoine Banane & Amandes',
-    ingredients: [
-      { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
-      { nom: 'Lait végétal', quantite: 200, unite: 'ml' },
-      { nom: 'Banane', quantite: 1, unite: 'pièce' },
-      { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
-      { nom: 'Miel', quantite: 10, unite: 'g' },
-    ],
-    instructions: [
-      "Chauffer le lait végétal dans une casserole à feu moyen.",
-      "Verser les flocons d'avoine et remuer 3 minutes jusqu'à consistance crémeuse.",
-      "Éplucher et couper la banane en rondelles, déposer sur le porridge.",
-      "Parsemer d'amandes effilées et arroser de miel. Servir chaud.",
-    ],
-    temps_preparation: 3, temps_cuisson: 5, portions: 1,
-    valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 },
-    astuces: ["Les bêta-glucanes de l'avoine stabilisent la glycémie pour une énergie durable."],
-    variantes: ['Remplacer la banane par des myrtilles surgelées décongelées.'],
-  },
-  {
-    nom: 'Smoothie Bowl Fruits Rouges & Granola',
-    ingredients: [
-      { nom: 'Fruits rouges surgelés', quantite: 150, unite: 'g' },
-      { nom: 'Banane congelée', quantite: 1, unite: 'pièce' },
-      { nom: 'Lait végétal', quantite: 80, unite: 'ml' },
-      { nom: 'Granola', quantite: 40, unite: 'g' },
-      { nom: 'Graines de chia', quantite: 10, unite: 'g' },
-    ],
-    instructions: [
-      "Mixer les fruits rouges, la banane et le lait végétal jusqu'à consistance épaisse.",
-      "Verser dans un bol large.",
-      "Parsemer de granola et de graines de chia sur le dessus.",
-      "Déguster immédiatement avant que le smoothie ne fonde.",
-    ],
-    temps_preparation: 5, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 360, proteines: 8, glucides: 58, lipides: 10 },
-    astuces: ["Les anthocyanes des fruits rouges sont de puissants antioxydants protecteurs."],
-    variantes: ['Ajouter 1 c.à.s. de beurre d\'amande pour plus de protéines.'],
-  },
-  {
-    nom: 'Tartines Pain Complet Avocat & Citron',
-    ingredients: [
-      { nom: 'Pain complet', quantite: 2, unite: 'tranches' },
-      { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' },
-      { nom: 'Citron', quantite: 0.5, unite: 'pièce' },
-      { nom: 'Graines de sésame', quantite: 5, unite: 'g' },
-      { nom: 'Sel, poivre', quantite: 2, unite: 'g' },
-    ],
-    instructions: [
-      "Toaster les tranches de pain au grille-pain 2 minutes.",
-      "Couper l'avocat en deux, retirer le noyau et écraser la chair à la fourchette.",
-      "Ajouter le jus du demi-citron, saler et poivrer. Mélanger.",
-      "Tartiner généreusement sur les toasts. Parsemer de graines de sésame.",
-    ],
-    temps_preparation: 5, temps_cuisson: 2, portions: 1,
-    valeurs_nutritionnelles: { calories: 340, proteines: 9, glucides: 38, lipides: 18 },
-    astuces: ["Les acides gras mono-insaturés de l'avocat favorisent l'absorption des vitamines liposolubles."],
-    variantes: ['Ajouter un œuf poché pour un apport protéique supplémentaire.'],
-  },
-  {
-    nom: 'Overnight Oats Mangue & Noix de Coco',
-    ingredients: [
-      { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
-      { nom: 'Lait de coco', quantite: 150, unite: 'ml' },
-      { nom: 'Mangue', quantite: 100, unite: 'g' },
-      { nom: 'Noix de coco râpée', quantite: 10, unite: 'g' },
-      { nom: 'Miel', quantite: 5, unite: 'g' },
-    ],
-    instructions: [
-      "La veille : mélanger les flocons avec le lait de coco et le miel dans un bocal.",
-      "Fermer et réfrigérer toute la nuit (au moins 6 heures).",
-      "Le matin : éplucher et couper la mangue en dés.",
-      "Disposer la mangue sur les oats et parsemer de noix de coco râpée.",
-    ],
-    temps_preparation: 5, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 400, proteines: 9, glucides: 65, lipides: 12 },
-    astuces: ["Les enzymes de la mangue facilitent la digestion des protéines et glucides."],
-    variantes: ['Remplacer la mangue par de l\'ananas ou de la papaye.'],
-  },
-  {
-    nom: 'Bol Yaourt Grec Kiwi & Graines',
-    ingredients: [
-      { nom: 'Yaourt grec nature', quantite: 150, unite: 'g' },
-      { nom: 'Kiwi', quantite: 2, unite: 'pièces' },
-      { nom: 'Graines de courge', quantite: 15, unite: 'g' },
-      { nom: 'Miel d\'acacia', quantite: 10, unite: 'g' },
-      { nom: 'Cannelle', quantite: 1, unite: 'pincée' },
-    ],
-    instructions: [
-      "Verser le yaourt grec dans un bol.",
-      "Éplucher et trancher les kiwis en rondelles. Disposer sur le yaourt.",
-      "Parsemer de graines de courge.",
-      "Arroser de miel et saupoudrer de cannelle.",
-    ],
-    temps_preparation: 4, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 290, proteines: 14, glucides: 35, lipides: 9 },
-    astuces: ["Le kiwi contient de l'actinidine, enzyme qui améliore la digestion des protéines."],
-    variantes: ['Remplacer le kiwi par des fraises ou des framboises.'],
-  },
-  {
-    nom: 'Crêpe Sarrasin Pomme & Cannelle',
-    ingredients: [
-      { nom: 'Farine de sarrasin', quantite: 60, unite: 'g' },
-      { nom: 'Lait végétal', quantite: 120, unite: 'ml' },
-      { nom: 'Pomme', quantite: 1, unite: 'pièce' },
-      { nom: 'Cannelle', quantite: 1, unite: 'c.à.c' },
-      { nom: 'Sirop d\'érable', quantite: 10, unite: 'ml' },
-    ],
-    instructions: [
-      "Mélanger la farine de sarrasin avec le lait végétal jusqu'à obtenir une pâte lisse.",
-      "Chauffer une poêle légèrement huilée à feu moyen. Verser la pâte et cuire 2 min de chaque côté.",
-      "Éplucher et râper la pomme. Mélanger avec la cannelle.",
-      "Garnir la crêpe de pomme râpée et arroser de sirop d'érable.",
-    ],
-    temps_preparation: 5, temps_cuisson: 4, portions: 1,
-    valeurs_nutritionnelles: { calories: 330, proteines: 8, glucides: 60, lipides: 5 },
-    astuces: ["Le sarrasin est naturellement sans gluten et riche en rutine, un antioxydant vasculaire."],
-    variantes: ['Garnir de compote de pommes maison à la place de la pomme râpée.'],
-  },
-  {
-    nom: 'Tartine Ricotta Fraises & Basilic',
-    ingredients: [
-      { nom: 'Pain de campagne', quantite: 2, unite: 'tranches' },
-      { nom: 'Ricotta', quantite: 80, unite: 'g' },
-      { nom: 'Fraises fraîches', quantite: 100, unite: 'g' },
-      { nom: 'Basilic frais', quantite: 5, unite: 'feuilles' },
-      { nom: 'Miel', quantite: 8, unite: 'g' },
-    ],
-    instructions: [
-      "Toaster les tranches de pain 2 minutes au grille-pain.",
-      "Étaler la ricotta généreusement sur chaque tranche.",
-      "Laver et couper les fraises en deux. Disposer sur la ricotta.",
-      "Déchirer les feuilles de basilic et parsemer. Arroser de miel.",
-    ],
-    temps_preparation: 5, temps_cuisson: 2, portions: 1,
-    valeurs_nutritionnelles: { calories: 320, proteines: 11, glucides: 45, lipides: 9 },
-    astuces: ["La vitamine C des fraises améliore l'absorption du fer non héminique du pain complet."],
-    variantes: ['Remplacer la ricotta par du fromage blanc 0% pour une version plus légère.'],
-  },
-];
-
-function recetteFallback(typeRepas: string, proteineAssignee: string | null, jourIndex: number = 0): any {
+  jourIndex: number
+): any {
   if (typeRepas === 'petit-dejeuner') {
-    // Rotation sur le pool de 7 : un petit-déjeuner différent chaque jour
-    const idx = jourIndex % PETIT_DEJ_FALLBACKS.length;
+    const PETIT_DEJ_FALLBACKS = [
+      { nom: 'Porridge Avoine Banane & Amandes',
+        ingredients: [{ nom: "Flocons d'avoine", quantite: 60, unite: 'g' }, { nom: 'Lait végétal', quantite: 200, unite: 'ml' }, { nom: 'Banane', quantite: 1, unite: 'pièce' }, { nom: 'Amandes effilées', quantite: 15, unite: 'g' }, { nom: 'Miel', quantite: 10, unite: 'g' }],
+        instructions: ["Chauffer le lait végétal à feu moyen dans une casserole.", "Ajouter les flocons d'avoine et remuer 3 min jusqu'à consistance crémeuse.", "Verser dans un bol, déposer la banane tranchée, les amandes et le miel."],
+        valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 } },
+      { nom: 'Smoothie Bowl Fruits Rouges & Granola',
+        ingredients: [{ nom: 'Fruits rouges surgelés', quantite: 150, unite: 'g' }, { nom: 'Banane congelée', quantite: 1, unite: 'pièce' }, { nom: 'Lait végétal', quantite: 80, unite: 'ml' }, { nom: 'Granola', quantite: 40, unite: 'g' }],
+        instructions: ["Mixer les fruits rouges, la banane congelée et le lait végétal jusqu'à texture épaisse.", "Verser dans un bol large.", "Parsemer de granola et servir immédiatement."],
+        valeurs_nutritionnelles: { calories: 360, proteines: 8, glucides: 58, lipides: 10 } },
+      { nom: 'Tartines Avocat & Citron',
+        ingredients: [{ nom: 'Pain complet', quantite: 2, unite: 'tranches' }, { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' }, { nom: 'Citron', quantite: 0.5, unite: 'pièce' }],
+        instructions: ["Toaster le pain 2 min au grille-pain.", "Écraser la chair de l'avocat avec le jus de citron, sel et poivre.", "Tartiner généreusement sur les toasts."],
+        valeurs_nutritionnelles: { calories: 340, proteines: 9, glucides: 38, lipides: 18 } },
+      { nom: 'Overnight Oats Mangue & Coco',
+        ingredients: [{ nom: "Flocons d'avoine", quantite: 60, unite: 'g' }, { nom: 'Lait de coco', quantite: 150, unite: 'ml' }, { nom: 'Mangue', quantite: 100, unite: 'g' }],
+        instructions: ["La veille : mélanger les flocons avec le lait de coco, couvrir et réfrigérer toute la nuit.", "Le matin : couper la mangue en dés.", "Déposer la mangue sur les oats et servir frais."],
+        valeurs_nutritionnelles: { calories: 400, proteines: 9, glucides: 65, lipides: 12 } },
+      { nom: 'Bol Yaourt Kiwi & Graines',
+        ingredients: [{ nom: 'Yaourt grec', quantite: 150, unite: 'g' }, { nom: 'Kiwi', quantite: 2, unite: 'pièces' }, { nom: 'Graines de courge', quantite: 15, unite: 'g' }],
+        instructions: ["Verser le yaourt grec dans un bol.", "Éplucher et trancher les kiwis, disposer sur le yaourt.", "Parsemer de graines de courge et servir."],
+        valeurs_nutritionnelles: { calories: 290, proteines: 14, glucides: 35, lipides: 9 } },
+      { nom: 'Crêpe Sarrasin Pomme & Cannelle',
+        ingredients: [{ nom: 'Farine de sarrasin', quantite: 60, unite: 'g' }, { nom: 'Lait végétal', quantite: 120, unite: 'ml' }, { nom: 'Pomme', quantite: 1, unite: 'pièce' }],
+        instructions: ["Mélanger la farine et le lait jusqu'à pâte lisse.", "Cuire la crêpe 2 min de chaque côté dans une poêle légèrement huilée.", "Garnir de pomme râpée et d'une pincée de cannelle."],
+        valeurs_nutritionnelles: { calories: 330, proteines: 8, glucides: 60, lipides: 5 } },
+      { nom: 'Tartine Ricotta & Fraises',
+        ingredients: [{ nom: 'Pain de campagne', quantite: 2, unite: 'tranches' }, { nom: 'Ricotta', quantite: 80, unite: 'g' }, { nom: 'Fraises fraîches', quantite: 100, unite: 'g' }],
+        instructions: ["Toaster le pain 2 min au grille-pain.", "Étaler la ricotta généreusement sur chaque tranche.", "Disposer les fraises coupées en deux et arroser d'un filet de miel."],
+        valeurs_nutritionnelles: { calories: 320, proteines: 11, glucides: 45, lipides: 9 } },
+    ];
+    const fb = PETIT_DEJ_FALLBACKS[jourIndex % PETIT_DEJ_FALLBACKS.length];
     return {
-      ...PETIT_DEJ_FALLBACKS[idx],
+      nom: fb.nom,
       type_repas: 'petit-dejeuner',
       style_culinaire: 'maison',
+      ingredients: fb.ingredients,
+      instructions: fb.instructions,
+      temps_preparation: 10,
+      temps_cuisson: 0,
+      portions: 1,
+      valeurs_nutritionnelles: fb.valeurs_nutritionnelles,
+      astuces: [],
+      variantes: [],
       genere_par_llm: false,
     };
   }
 
-  // Déjeuner / Dîner avec protéine assignée
   const prot = proteineAssignee || 'Filet de poulet';
   const protLow = prot.toLowerCase();
+  let nom: string;
+  let ingredients: any[];
+  let calories = 430, proteines = 28;
 
   let instructions: string[];
-  let ingredients: any[];
-  let nom: string;
-  let calories = 430;
-  let proteines = 28;
 
   if (protLow.includes('maquereau') || protLow.includes('sardine') || protLow.includes('hareng')) {
     nom = `${prot} en papillote aux herbes`;
-    ingredients = [
-      { nom: prot, quantite: 160, unite: 'g' },
-      { nom: 'Tomates cerises', quantite: 150, unite: 'g' },
-      { nom: 'Courgette', quantite: 150, unite: 'g' },
-      { nom: 'Citron', quantite: 1, unite: 'pièce' },
-      { nom: 'Herbes de Provence', quantite: 5, unite: 'g' },
-      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
-    ];
-    instructions = [
-      'Préchauffer le four à 200 °C. Découper deux grandes feuilles de papier sulfurisé.',
-      'Couper la courgette en fines rondelles et les tomates cerises en deux.',
-      'Déposer les légumes au centre de chaque feuille, arroser d\'un filet d\'huile d\'olive.',
-      'Placer le poisson par-dessus, presser le demi-citron et parsemer d\'herbes de Provence.',
-      'Refermer hermétiquement les papillotes en repliant les bords et enfourner 18 minutes.',
-      'Ouvrir délicatement à la sortie du four (attention à la vapeur) et servir directement dans la papillote.',
-    ];
+    ingredients = [{ nom: prot, quantite: 160, unite: 'g' }, { nom: 'Tomates cerises', quantite: 150, unite: 'g' }, { nom: 'Courgette', quantite: 150, unite: 'g' }, { nom: 'Citron', quantite: 1, unite: 'pièce' }, { nom: 'Herbes de Provence', quantite: 5, unite: 'g' }];
+    instructions = ['Préchauffer le four à 200°C. Couper la courgette en rondelles et les tomates en deux.', 'Déposer les légumes sur du papier sulfurisé, arroser d\'huile d\'olive et parsemer d\'herbes.', 'Placer le poisson par-dessus, presser le citron et refermer hermétiquement la papillote.', 'Enfourner 18 min. Ouvrir avec précaution à la sortie du four et servir.'];
     calories = 380; proteines = 26;
-  } else if (protLow.includes('saumon') || protLow.includes('truite') || protLow.includes('cabillaud') || protLow.includes('dorade') || protLow.includes('bar') || protLow.includes('daurade')) {
-    nom = `${prot} poêlé au citron et câpres`;
-    ingredients = [
-      { nom: prot, quantite: 160, unite: 'g' },
-      { nom: 'Haricots verts', quantite: 180, unite: 'g' },
-      { nom: 'Citron', quantite: 1, unite: 'pièce' },
-      { nom: 'Câpres', quantite: 10, unite: 'g' },
-      { nom: 'Beurre ou huile d\'olive', quantite: 10, unite: 'g' },
-      { nom: 'Sel, poivre', quantite: 2, unite: 'g' },
-    ];
-    instructions = [
-      'Sortir le poisson du réfrigérateur 10 minutes avant la cuisson pour une cuisson homogène.',
-      'Faire bouillir de l\'eau salée et cuire les haricots verts 6 à 7 minutes. Égoutter et réserver au chaud.',
-      'Chauffer une poêle antiadhésive à feu vif avec le beurre ou l\'huile d\'olive.',
-      'Saler et poivrer le poisson côté peau. Déposer côté peau dans la poêle chaude et cuire 4 minutes sans y toucher.',
-      'Retourner délicatement et cuire encore 2 à 3 minutes selon l\'épaisseur. Ajouter les câpres et presser le citron.',
-      'Servir le poisson sur les haricots verts, napper du jus de cuisson citronnée.',
-    ];
+  } else if (protLow.includes('saumon') || protLow.includes('truite') || protLow.includes('cabillaud') || protLow.includes('dorade') || protLow.includes('bar')) {
+    nom = `${prot} poêlé au citron`;
+    ingredients = [{ nom: prot, quantite: 160, unite: 'g' }, { nom: 'Haricots verts', quantite: 180, unite: 'g' }, { nom: 'Citron', quantite: 1, unite: 'pièce' }, { nom: 'Câpres', quantite: 10, unite: 'g' }];
+    instructions = ['Blanchir les haricots verts 6 min dans l\'eau bouillante salée, égoutter et réserver.', 'Chauffer une poêle à feu vif avec un filet d\'huile d\'olive.', 'Cuire le poisson côté peau 4 min sans y toucher, retourner et cuire 2 min.', 'Ajouter les câpres et le jus de citron. Servir avec les haricots verts.'];
     calories = 400; proteines = 30;
   } else if (protLow.includes('poulet') || protLow.includes('dinde')) {
-    nom = `${prot} rôti aux légumes du soleil`;
-    ingredients = [
-      { nom: prot, quantite: 160, unite: 'g' },
-      { nom: 'Poivron rouge', quantite: 120, unite: 'g' },
-      { nom: 'Courgette', quantite: 120, unite: 'g' },
-      { nom: 'Oignon rouge', quantite: 80, unite: 'g' },
-      { nom: 'Ail', quantite: 2, unite: 'gousses' },
-      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
-      { nom: 'Paprika, thym', quantite: 3, unite: 'g' },
-    ];
-    instructions = [
-      'Préchauffer le four à 200 °C. Couper le poivron, la courgette et l\'oignon en morceaux de 3 cm.',
-      'Écraser les gousses d\'ail sans les éplucher. Déposer tous les légumes dans un plat allant au four.',
-      'Arroser d\'huile d\'olive, saupoudrer de paprika et thym, saler et poivrer. Mélanger pour enrober.',
-      'Déposer le poulet ou la dinde par-dessus les légumes. Badigeonner avec un peu d\'huile et d\'épices.',
-      'Enfourner 25 à 30 minutes jusqu\'à ce que la viande soit dorée et les légumes légèrement caramélisés.',
-      'Laisser reposer 3 minutes avant de découper et servir avec les légumes confits.',
-    ];
+    nom = `${prot} rôti aux légumes`;
+    ingredients = [{ nom: prot, quantite: 160, unite: 'g' }, { nom: 'Poivron rouge', quantite: 120, unite: 'g' }, { nom: 'Courgette', quantite: 120, unite: 'g' }, { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' }];
+    instructions = ['Préchauffer le four à 200°C. Couper les légumes en morceaux de 3 cm.', 'Déposer dans un plat, arroser d\'huile d\'olive, saler et poivrer. Mélanger.', 'Placer la viande par-dessus et enfourner 25-30 min jusqu\'à dorure.', 'Laisser reposer 3 min avant de servir.'];
     calories = 440; proteines = 34;
-  } else if (protLow.includes('bœuf') || protLow.includes('boeuf') || protLow.includes('steak') || protLow.includes('veau')) {
+  } else if (protLow.includes('bœuf') || protLow.includes('boeuf') || protLow.includes('steak')) {
     nom = `${prot} poêlé, purée de patate douce`;
-    ingredients = [
-      { nom: prot, quantite: 150, unite: 'g' },
-      { nom: 'Patate douce', quantite: 200, unite: 'g' },
-      { nom: 'Épinards frais', quantite: 100, unite: 'g' },
-      { nom: 'Ail', quantite: 1, unite: 'gousse' },
-      { nom: 'Huile d\'olive', quantite: 10, unite: 'ml' },
-      { nom: 'Romarin, sel, poivre', quantite: 3, unite: 'g' },
-    ];
-    instructions = [
-      'Éplucher la patate douce, la couper en cubes et la cuire à l\'eau bouillante salée 15 minutes.',
-      'Égoutter et écraser à la fourchette avec un filet d\'huile d\'olive, saler et poivrer. Réserver au chaud.',
-      'Sortir la viande du réfrigérateur 15 minutes avant. La saler et poivrer des deux côtés.',
-      'Chauffer une poêle à feu très vif. Cuire la viande 2 à 3 minutes de chaque côté selon l\'épaisseur pour une cuisson rosée.',
-      'Dans la même poêle, faire revenir l\'ail écrasé 30 secondes puis ajouter les épinards. Faire tomber 2 minutes à feu moyen.',
-      'Servir la viande tranchée sur la purée de patate douce, accompagnée des épinards à l\'ail.',
-    ];
+    ingredients = [{ nom: prot, quantite: 150, unite: 'g' }, { nom: 'Patate douce', quantite: 200, unite: 'g' }, { nom: 'Épinards frais', quantite: 100, unite: 'g' }];
+    instructions = ['Cuire la patate douce épluchée en cubes 15 min à l\'eau bouillante, écraser en purée.', 'Chauffer une poêle à feu très vif. Saisir la viande 2-3 min de chaque côté.', 'Dans la même poêle, faire tomber les épinards 2 min à feu moyen.', 'Servir la viande tranchée sur la purée, accompagnée des épinards.'];
     calories = 480; proteines = 36;
-  } else if (protLow.includes('lentille') || protLow.includes('pois chiche') || protLow.includes('haricot') || protLow.includes('tofu') || protLow.includes('tempeh')) {
-    nom = `${prot} mijotés aux épices douces`;
-    ingredients = [
-      { nom: prot, quantite: 180, unite: 'g' },
-      { nom: 'Tomates concassées', quantite: 200, unite: 'g' },
-      { nom: 'Oignon', quantite: 100, unite: 'g' },
-      { nom: 'Carottes', quantite: 120, unite: 'g' },
-      { nom: 'Cumin, curcuma, coriandre', quantite: 5, unite: 'g' },
-      { nom: 'Huile d\'olive', quantite: 10, unite: 'ml' },
-    ];
-    instructions = [
-      'Émincer l\'oignon et couper les carottes en rondelles fines. Faire revenir dans l\'huile d\'olive à feu moyen 5 minutes.',
-      'Ajouter le cumin, le curcuma et la coriandre moulus. Faire revenir 1 minute pour libérer les arômes.',
-      'Incorporer les tomates concassées et mélanger. Laisser réduire 5 minutes à feu moyen.',
-      'Ajouter la protéine (lentilles rincées, pois chiches égouttés ou tofu en dés). Mélanger délicatement.',
-      'Couvrir et laisser mijoter 15 à 20 minutes à feu doux en remuant de temps en temps.',
-      'Rectifier l\'assaisonnement, parsemer de coriandre fraîche si disponible et servir.',
-    ];
+  } else if (protLow.includes('lentille') || protLow.includes('pois chiche') || protLow.includes('tofu') || protLow.includes('tempeh')) {
+    nom = `${prot} mijotés aux épices`;
+    ingredients = [{ nom: prot, quantite: 180, unite: 'g' }, { nom: 'Tomates concassées', quantite: 200, unite: 'g' }, { nom: 'Oignon', quantite: 100, unite: 'g' }, { nom: 'Cumin, curcuma', quantite: 5, unite: 'g' }];
+    instructions = ['Faire revenir l\'oignon émincé dans l\'huile d\'olive 5 min à feu moyen.', 'Ajouter le cumin et le curcuma, faire revenir 1 min pour libérer les arômes.', 'Incorporer les tomates et la protéine. Mélanger et couvrir.', 'Mijoter 15-20 min à feu doux en remuant régulièrement.'];
     calories = 390; proteines = 20;
-  } else if (protLow.includes('œuf') || protLow.includes('oeuf')) {
-    nom = 'Omelette aux légumes et fromage de chèvre';
-    ingredients = [
-      { nom: 'Œufs', quantite: 3, unite: 'pièces' },
-      { nom: 'Fromage de chèvre frais', quantite: 40, unite: 'g' },
-      { nom: 'Tomates cerises', quantite: 100, unite: 'g' },
-      { nom: 'Épinards frais', quantite: 80, unite: 'g' },
-      { nom: 'Huile d\'olive', quantite: 5, unite: 'ml' },
-      { nom: 'Sel, poivre, ciboulette', quantite: 3, unite: 'g' },
-    ];
-    instructions = [
-      'Battre les œufs énergiquement avec une pincée de sel et de poivre jusqu\'à obtenir un mélange homogène et légèrement mousseux.',
-      'Couper les tomates cerises en deux. Faire tomber les épinards dans la poêle chaude 1 minute puis réserver.',
-      'Essuyer la poêle, ajouter l\'huile d\'olive à feu moyen-vif.',
-      'Verser les œufs battus. Laisser coaguler 30 secondes sur les bords, puis rabattre délicatement vers le centre avec une spatule.',
-      'Quand l\'omelette est encore baveuse au centre, répartir les épinards, les tomates et le fromage de chèvre émietté sur la moitié.',
-      'Plier l\'omelette en deux, glisser dans l\'assiette et parsemer de ciboulette ciselée. Servir immédiatement.',
-    ];
-    calories = 350; proteines = 24;
   } else {
-    // Protéine générique ou inconnue
-    nom = `${prot} poêlé aux légumes de saison`;
-    ingredients = [
-      { nom: prot, quantite: 150, unite: 'g' },
-      { nom: 'Légumes de saison variés', quantite: 250, unite: 'g' },
-      { nom: 'Oignon', quantite: 80, unite: 'g' },
-      { nom: 'Ail', quantite: 2, unite: 'gousses' },
-      { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' },
-      { nom: 'Herbes fraîches, sel, poivre', quantite: 5, unite: 'g' },
-    ];
-    instructions = [
-      'Préparer et couper les légumes en morceaux réguliers (2 à 3 cm). Émincer l\'oignon et écraser l\'ail.',
-      'Chauffer l\'huile d\'olive dans une grande poêle ou wok à feu vif.',
-      'Faire revenir l\'oignon et l\'ail 2 minutes jusqu\'à ce qu\'ils soient translucides et dorés.',
-      'Ajouter les légumes les plus durs en premier (carottes, brocoli), puis les plus tendres après 3 minutes.',
-      'Incorporer la protéine préparée (coupée en dés ou en tranches selon sa nature). Saler, poivrer et mélanger.',
-      'Cuire encore 5 à 8 minutes à feu moyen en remuant régulièrement. Parsemer d\'herbes fraîches et servir.',
-    ];
+    nom = `${prot} poêlé aux légumes`;
+    ingredients = [{ nom: prot, quantite: 150, unite: 'g' }, { nom: 'Légumes de saison', quantite: 250, unite: 'g' }, { nom: 'Huile d\'olive', quantite: 15, unite: 'ml' }];
+    instructions = ['Couper les légumes et la protéine en morceaux réguliers.', 'Chauffer l\'huile dans une grande poêle ou wok à feu vif.', 'Faire revenir l\'oignon et l\'ail 2 min, puis ajouter les légumes et la protéine.', 'Cuire 8-10 min à feu moyen en remuant. Assaisonner et servir.'];
   }
 
   return {
     nom,
     type_repas: typeRepas,
-    style_culinaire: 'maison',
+    style_culinaire: styleCulinaire,
     ingredients,
     instructions,
     temps_preparation: 10,
     temps_cuisson: 20,
     portions: 2,
     valeurs_nutritionnelles: { calories, proteines, glucides: 40, lipides: 14 },
-    astuces: ['Choisissez des légumes de saison pour plus de nutriments et de saveur.'],
-    variantes: ['Adaptez les épices selon vos goûts et les légumes selon la saison.'],
+    astuces: [],
+    variantes: [],
     genere_par_llm: false,
   };
 }
 
-// ─── Chargement aliments depuis BDD ───────────────────────────────────────
+function fallbackSemaine(pairesProteines: [string, string][], stylesJours: string[], profilNorm: any): Record<string, any> {
+  const semaine: Record<string, any> = {};
+  for (let j = 0; j < 7; j++) {
+    const jour = JOURS_SEMAINE[j];
+    const style = stylesJours[j];
+    const [protDej, protDin] = pairesProteines[j];
+    semaine[jour] = {
+      petit_dejeuner: recetteFallbackUnitaire('petit-dejeuner', null, style, j),
+      dejeuner: recetteFallbackUnitaire('dejeuner', protDej, style, j),
+      diner: recetteFallbackUnitaire('diner', protDin, style, j),
+      pause: collationParDefaut(profilNorm, j),
+    };
+  }
+  return semaine;
+}
+
+// ─── Chargement aliments depuis BDD ────────────────────────────────────────
 
 async function chargerAliments(supabase: any, besoins: string[], profilNorm: any): Promise<any[]> {
   const besoinsActifs = besoins.length > 0
@@ -718,7 +311,6 @@ async function chargerAliments(supabase: any, besoins: string[], profilNorm: any
     return [];
   }
 
-  // Déduplication par nom normalisé
   const alimentMap = new Map<string, any>();
   for (const row of data as any[]) {
     const a = row.alimentation;
@@ -732,13 +324,11 @@ async function chargerAliments(supabase: any, besoins: string[], profilNorm: any
 
   let aliments = Array.from(alimentMap.values());
 
-  // Filtrer selon régime
   if (profilNorm.estVegan) {
     aliments = aliments.filter(a => !estCategorieAnimale(a.categorie || ''));
   } else if (profilNorm.estVegetarien) {
     aliments = aliments.filter(a => !estViandePoissonCrustace(a.categorie || ''));
   }
-
   if (profilNorm.estSansLactose) {
     aliments = aliments.filter(a => {
       const cat = (a.categorie || '').toLowerCase();
@@ -751,25 +341,9 @@ async function chargerAliments(supabase: any, besoins: string[], profilNorm: any
   return aliments;
 }
 
-function estCategorieAnimale(cat: string): boolean {
-  const c = cat.toLowerCase();
-  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
-    'abats', 'gibier', 'œuf', 'oeuf', 'produit laitier', 'fromage', 'laitier'].some(m => c.includes(m));
-}
+// ─── Wellness depuis BDD ───────────────────────────────────────────────────
 
-function estViandePoissonCrustace(cat: string): boolean {
-  const c = cat.toLowerCase();
-  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque', 'abats', 'gibier'].some(m => c.includes(m));
-}
-
-function estPoisson(nom: string): boolean {
-  const n = nom.toLowerCase();
-  return ['saumon', 'maquereau', 'sardine', 'thon', 'truite', 'cabillaud', 'dorade', 'flétan', 'bar', 'sole'].some(p => n.includes(p));
-}
-
-// ─── Sélection nutraceutiques, aromathérapie, routines ────────────────────
-
-async function chargerWellness(supabase: any, besoins: string[], profil: any): Promise<{
+async function chargerWellness(supabase: any, besoins: string[]): Promise<{
   nutraceutiques: any[], aromatherapie: any[], routines: any[]
 }> {
   const besoinsActifs = besoins.length > 0
@@ -782,7 +356,6 @@ async function chargerWellness(supabase: any, besoins: string[], profil: any): P
     supabase.from('routines_besoins').select('besoin_id, score, routines(*)').in('besoin_id', besoinsActifs),
   ]);
 
-  // Dédupliquer et scorer
   function deduper(rows: any[], key: string) {
     const map = new Map<string, any>();
     for (const row of rows || []) {
@@ -799,24 +372,17 @@ async function chargerWellness(supabase: any, besoins: string[], profil: any): P
   const nutraceutiques = deduper(resNutra.data || [], 'nutraceutiques')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
-
   const aromatherapie = deduper(resAro.data || [], 'aromatherapie')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
-
   const routines = deduper(resRoutines.data || [], 'routines')
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
 
-  // Si la BDD ne retourne rien, générer via LLM
-  if (!nutraceutiques.length && !aromatherapie.length && !routines.length) {
-    return await genererWellnessLLM(besoins);
-  }
-
   return { nutraceutiques, aromatherapie, routines };
 }
 
-// ─── Génération message motivation + conseil ───────────────────────────────
+// ─── Génération motivation (inchangée, tourne en parallèle) ────────────────
 
 async function genererMotivation(symptomes: string[]): Promise<{ message: string; conseil: string }> {
   const fallbackMessage = 'Votre plan de la semaine est prêt ! Chaque jour est une nouvelle opportunité de prendre soin de vous.';
@@ -854,101 +420,309 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
   return { message: fallbackMessage, conseil: fallbackConseil };
 }
 
-// ─── Génération wellness via LLM (fallback si DB vide) ────────────────────
+// ─── APPEL BATCH : 1 seul LLM pour les 21 squelettes ─────────────────────
 
-async function genererWellnessLLM(symptomes: string[]): Promise<{
-  nutraceutiques: any[], aromatherapie: any[], routines: any[]
-}> {
-  const objectifLabel = symptomes.length > 0 ? symptomes.join(', ') : 'bien-être général';
+interface RepasSquelette {
+  nom: string;
+  ingredients: string[];
+  instructions: string[];
+  macros: { calories: number; proteines: number; glucides: number; lipides: number };
+}
 
-  const prompt = `Tu es un expert en nutrition et bien-être. Pour un plan alimentaire hebdomadaire axé sur : ${objectifLabel}
+interface JourSquelette {
+  jour: string;
+  petit_dejeuner: RepasSquelette;
+  dejeuner: RepasSquelette;
+  diner: RepasSquelette;
+}
 
-Génère en JSON strict (sans backticks) :
+function validerRepasSquelette(repas: any): repas is RepasSquelette {
+  return repas &&
+    typeof repas.nom === 'string' && repas.nom.trim().length > 0 &&
+    Array.isArray(repas.ingredients) && repas.ingredients.length >= 2 &&
+    Array.isArray(repas.instructions) && repas.instructions.length >= 2 &&
+    repas.macros &&
+    typeof repas.macros.calories === 'number' &&
+    typeof repas.macros.proteines === 'number';
+}
+
+function construirePromptBatch(
+  pairesProteines: [string, string][],
+  stylesJours: string[],
+  profilNorm: any,
+  symptomes: string[]
+): string {
+  const objectifMap: Record<string, string> = {
+    vitalite: 'riche en fer, vitamines B et magnésium',
+    serenite: 'riche en magnésium et tryptophane',
+    digestion: 'riche en fibres et prébiotiques',
+    sommeil: 'riche en tryptophane et mélatonine',
+    mobilite: 'anti-inflammatoire, riche en oméga-3',
+    hormones: 'riche en acides gras et phytoestrogènes',
+  };
+  const objectif = symptomes.length > 0
+    ? (objectifMap[symptomes[0]] || 'équilibrée et nutritive')
+    : 'équilibrée et nutritive';
+
+  const regimes = profilNorm.contraintesRegime.join(', ') || 'Aucune restriction';
+  const allergenes = (profilNorm.allergenes || []).join(', ') || 'Aucun';
+  const tempsMax = profilNorm.temps_preparation || 45;
+  const omnivore = !profilNorm.estVegan && !profilNorm.estVegetarien;
+
+  // Tableau de planning imposé
+  const lignesPlanning = pairesProteines.map(([pd, pn], i) => {
+    const jour = JOURS_SEMAINE[i];
+    const style = stylesJours[i];
+    const proteines = omnivore
+      ? `déjeuner=${pd} | dîner=${pn}`
+      : `source végétale variée`;
+    return `${jour.padEnd(9)} | ${style.padEnd(14)} | ${proteines}`;
+  }).join('\n');
+
+  // Contrainte protéine animale
+  const consigneProteine = omnivore
+    ? `\n**PROTÉINE ANIMALE** : Pour chaque déjeuner et dîner, utiliser EXACTEMENT la protéine indiquée dans le tableau. Elle doit figurer dans la liste d'ingrédients. Jamais 2 poissons le même jour.`
+    : '\n**RÉGIME VÉGÉTAL** : Aucune viande ni poisson. Varier légumineuses, tofu, tempeh, œufs (si végétarien).';
+
+  const consigneSansLactose = profilNorm.estSansLactose
+    ? '\n**SANS LACTOSE** : Aucun yaourt, fromage, lait animal, ricotta. Lait végétal uniquement.'
+    : '';
+
+  return `Tu es un chef nutritionniste expert. Génère un plan alimentaire complet sur 7 jours.
+
+## CONTRAINTES GLOBALES (NON NÉGOCIABLES)
+- Régime : ${regimes}
+- Allergènes à éviter absolument : ${allergenes}
+- Objectif nutritionnel : ${objectif}
+- Temps de préparation max : ${tempsMax} minutes (déjeuner/dîner)${consigneProteine}${consigneSansLactose}
+
+## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
+Jour      | Style culinaire | Protéines
+----------|-----------------|-----------------------------
+${lignesPlanning}
+
+## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES)
+- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, porridge, overnight oats, tartine, crêpe, bol yaourt, granola bowl
+- Déjeuner/Dîner : technique de cuisson différente chaque jour (poêlé, rôti, vapeur, mijoté, grillé, papillote, wok)
+- Aucun ingrédient principal répété plus de 2 fois sur la semaine (hors huile d'olive, sel, poivre)
+- Les noms de plats doivent tous être distincts et créatifs
+
+## CONTRAINTES PETIT-DÉJEUNER
+- Saveur SUCRÉE uniquement (fruits, céréales, miel${profilNorm.estSansLactose ? '' : ', yaourt'})
+- PAS de légumes, pas de recette salée
+- Maximum 5 ingrédients
+- Temps ≤ 10 minutes
+
+## FORMAT DE SORTIE : JSON strict uniquement, sans backticks, sans commentaire
 {
-  "nutraceutique": {
-    "nom": "Nom du complément alimentaire",
-    "description": "Description des bienfaits en 2-3 phrases",
-    "dosage": "ex: 500mg par jour",
-    "moment_optimal": "ex: Le matin à jeun",
-    "conseil": "Astuce pratique courte"
-  },
-  "aromatherapie": {
-    "nom": "Nom de l'huile essentielle ou du soin",
-    "description": "Description des bienfaits en 2 phrases",
-    "utilisation": "Mode d'utilisation précis",
-    "conseil": "Précaution ou astuce"
-  },
-  "routine": {
-    "nom": "Nom de la routine bien-être",
-    "description": "Description de la routine en 2-3 phrases",
-    "duree": "ex: 10 minutes",
-    "moment_optimal": "ex: Le soir avant le coucher",
-    "frequence": "ex: Quotidienne"
+  "jours": [
+    {
+      "jour": "lundi",
+      "petit_dejeuner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["200g de flocons d'avoine", "1 banane mûre", "150ml de lait d'amande"],
+        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise."],
+        "macros": { "calories": 350, "proteines": 12, "glucides": 45, "lipides": 10 }
+      },
+      "dejeuner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
+        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
+        "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 }
+      },
+      "diner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
+        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
+        "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 }
+      }
+    }
+    // ... 6 autres jours, même format
+  ]
+}
+
+Règles instructions :
+- Petit-déjeuner : EXACTEMENT 3 étapes courtes (≤15 mots chacune), temps ≤ 10 min
+- Déjeuner/Dîner : EXACTEMENT 4 étapes avec temps et températures précis
+- Chaque étape doit contenir une action culinaire concrète (pas de vague "cuisiner selon méthode")
+Macros visées : petit-déjeuner ~350 kcal/12g prot, déjeuner ~480 kcal/30g prot, dîner ~440 kcal/28g prot.
+Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
+}
+
+async function genererPlanBatch(
+  pairesProteines: [string, string][],
+  stylesJours: string[],
+  profilNorm: any,
+  symptomes: string[]
+): Promise<JourSquelette[] | null> {
+  if (!ANTHROPIC_API_KEY) return null;
+
+  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes);
+
+  // 2 tentatives avec backoff sur 429/5xx
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 8000,
+          temperature: 0.8,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (response.status === 429 || response.status >= 500) {
+        const waitMs = attempt === 0 ? 8000 : 15000;
+        console.warn(`[BATCH] HTTP ${response.status} (tentative ${attempt + 1}/2) — attente ${waitMs / 1000}s...`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errTxt = await response.text();
+        console.error(`[BATCH] HTTP ${response.status} — ${errTxt.substring(0, 300)}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '';
+
+      // Extraction JSON : chercher le premier { ... } valide
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('[BATCH] Pas de JSON détecté dans la réponse');
+        return null;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const jours: JourSquelette[] = parsed?.jours;
+
+      if (!Array.isArray(jours) || jours.length < 7) {
+        console.error(`[BATCH] Structure invalide : ${jours?.length ?? 0} jours reçus`);
+        return null;
+      }
+
+      console.log(`[BATCH] ${jours.length} jours reçus du LLM`);
+      return jours;
+
+    } catch (error) {
+      console.error('[BATCH] Exception:', error);
+      return null;
+    }
   }
-}`;
 
+  return null;
+}
+
+// ─── Transformation squelette → repas complet ──────────────────────────────
+
+function squelettVersRepas(
+  repasRaw: any,
+  typeRepas: string,
+  styleCulinaire: string,
+  proteineAssignee: string | null,
+  jourIndex: number
+): any {
+  // Validation : si invalide → fallback unitaire
+  if (!validerRepasSquelette(repasRaw)) {
+    console.warn(`[BATCH] Repas invalide (${typeRepas}, jour ${jourIndex + 1}) → fallback`);
+    return recetteFallbackUnitaire(typeRepas, proteineAssignee, styleCulinaire, jourIndex);
+  }
+
+  // Ingredients : le batch retourne des strings, on les garde tels quels
+  const ingredients = (repasRaw.ingredients as string[]).map((ing: string) => {
+    // Tenter de parser "200g de Saumon" → { nom, quantite, unite }
+    const match = ing.match(/^(\d+(?:[.,]\d+)?)\s*(g|ml|kg|L|cl|pièces?|tranches?|c\.?à[. ]s\.?|c\.?à[. ]c\.?)\s+(?:de\s+)?(.+)$/i);
+    if (match) {
+      return {
+        nom: match[3].trim(),
+        quantite: parseFloat(match[1].replace(',', '.')),
+        unite: match[2],
+      };
+    }
+    return { nom: ing.trim(), quantite: 1, unite: 'portion' };
+  });
+
+  return {
+    nom: repasRaw.nom.trim(),
+    type_repas: typeRepas,
+    style_culinaire: styleCulinaire,
+    ingredients,
+    instructions: repasRaw.instructions || [],
+    temps_preparation: typeRepas === 'petit-dejeuner' ? 10 : 15,
+    temps_cuisson: typeRepas === 'petit-dejeuner' ? 0 : 20,
+    portions: typeRepas === 'petit-dejeuner' ? 1 : 2,
+    valeurs_nutritionnelles: {
+      calories: repasRaw.macros.calories || 0,
+      proteines: repasRaw.macros.proteines || 0,
+      glucides: repasRaw.macros.glucides || 0,
+      lipides: repasRaw.macros.lipides || 0,
+    },
+    astuces: [],
+    variantes: [],
+    genere_par_llm: true,
+  };
+}
+
+// ─── Cache : lecture et écriture ───────────────────────────────────────────
+
+async function lireCachePlan(supabase: any, profilId: string): Promise<any | null> {
   try {
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 600, temperature: 0.8, messages: [{ role: 'user', content: prompt }] }),
-    });
+    const { data, error } = await supabase
+      .from('plans_generes_cache')
+      .select('plan_json, created_at, symptomes')
+      .eq('profil_id', profilId)
+      .eq('source', 'semaine')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (!response.ok) throw new Error('LLM wellness failed');
+    if (error) {
+      console.warn('[CACHE] Erreur lecture cache:', error.message);
+      return null;
+    }
 
-    const data = await response.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON');
+    if (data?.plan_json) {
+      console.log(`[CACHE] Plan trouvé — généré le ${data.created_at}`);
+      return data.plan_json;
+    }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      nutraceutiques: parsed.nutraceutique ? [parsed.nutraceutique] : [],
-      aromatherapie:  parsed.aromatherapie  ? [parsed.aromatherapie]  : [],
-      routines:       parsed.routine        ? [parsed.routine]        : [],
-    };
-  } catch (_) {
-    // Fallback statique minimal
-    const fallbacks: Record<string, { nutraceutique: any, aromatherapie: any, routine: any }> = {
-      vitalite: {
-        nutraceutique: { nom: 'Vitamine B12', description: 'Essentielle au métabolisme énergétique et à la formation des globules rouges. Réduit la fatigue persistante.', dosage: '1000 µg/jour', moment_optimal: 'Le matin au petit-déjeuner', conseil: 'Optez pour une forme méthylcobalamine pour une meilleure assimilation.' },
-        aromatherapie:  { nom: 'Huile essentielle de menthe poivrée', description: 'Stimulante et énergisante, elle combat la fatigue mentale et physique.', utilisation: '2 gouttes sur les poignets, à inhaler le matin.', conseil: 'Ne pas utiliser le soir, peut perturber le sommeil.' },
-        routine:        { nom: 'Marche énergisante matinale', description: 'Une marche rapide de 20 minutes le matin booste la sérotonine et l\'énergie pour toute la journée.', duree: '20 minutes', moment_optimal: 'Le matin au réveil', frequence: 'Quotidienne' },
-      },
-      serenite: {
-        nutraceutique: { nom: 'Magnésium bisglycinate', description: 'Le magnésium régule le système nerveux et réduit le stress et l\'anxiété. La forme bisglycinate est la mieux tolérée.', dosage: '300 mg/jour', moment_optimal: 'Le soir au dîner', conseil: 'À prendre avec un repas pour éviter les effets digestifs.' },
-        aromatherapie:  { nom: 'Huile essentielle de lavande vraie', description: 'Reconnue pour ses propriétés apaisantes et anxiolytiques. Favorise la détente profonde.', utilisation: '3 gouttes en diffusion 20 minutes le soir, ou 1 goutte sur les tempes.', conseil: 'La lavande vraie est la plus douce, safe pour un usage quotidien.' },
-        routine:        { nom: 'Respiration 4-7-8 anti-stress', description: 'Cette technique de cohérence cardiaque active le système nerveux parasympathique pour une détente immédiate.', duree: '5 minutes', moment_optimal: 'En cas de stress ou le soir', frequence: '2 fois par jour' },
-      },
-      sommeil: {
-        nutraceutique: { nom: 'Mélatonine + Valériane', description: 'La mélatonine régule le cycle circadien tandis que la valériane améliore la qualité du sommeil profond.', dosage: '0,5 mg mélatonine + 300 mg valériane', moment_optimal: '30 minutes avant le coucher', conseil: 'Commencez par la dose minimale de mélatonine efficace.' },
-        aromatherapie:  { nom: 'Huile essentielle de camomille romaine', description: 'Puissant sédatif naturel qui favorise l\'endormissement et réduit les réveils nocturnes.', utilisation: '2 gouttes sur l\'oreiller ou en diffusion 15 minutes avant le coucher.', conseil: 'Associer avec la lavande pour un effet renforcé.' },
-        routine:        { nom: 'Rituel de déconnexion numérique', description: 'Éteindre tous les écrans 1h avant de dormir et lire ou méditer pour préparer le cerveau au sommeil.', duree: '60 minutes', moment_optimal: '1h avant le coucher', frequence: 'Quotidienne' },
-      },
-      digestion: {
-        nutraceutique: { nom: 'Probiotiques Lactobacillus', description: 'Les probiotiques rééquilibrent le microbiome intestinal, réduisent les ballonnements et améliorent le transit.', dosage: '10 milliards UFC/jour', moment_optimal: 'Le matin à jeun', conseil: 'Conservez au réfrigérateur pour préserver les bactéries vivantes.' },
-        aromatherapie:  { nom: 'Huile essentielle de basilic tropical', description: 'Spasmolytique puissant, elle soulage les crampes abdominales, les ballonnements et les spasmes digestifs.', utilisation: '2 gouttes dans une huile végétale, masser le ventre dans le sens des aiguilles d\'une montre.', conseil: 'Diluer à 10% dans une huile de noisette ou d\'amande douce.' },
-        routine:        { nom: 'Yoga digestif du matin', description: 'Quelques postures spécifiques (torsions, position du chat-vache) activent le péristaltisme et soulagent les inconforts digestifs.', duree: '10 minutes', moment_optimal: 'Le matin à jeun', frequence: 'Quotidienne' },
-      },
-      mobilite: {
-        nutraceutique: { nom: 'Oméga-3 EPA/DHA', description: 'Les acides gras oméga-3 réduisent l\'inflammation articulaire et améliorent la souplesse. Essentiels pour la santé des articulations.', dosage: '2 g EPA+DHA/jour', moment_optimal: 'Avec les repas principaux', conseil: 'Choisissez une source certifiée sans métaux lourds (EPAX, MEG-3).' },
-        aromatherapie:  { nom: 'Huile essentielle de gaulthérie', description: 'Riche en salicylate de méthyle, elle soulage les douleurs musculaires et articulaires comme un anti-inflammatoire naturel.', utilisation: 'Diluer à 5% dans une huile végétale et masser les zones douloureuses.', conseil: 'Ne pas utiliser en cas d\'allergie à l\'aspirine.' },
-        routine:        { nom: 'Stretching articulaire quotidien', description: 'Une séance de mobilité douce préserve la santé articulaire, améliore la souplesse et réduit les raideurs.', duree: '15 minutes', moment_optimal: 'Le matin ou après l\'effort', frequence: 'Quotidienne' },
-      },
-      hormones: {
-        nutraceutique: { nom: 'Vitex Agnus Castus', description: 'Régule les hormones féminines, réduit les symptômes prémenstruels et contribue à l\'équilibre hormonal naturel.', dosage: '400 mg/jour', moment_optimal: 'Le matin', conseil: 'Prendre en cure de 3 mois minimum pour observer les effets.' },
-        aromatherapie:  { nom: 'Huile essentielle de sauge sclarée', description: 'Phytœstrogène naturel qui rééquilibre les hormones féminines et atténue les bouffées de chaleur.', utilisation: '2 gouttes diluées dans une huile végétale, appliquer sur le bas-ventre.', conseil: 'Déconseillé pendant la grossesse et l\'allaitement.' },
-        routine:        { nom: 'Marche méditative en nature', description: 'L\'exercice modéré régule le cortisol et les hormones sexuelles. La nature amplifie l\'effet anti-stress.', duree: '30 minutes', moment_optimal: 'En fin d\'après-midi', frequence: '5 fois par semaine' },
-      },
-    };
+    return null;
+  } catch (e) {
+    console.warn('[CACHE] Exception lecture cache:', e);
+    return null;
+  }
+}
 
-    const key = symptomes[0] || 'vitalite';
-    const fb = fallbacks[key] || fallbacks['vitalite'];
-    return {
-      nutraceutiques: [fb.nutraceutique],
-      aromatherapie:  [fb.aromatherapie],
-      routines:       [fb.routine],
-    };
+async function ecrireCachePlan(
+  supabase: any,
+  profilId: string,
+  symptomes: string[],
+  planJson: any
+): Promise<void> {
+  const { error } = await supabase
+    .from('plans_generes_cache')
+    .upsert(
+      {
+        profil_id: profilId,
+        source: 'semaine',
+        symptomes,
+        plan_json: planJson,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { onConflict: 'profil_id,source' }
+    );
+  if (error) {
+    console.error('[CACHE] Erreur upsert plan semaine:', error.message, error.code);
+  } else {
+    console.log('[CACHE] Plan semaine sauvegardé (upsert ok)');
   }
 }
 
@@ -961,7 +735,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, symptomes } = body;
+    const { profil_id, symptomes, force_refresh = false } = body;
 
     if (!profil_id) {
       return new Response(
@@ -971,10 +745,21 @@ serve(async (req: Request) => {
     }
 
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Charger le profil
+    // ── 1. LECTURE CACHE (si pas force_refresh) ────────────────────────────
+    if (!force_refresh) {
+      const cached = await lireCachePlan(supabase, profil_id);
+      if (cached) {
+        console.log('[generer-plan-semaine] Retour depuis le cache');
+        return new Response(
+          JSON.stringify({ ...cached, _source: 'cache' }),
+          { status: 200, headers: CORS_HEADERS }
+        );
+      }
+    }
+
+    // ── 2. CHARGEMENT PROFIL ───────────────────────────────────────────────
     const { data: profils } = await supabase
       .from('profils_utilisateurs')
       .select('*')
@@ -984,41 +769,38 @@ serve(async (req: Request) => {
     const profil = profils?.[0] || {};
 
     const profilNorm = {
-      regime_alimentaire: profil.regimes_alimentaires || profil.regime_alimentaire || [],
-      allergenes: profil.allergies || profil.allergenes || [],
+      regime_alimentaire: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire),
+      allergenes: normaliserArray(profil.allergies || profil.allergenes),
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
-      estVegan: (profil.regimes_alimentaires || profil.regime_alimentaire || []).some((r: string) =>
-        ['vegan', 'végétalien'].includes(r.toLowerCase())),
-      estVegetarien: (profil.regimes_alimentaires || profil.regime_alimentaire || []).some((r: string) =>
-        ['vegetarien', 'végétarien'].includes(r.toLowerCase())),
-      estSansLactose: (profil.allergies || profil.allergenes || []).includes('lactose') ||
-        (profil.regimes_alimentaires || profil.regime_alimentaire || []).some((r: string) =>
-          ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase())),
+      estVegan: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
+        .some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())),
+      estVegetarien: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
+        .some((r: string) => ['vegetarien', 'végétarien'].includes(r.toLowerCase())),
+      estSansLactose: normaliserArray(profil.allergies || profil.allergenes).includes('lactose') ||
+        normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
+          .some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase())),
       contraintesRegime: [] as string[],
     };
 
-    // Construire les contraintes textuelles
     if (profilNorm.estVegan) profilNorm.contraintesRegime.push('100% VEGANE');
     else if (profilNorm.estVegetarien) profilNorm.contraintesRegime.push('VÉGÉTARIENNE');
     if (profilNorm.estSansLactose) profilNorm.contraintesRegime.push('SANS LACTOSE');
-    if ((profil.allergies || []).includes('gluten') || (profil.regimes_alimentaires || []).includes('sans-gluten'))
+    if (normaliserArray(profil.allergies || []).includes('gluten') ||
+        normaliserArray(profil.regimes_alimentaires || []).includes('sans-gluten'))
       profilNorm.contraintesRegime.push('SANS GLUTEN');
 
-    console.log(`[generer-plan-semaine] profil=${profil_id}, symptomes=${symptomesArr.join(',')}`);
+    console.log(`[generer-plan-semaine] GÉNÉRATION profil=${profil_id}, force=${force_refresh}, symptomes=${symptomesArr.join(',')}`);
 
-    // Charger les aliments
+    // ── 3. PRÉPARATION PROTÉINES ET STYLES ────────────────────────────────
     const aliments = await chargerAliments(supabase, symptomesArr, profilNorm);
 
-    // Sélectionner les protéines disponibles
     let proteinesDisponibles: string[] = [];
     if (!profilNorm.estVegan && !profilNorm.estVegetarien) {
-      const proteinesAnimales = aliments
+      proteinesDisponibles = aliments
         .filter(a => estViandePoissonCrustace(a.categorie || ''))
         .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
         .map(a => a.nom);
-      proteinesDisponibles = proteinesAnimales;
     } else {
-      // Pour végétariens/vegans : légumineuses, œufs (végétarien), tofu, tempeh
       proteinesDisponibles = aliments
         .filter(a => {
           const cat = (a.categorie || '').toLowerCase();
@@ -1028,24 +810,19 @@ serve(async (req: Request) => {
         .map(a => a.nom);
     }
 
-    // Déduplication des protéines
     const proteinesUniques = [...new Set(proteinesDisponibles)];
-
-    // Si pas assez de protéines en BDD, utiliser des valeurs par défaut
     const proteinesPool = proteinesUniques.length >= 7
       ? shuffleArray(proteinesUniques)
-      : shuffleArray([...proteinesUniques, 'Poulet', 'Saumon', 'Boeuf', 'Thon', 'Crevettes', 'Dinde', 'Maquereau'].filter((v, i, a) => a.indexOf(v) === i));
+      : shuffleArray([...proteinesUniques, 'Poulet', 'Saumon', 'Boeuf', 'Thon', 'Crevettes', 'Dinde', 'Maquereau']
+          .filter((v, i, a) => a.indexOf(v) === i));
 
-    // Assigner 2 protéines par jour (déjeuner + dîner) sans répétition
-    // On s'assure que poisson ≠ poisson dans le même jour
+    // Paires protéines : 2 par jour, jamais 2 poissons le même jour
     const pairesProteines: [string, string][] = [];
     const proteinesShuffled = shuffleArray(proteinesPool);
     let idx = 0;
     for (let j = 0; j < 7; j++) {
-      const prot1 = proteinesShuffled[idx % proteinesShuffled.length];
-      idx++;
+      const prot1 = proteinesShuffled[idx % proteinesShuffled.length]; idx++;
       let prot2 = proteinesShuffled[idx % proteinesShuffled.length];
-      // Éviter 2 poissons le même jour
       if (estPoisson(prot1) && estPoisson(prot2)) {
         const nonPoissons = proteinesShuffled.filter(p => !estPoisson(p));
         prot2 = nonPoissons.length > 0 ? nonPoissons[idx % nonPoissons.length] : prot2;
@@ -1054,104 +831,68 @@ serve(async (req: Request) => {
       pairesProteines.push([prot1, prot2]);
     }
 
-    // 7 styles culinaires différents (shufflé)
     const stylesJours = shuffleArray([...STYLES_CULINAIRES]).slice(0, 7);
 
-    // Charger les données wellness
-    const wellness = await chargerWellness(supabase, symptomesArr, profilNorm);
+    // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
+    const [joursLLM, wellness, motivation] = await Promise.all([
+      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr),
+      chargerWellness(supabase, symptomesArr),
+      genererMotivation(symptomesArr),
+    ]);
 
-    // Génération jour par jour (séquentielle) avec 1200ms entre chaque jour.
-    // Chaque jour reçoit la liste des noms déjà générés → le LLM ne répète pas.
-    // Les 3 repas d'un même jour sont lancés en parallèle (ils ne se dupliquent pas
-    // car les types de repas et les protéines sont distincts).
-    console.log('[generer-plan-semaine] Génération 21 recettes — 1 jour à la fois...');
-
-    const recettesResultats: any[] = [];
-    // Noms séparés par type : le petit-déjeuner ne reçoit que des noms de petits-déjeuners,
-    // le déjeuner/dîner ne reçoit que des noms de déjeuners/dîners.
-    // Cela évite de surcharger le prompt avec des noms de repas sans rapport
-    // (ex : "Saumon poêlé" n'aide pas à diversifier un petit-déjeuner).
-    const nomsBreakfast: string[] = [];
-    const nomsMeals: string[] = [];
-
-    for (let j = 0; j < 7; j++) {
-      if (j > 0) await new Promise(resolve => setTimeout(resolve, 1200));
-
-      const style = stylesJours[j];
-      const [protDej, protDin] = pairesProteines[j];
-      const autresProteines = pairesProteines
-        .filter((_, k) => k !== j)
-        .flatMap(([a, b]) => [a, b]);
-
-      // Stagger : fire les 3 requêtes avec 700ms d'écart pour éviter le burst TPM.
-      // On démarre chaque promesse séparément mais on les await toutes ensemble
-      // → délai total +1400ms par jour, en échange de ~0 rate limit.
-      const petitDejP = genererRecetteIA('petit-dejeuner', style, null, profilNorm, symptomesArr, [], [...nomsBreakfast])
-        .then(r => r || recetteFallback('petit-dejeuner', null, j));
-      await new Promise(r => setTimeout(r, 700));
-      const dejeunerP = genererRecetteIA('dejeuner', style, protDej, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
-        .then(r => r || recetteFallback('dejeuner', protDej, j));
-      await new Promise(r => setTimeout(r, 700));
-      const dinerP = genererRecetteIA('diner', style, protDin, profilNorm, symptomesArr, autresProteines, [...nomsMeals])
-        .then(r => r || recetteFallback('diner', protDin, j));
-      const [rPetitDej, rDejeuner, rDiner] = await Promise.all([petitDejP, dejeunerP, dinerP]);
-
-      // Enregistrer séparément les noms par type
-      if (rPetitDej?.nom) nomsBreakfast.push(rPetitDej.nom);
-      if (rDejeuner?.nom) nomsMeals.push(rDejeuner.nom);
-      if (rDiner?.nom)    nomsMeals.push(rDiner.nom);
-
-      recettesResultats.push(rPetitDej, rDejeuner, rDiner);
-      console.log(`[generer-plan-semaine] Jour ${j + 1}/7 : ${rPetitDej?.nom} | ${rDejeuner?.nom} | ${rDiner?.nom}`);
-    }
-
-    // Motivation + conseil en parallèle
-    const motivationPromise = genererMotivation(symptomesArr);
-
-    // Construire la structure semaine
-    const semaine: Record<string, any> = {};
-    for (let j = 0; j < 7; j++) {
-      const jour = JOURS_SEMAINE[j];
-      const offset = j * 3;
-      semaine[jour] = {
-        petit_dejeuner: recettesResultats[offset],
-        dejeuner: recettesResultats[offset + 1],
-        diner: recettesResultats[offset + 2],
-        pause: collationParDefaut(profilNorm, j),
-      };
-    }
-
-    const { message: messageMotivation, conseil: conseilDuJour } = await motivationPromise;
-
-    // ─── Diagnostic : compter LLM vs fallback ─────────────────────────────
-    const TYPES_REPAS = ['petit_dejeuner', 'dejeuner', 'diner'];
-    const fallbackDetails: { jour: string; type_repas: string }[] = [];
+    // ── 5. CONSTRUCTION SEMAINE (LLM ou fallback complet) ─────────────────
+    let semaine: Record<string, any>;
     let llmCount = 0;
-    recettesResultats.forEach((recette, i) => {
-      const jour = JOURS_SEMAINE[Math.floor(i / 3)];
-      const type = TYPES_REPAS[i % 3];
-      if (recette?.genere_par_llm === false) {
-        fallbackDetails.push({ jour, type_repas: type });
-      } else {
-        llmCount++;
-      }
-    });
-    const stats = { llm: llmCount, fallback: fallbackDetails.length, total: 21, details: fallbackDetails };
-    console.log(`[STATS] LLM=${llmCount}/21 | Fallback=${fallbackDetails.length}/21 | ${JSON.stringify(fallbackDetails)}`);
+    let fallbackCount = 0;
 
-    console.log('[generer-plan-semaine] ✅ Plan semaine généré avec succès');
+    if (joursLLM && joursLLM.length >= 7) {
+      semaine = {};
+      for (let j = 0; j < 7; j++) {
+        const jour = JOURS_SEMAINE[j];
+        const style = stylesJours[j];
+        const [protDej, protDin] = pairesProteines[j];
+        const jourRaw = joursLLM[j];
+
+        const petitDej = squelettVersRepas(jourRaw?.petit_dejeuner, 'petit-dejeuner', style, null, j);
+        const dejeuner = squelettVersRepas(jourRaw?.dejeuner, 'dejeuner', style, protDej, j);
+        const diner = squelettVersRepas(jourRaw?.diner, 'diner', style, protDin, j);
+
+        if (petitDej.genere_par_llm) llmCount++; else fallbackCount++;
+        if (dejeuner.genere_par_llm) llmCount++; else fallbackCount++;
+        if (diner.genere_par_llm) llmCount++; else fallbackCount++;
+
+        semaine[jour] = {
+          petit_dejeuner: petitDej,
+          dejeuner: dejeuner,
+          diner: diner,
+          pause: collationParDefaut(profilNorm, j),
+        };
+      }
+      console.log(`[STATS] LLM=${llmCount}/21 | Fallback=${fallbackCount}/21`);
+    } else {
+      console.warn('[generer-plan-semaine] Batch LLM échoué → fallback semaine complet');
+      semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm);
+      fallbackCount = 21;
+    }
+
+    // ── 6. RÉPONSE FINALE ─────────────────────────────────────────────────
+    const reponse = {
+      success: true,
+      semaine,
+      nutraceutiques: wellness.nutraceutiques,
+      aromatherapie: wellness.aromatherapie,
+      routines: wellness.routines,
+      message_motivation: motivation.message,
+      conseil_du_jour: motivation.conseil,
+      _stats: { llm: llmCount, fallback: fallbackCount, total: 21, mode: 'batch_v2' },
+      _source: 'generated',
+    };
+
+    // ── 7. SAUVEGARDE CACHE (await obligatoire — Deno coupe les promesses en suspend) ──
+    await ecrireCachePlan(supabase, profil_id, symptomesArr, reponse);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        semaine,
-        nutraceutiques: wellness.nutraceutiques,
-        aromatherapie: wellness.aromatherapie,
-        routines: wellness.routines,
-        message_motivation: messageMotivation,
-        conseil_du_jour: conseilDuJour,
-        _stats: stats,
-      }),
+      JSON.stringify(reponse),
       { status: 200, headers: CORS_HEADERS }
     );
 
