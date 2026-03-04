@@ -922,7 +922,7 @@
   <!-- Compact read-only recap -->
   <div style="background:rgba(196,113,74,0.06);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-top:4px;">
     <div id="configProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
-    <button onclick="fermerConfig();setTimeout(function(){switchTab('profil')},200)" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
+    <button onclick="fermerConfig();setTimeout(ouvrirProfilPanel,200)" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
   </div>
   <button class="btn-primary" style="margin-top:16px;" onclick="genererPlan(true)">✨ Générer mon plan</button>
 </div>
@@ -951,7 +951,7 @@
         <span style="font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--terracotta);">Vitalia</span>
       </div>
       <div class="header-actions">
-        <div class="profile-badge-btn" onclick="switchTab('profil')" title="Mon profil">
+        <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
           <div class="profile-avatar" id="profileAvatar">?</div>
           <span class="profile-name" id="profileNameBadge">Profil</span>
         </div>
@@ -1191,7 +1191,13 @@
         <div class="tab-header-title">Ma Semaine</div>
         <div class="tab-header-sub">Plan nutritionnel sur 7 jours</div>
       </div>
-      <button onclick="ouvrirConfig()" style="background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.18);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:16px;color:var(--mid-brown);">⚙️</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
+          <div class="profile-avatar" id="profileAvatarSemaine">?</div>
+          <span class="profile-name" id="profileNameBadgeSemaine">Profil</span>
+        </div>
+        <button onclick="ouvrirConfig()" style="background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.18);border-radius:12px;padding:8px 12px;cursor:pointer;font-size:16px;color:var(--mid-brown);">⚙️</button>
+      </div>
     </div>
 
     <!-- Controls -->
@@ -1224,7 +1230,7 @@
       <!-- Compact read-only recap -->
       <div style="background:rgba(196,113,74,0.06);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
         <div id="semaineProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
-        <button onclick="switchTab('profil')" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
+        <button onclick="ouvrirProfilPanel()" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
       </div>
       <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine(true)">
         <span id="semaineBtnText">✨ Générer ma semaine</span>
@@ -1258,9 +1264,15 @@
   <div id="tab-recette" class="tab-content">
 
     <!-- Header -->
-    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;border-bottom:1px solid rgba(196,113,74,0.08);">
-      <div class="tab-header-title">Recette à la demande</div>
-      <div class="tab-header-sub">Créée spécialement pour vous par Vitalia</div>
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div>
+        <div class="tab-header-title">Recette à la demande</div>
+        <div class="tab-header-sub">Créée spécialement pour vous par Vitalia</div>
+      </div>
+      <div class="profile-badge-btn" onclick="ouvrirProfilPanel()" title="Mon profil">
+        <div class="profile-avatar" id="profileAvatarRecette">?</div>
+        <span class="profile-name" id="profileNameBadgeRecette">Profil</span>
+      </div>
     </div>
 
     <!-- Controls -->
@@ -1320,7 +1332,7 @@
       <!-- Compact read-only recap -->
       <div style="background:rgba(196,113,74,0.06);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
         <div id="recetteProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
-        <button onclick="switchTab('profil')" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
+        <button onclick="ouvrirProfilPanel()" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
       </div>
 
       <button class="btn-primary" id="recetteBtnGenerate" onclick="genererRecetteUnique()">
@@ -1341,124 +1353,144 @@
   </div>
 
   <!-- ════════════════════════════════════ -->
-  <!--  TAB 4 — PROFIL                    -->
+  <!--  TAB 4 — À FAIRE                   -->
   <!-- ════════════════════════════════════ -->
-  <div id="tab-profil" class="tab-content">
+  <div id="tab-atfaire" class="tab-content">
 
     <!-- Sticky header -->
-    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(196,113,74,0.08);">
-      <div>
-        <div class="tab-header-title">Mon Profil</div>
-        <div class="tab-header-sub">Vos préférences et objectifs</div>
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div class="tab-header-title">À faire</div>
+      <div class="tab-header-sub">Courses, recettes et favoris</div>
+      <!-- Section tabs -->
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button id="atfaire-tab-liste" onclick="switchAtfaireSection('liste')"
+          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--terracotta);color:white;border:none;">🛒 Courses</button>
+        <button id="atfaire-tab-recettes" onclick="switchAtfaireSection('recettes')"
+          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--warm-white);color:var(--mid-brown);border:1.5px solid rgba(196,113,74,0.18);">📋 Recettes</button>
+        <button id="atfaire-tab-favoris" onclick="switchAtfaireSection('favoris')"
+          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--warm-white);color:var(--mid-brown);border:1.5px solid rgba(196,113,74,0.18);">⭐ Favoris</button>
       </div>
-      <div id="profilAvatarLg" style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0;">?</div>
     </div>
 
     <!-- Scrollable content -->
-    <div style="padding:20px 24px;padding-bottom:calc(var(--tab-bar-height) + 32px);display:flex;flex-direction:column;gap:28px;">
+    <div style="padding:20px 24px;padding-bottom:calc(var(--tab-bar-height) + 32px);display:flex;flex-direction:column;gap:16px;">
 
-      <!-- Identity card -->
-      <div style="background:var(--warm-white);border-radius:20px;border:1.5px solid rgba(196,113,74,0.1);padding:20px;box-shadow:0 4px 16px rgba(61,43,31,0.05);">
-        <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">
-          <div id="profilAvatarCard" style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:white;flex-shrink:0;">?</div>
-          <div style="flex:1;min-width:0;">
-            <div id="profilNom" style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--deep-brown);line-height:1.2;">Profil</div>
-            <div id="profilMetaBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"></div>
-          </div>
-        </div>
-        <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">✏️ Modifier mon profil complet</button>
-      </div>
-
-      <!-- Objectifs -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Mes objectifs santé</div>
-        <div class="chips" id="profilObjectifsChips">
-          <div class="chip" data-val="vitalite" onclick="toggleProfilObjectif(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
-          <div class="chip" data-val="serenite" onclick="toggleProfilObjectif(this,'serenite')">🧘 Stress &amp; Sérénité</div>
-          <div class="chip" data-val="digestion" onclick="toggleProfilObjectif(this,'digestion')">🌿 Digestion</div>
-          <div class="chip" data-val="sommeil" onclick="toggleProfilObjectif(this,'sommeil')">🌙 Sommeil</div>
-          <div class="chip" data-val="mobilite" onclick="toggleProfilObjectif(this,'mobilite')">💪 Mobilité</div>
-          <div class="chip" data-val="hormones" onclick="toggleProfilObjectif(this,'hormones')">🌸 Hormones</div>
-        </div>
-      </div>
-
-      <!-- Régimes -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Régimes alimentaires</div>
-        <div class="chips" id="profilRegimesChips">
-          <div class="chip" data-val="omnivore"    onclick="toggleProfilRegime(this,'omnivore')">🥩 Omnivore</div>
-          <div class="chip" data-val="vegan"       onclick="toggleProfilRegime(this,'vegan')">🌱 Végan</div>
-          <div class="chip" data-val="vegetarien"  onclick="toggleProfilRegime(this,'vegetarien')">🥗 Végétarien</div>
-          <div class="chip" data-val="sans_gluten" onclick="toggleProfilRegime(this,'sans_gluten')">🌾 Sans gluten</div>
-          <div class="chip" data-val="sans_lactose" onclick="toggleProfilRegime(this,'sans_lactose')">🥛 Sans lactose</div>
-          <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
-          <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
-          <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
-        </div>
-      </div>
-
-      <!-- Allergènes -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Allergènes à éviter</div>
-        <div class="chips" id="profilAllergiesChips">
-          <div class="chip" data-val="arachides" onclick="toggleProfilAllergie(this,'arachides')">🥜 Arachides</div>
-          <div class="chip" data-val="noix"      onclick="toggleProfilAllergie(this,'noix')">🌰 Noix</div>
-          <div class="chip" data-val="poisson"   onclick="toggleProfilAllergie(this,'poisson')">🐟 Poisson</div>
-          <div class="chip" data-val="crustaces" onclick="toggleProfilAllergie(this,'crustaces')">🦐 Crustacés</div>
-          <div class="chip" data-val="soja"      onclick="toggleProfilAllergie(this,'soja')">🫘 Soja</div>
-          <div class="chip" data-val="sesame"    onclick="toggleProfilAllergie(this,'sesame')">🌻 Sésame</div>
-          <div class="chip" data-val="gluten"    onclick="toggleProfilAllergie(this,'gluten')">🌾 Gluten</div>
-          <div class="chip" data-val="lactose"   onclick="toggleProfilAllergie(this,'lactose')">🥛 Lactose</div>
-        </div>
-      </div>
-
-      <!-- Temps de cuisine -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Temps de cuisine max</div>
-        <div class="chips" id="profilTempsCuisineChips">
-          <div class="chip"          data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
-          <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
-          <div class="chip"          data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
-          <div class="chip"          data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
-        </div>
-      </div>
-
-      <!-- Budget repas -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Budget repas</div>
-        <div class="chips" id="profilBudgetChips">
-          <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit &lt; 10chf</div>
-          <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen 10-20 chf</div>
-          <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand &gt; 20 chf</div>
-        </div>
-      </div>
-
-      <!-- Save button -->
-      <button class="btn-primary" id="profilSaveBtn" onclick="sauvegarderProfil()">
-        <span>💾 Enregistrer mes préférences</span>
-      </button>
-
-      <!-- Liste de courses -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Ma liste de courses</div>
+      <!-- Section Liste de courses -->
+      <div id="atfaire-section-liste">
         <div id="listeCoursesProfile" style="display:flex;flex-direction:column;gap:8px;">
           <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Sélectionnez des recettes pour générer votre liste de courses</div>
         </div>
       </div>
 
-      <!-- Recettes sauvegardées -->
-      <div>
-        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--deep-brown);margin-bottom:12px;">Mes recettes sauvegardées</div>
+      <!-- Section Mes recettes -->
+      <div id="atfaire-section-recettes" style="display:none;">
         <div id="recettesSauvegardeesListe" style="display:flex;flex-direction:column;gap:10px;">
           <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Aucune recette sauvegardée</div>
         </div>
       </div>
 
-      <!-- Changer de compte -->
-      <div style="text-align:center;padding-top:4px;">
-        <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
+      <!-- Section Favoris -->
+      <div id="atfaire-section-favoris" style="display:none;">
+        <div id="favorisListe" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ pour l'ajouter ici</div>
+        </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Profil panel (slide-in) ── -->
+  <div class="config-panel" id="profilPanel">
+    <div class="config-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div class="config-title" style="margin-bottom:0;">Mon Profil</div>
+      <button onclick="fermerProfilPanel()" style="background:var(--cream);border:none;border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--mid-brown);">✕</button>
+    </div>
+
+    <!-- Identity card -->
+    <div style="background:var(--warm-white);border-radius:20px;border:1.5px solid rgba(196,113,74,0.1);padding:16px;margin-bottom:20px;">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+        <div id="profilAvatarCard" style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:white;flex-shrink:0;">?</div>
+        <div style="flex:1;min-width:0;">
+          <div id="profilNom" style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--deep-brown);line-height:1.2;">Profil</div>
+          <div id="profilMetaBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Objectifs -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Mes objectifs santé</div>
+      <div class="chips" id="profilObjectifsChips">
+        <div class="chip" data-val="vitalite" onclick="toggleProfilObjectif(this,'vitalite')">⚡ Fatigue &amp; Vitalité</div>
+        <div class="chip" data-val="serenite" onclick="toggleProfilObjectif(this,'serenite')">🧘 Stress &amp; Sérénité</div>
+        <div class="chip" data-val="digestion" onclick="toggleProfilObjectif(this,'digestion')">🌿 Digestion</div>
+        <div class="chip" data-val="sommeil" onclick="toggleProfilObjectif(this,'sommeil')">🌙 Sommeil</div>
+        <div class="chip" data-val="mobilite" onclick="toggleProfilObjectif(this,'mobilite')">💪 Mobilité</div>
+        <div class="chip" data-val="hormones" onclick="toggleProfilObjectif(this,'hormones')">🌸 Hormones</div>
+      </div>
+    </div>
+
+    <!-- Régimes -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Régimes alimentaires</div>
+      <div class="chips" id="profilRegimesChips">
+        <div class="chip" data-val="omnivore"    onclick="toggleProfilRegime(this,'omnivore')">🥩 Omnivore</div>
+        <div class="chip" data-val="vegan"       onclick="toggleProfilRegime(this,'vegan')">🌱 Végan</div>
+        <div class="chip" data-val="vegetarien"  onclick="toggleProfilRegime(this,'vegetarien')">🥗 Végétarien</div>
+        <div class="chip" data-val="sans_gluten" onclick="toggleProfilRegime(this,'sans_gluten')">🌾 Sans gluten</div>
+        <div class="chip" data-val="sans_lactose" onclick="toggleProfilRegime(this,'sans_lactose')">🥛 Sans lactose</div>
+        <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
+        <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
+        <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
+      </div>
+    </div>
+
+    <!-- Allergènes -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Allergènes à éviter</div>
+      <div class="chips" id="profilAllergiesChips">
+        <div class="chip" data-val="arachides" onclick="toggleProfilAllergie(this,'arachides')">🥜 Arachides</div>
+        <div class="chip" data-val="noix"      onclick="toggleProfilAllergie(this,'noix')">🌰 Noix</div>
+        <div class="chip" data-val="poisson"   onclick="toggleProfilAllergie(this,'poisson')">🐟 Poisson</div>
+        <div class="chip" data-val="crustaces" onclick="toggleProfilAllergie(this,'crustaces')">🦐 Crustacés</div>
+        <div class="chip" data-val="soja"      onclick="toggleProfilAllergie(this,'soja')">🫘 Soja</div>
+        <div class="chip" data-val="sesame"    onclick="toggleProfilAllergie(this,'sesame')">🌻 Sésame</div>
+        <div class="chip" data-val="gluten"    onclick="toggleProfilAllergie(this,'gluten')">🌾 Gluten</div>
+        <div class="chip" data-val="lactose"   onclick="toggleProfilAllergie(this,'lactose')">🥛 Lactose</div>
+      </div>
+    </div>
+
+    <!-- Temps de cuisine -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Temps de cuisine max</div>
+      <div class="chips" id="profilTempsCuisineChips">
+        <div class="chip"          data-val="15" onclick="selectSharedTemps(this,15)">⚡ 15 min</div>
+        <div class="chip selected" data-val="30" onclick="selectSharedTemps(this,30)">🕐 30 min</div>
+        <div class="chip"          data-val="45" onclick="selectSharedTemps(this,45)">🍳 45 min</div>
+        <div class="chip"          data-val="60" onclick="selectSharedTemps(this,60)">👨‍🍳 1h+</div>
+      </div>
+    </div>
+
+    <!-- Budget repas -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Budget repas</div>
+      <div class="chips" id="profilBudgetChips">
+        <div class="chip" data-val="faible" onclick="selectSharedBudget(this,'faible')">💰 Petit &lt; 10chf</div>
+        <div class="chip selected" data-val="moyen" onclick="selectSharedBudget(this,'moyen')">💰 Moyen 10-20 chf</div>
+        <div class="chip" data-val="eleve" onclick="selectSharedBudget(this,'eleve')">💰 Grand &gt; 20 chf</div>
+      </div>
+    </div>
+
+    <!-- Save button -->
+    <button class="btn-primary" id="profilSaveBtn" onclick="sauvegarderProfil()" style="margin-bottom:12px;">
+      <span>💾 Enregistrer mes préférences</span>
+    </button>
+
+    <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;">✏️ Modifier profil complet</button>
+
+    <div style="text-align:center;">
+      <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
     </div>
   </div>
 
@@ -1482,9 +1514,9 @@
       <span class="tab-icon">🍳</span>
       <span class="tab-label">Recette</span>
     </button>
-    <button class="tab-btn" id="tab-btn-profil" onclick="switchTab('profil')">
-      <span class="tab-icon">👤</span>
-      <span class="tab-label">Profil</span>
+    <button class="tab-btn" id="tab-btn-atfaire" onclick="switchTab('atfaire')">
+      <span class="tab-icon">✅</span>
+      <span class="tab-label">À faire</span>
     </button>
   </nav>
 
@@ -1551,7 +1583,7 @@ function switchTab(name) {
       genererSemaine(false)
     }
   }
-  if (name === 'profil')  { chargerProfilUI(); afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
+  if (name === 'atfaire') { afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
 
   fermerConfig()
 }
@@ -1565,8 +1597,41 @@ function fermerConfig() {
   document.getElementById('configPanel').classList.remove('open')
   document.getElementById('overlay').classList.remove('active')
 }
+
+function ouvrirProfilPanel() {
+  chargerProfilUI()
+  document.getElementById('profilPanel').classList.add('open')
+  document.getElementById('overlay').classList.add('active')
+}
+function fermerProfilPanel() {
+  document.getElementById('profilPanel').classList.remove('open')
+  document.getElementById('overlay').classList.remove('active')
+}
+
+function switchAtfaireSection(name) {
+  ;['liste','recettes','favoris'].forEach(function(s) {
+    var section = document.getElementById('atfaire-section-' + s)
+    var btn     = document.getElementById('atfaire-tab-' + s)
+    if (section) section.style.display = (s === name) ? '' : 'none'
+    if (btn) {
+      if (s === name) {
+        btn.style.background = 'var(--terracotta)'
+        btn.style.color      = 'white'
+        btn.style.border     = 'none'
+      } else {
+        btn.style.background = 'var(--warm-white)'
+        btn.style.color      = 'var(--mid-brown)'
+        btn.style.border     = '1.5px solid rgba(196,113,74,0.18)'
+      }
+    }
+  })
+  if (name === 'favoris')  afficherFavoris()
+  if (name === 'recettes') afficherRecettesSauvegardees()
+  if (name === 'liste')    afficherListeCoursesProfile()
+}
 function fermerTout() {
   fermerConfig()
+  fermerProfilPanel()
   var ally = document.getElementById('allyModal')
   if (ally) ally.style.display = 'none'
 }
@@ -1860,15 +1925,17 @@ function appliquerProfil(p) {
   if (p.temps_cuisine_max) profilTempsCuisineCourant = p.temps_cuisine_max
   // Sync all chips
   syncAllPreferencesChips()
-  // Update Aujourd'hui profile button
-  var av = document.getElementById('profileAvatar')
-  var nm = document.getElementById('profileNameBadge')
-  if (p.prenom) {
-    if (av) av.textContent = p.prenom.charAt(0).toUpperCase()
-    if (nm) nm.textContent = p.prenom
-  }
-  // Refresh Profil tab if active
-  if (currentTab === 'profil') chargerProfilUI()
+  // Update profile badges (Aujourd'hui + Semaine + Recette)
+  var initial = p.prenom ? p.prenom.charAt(0).toUpperCase() : '?'
+  var prenom  = p.prenom || 'Profil'
+  ;['profileAvatar','profileAvatarSemaine','profileAvatarRecette'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.textContent = initial
+  })
+  ;['profileNameBadge','profileNameBadgeSemaine','profileNameBadgeRecette'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.textContent = prenom
+  })
+  // Refresh Profil panel data
+  chargerProfilUI()
 }
 
 // ════════════════════════════════════════════
@@ -1930,7 +1997,7 @@ function buildActionsBar(m) {
         }).join('') +
       '</div>' +
     '</div>' +
-    '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">&#128278; Sauvegarder</button>' +
+    '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">✅ À faire</button>' +
   '</div>'
 }
 
@@ -2177,8 +2244,8 @@ function sauvegarderRecette(m) {
     tip: r.astuces && r.astuces[0], note: 0 })
   localStorage.setItem('vitalia_saved_home', JSON.stringify(savedRecipes))
   var btn = document.getElementById('save-btn-' + m)
-  if (btn) { btn.textContent = '✓ Sauvegardée'; btn.classList.add('saved') }
-  afficherToast('Recette sauvegardée ! 🔖')
+  if (btn) { btn.textContent = '✓ Ajoutée'; btn.classList.add('saved') }
+  afficherToast('Recette ajoutée à faire ! ✅')
   sauvegarderRecetteSupabase(r, m)
 }
 
@@ -2394,6 +2461,7 @@ var semaineJourOuvert = 'lundi'  // track which day is currently open
 // State for saved recipes selection (shopping list)
 var savedSelected = {}   // { idx: true/false }
 var savedServings = {}   // { idx: number }
+var coursesChecked = {}  // { nom: true/false } — état checkboxes modale courses
 
 // Render 7-day accordion (with portions, rating, save, shopping list, wellness)
 function afficherSemaine(data) {
@@ -2516,7 +2584,7 @@ function afficherSemaine(data) {
       html += '</div>'
 
       // Save
-      html += '<button class="save-mini" onclick="sauvegarderRecetteSemaine(\'' + id + '\');event.stopPropagation();">💚 Sauvegarder</button>'
+      html += '<button class="save-mini" onclick="sauvegarderRecetteSemaine(\'' + id + '\');event.stopPropagation();">✅ À faire</button>'
 
       // Shopping list
       html += '<button class="select-btn-mini" id="select-btn-' + id + '" onclick="toggleSelectRecetteSemaine(\'' + id + '\');event.stopPropagation();">🛒 Sélectionner</button>'
@@ -2788,6 +2856,7 @@ function aggregerIngredients() {
 }
 
 function afficherListeCourses() {
+  coursesChecked = {}
   var ingredients = aggregerIngredients()
   var html = '<div class="courses-modal" id="coursesModal" onclick="if(event.target===this)fermerListeCourses()">'
   html += '<div class="courses-modal-inner">'
@@ -2799,10 +2868,15 @@ function afficherListeCourses() {
   if (!ingredients.length) {
     html += '<p style="color:var(--text-light);text-align:center;padding:24px 0;">Aucun ingrédient sélectionné</p>'
   } else {
-    html += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">'
+    html += '<div id="coursesModalList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">'
     ingredients.forEach(function(ing) {
-      var lbl = ing.nom + (ing.quantite ? ' — ' + ing.quantite + ' ' + ing.unite : '')
-      html += '<div class="courses-item"><input type="checkbox"><span style="font-size:14px;color:var(--deep-brown);">' + lbl + '</span></div>'
+      var key  = encodeURIComponent(ing.nom)
+      var qte  = ing.quantite ? (Math.round(ing.quantite) + '\u202f' + (ing.unite || 'g')) : ''
+      html += '<div onclick="toggleCoursesModalItem(\'' + key + '\')" style="cursor:pointer;background:var(--cream);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid transparent;transition:all 0.2s;" id="courses-item-' + key + '">' +
+              '<span style="width:22px;height:22px;border-radius:50%;border:2px solid rgba(196,113,74,0.3);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;"></span>' +
+              '<span style="flex:1;font-size:13px;font-weight:500;color:var(--deep-brown);">' + ing.nom + '</span>' +
+              (qte ? '<span style="font-size:12px;color:var(--text-light);flex-shrink:0;">' + qte + '</span>' : '') +
+              '</div>'
     })
     html += '</div>'
     html += '<button onclick="sauvegarderListeCourses()" style="width:100%;background:linear-gradient(135deg,var(--terracotta),var(--dusty-rose));color:white;border:none;border-radius:16px;padding:14px;font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:600;cursor:pointer;">💾 Sauvegarder dans le profil</button>'
@@ -2811,6 +2885,27 @@ function afficherListeCourses() {
   var existing = document.getElementById('coursesModal')
   if (existing) existing.remove()
   document.body.insertAdjacentHTML('beforeend', html)
+}
+
+function toggleCoursesModalItem(encodedNom) {
+  var nom = decodeURIComponent(encodedNom)
+  coursesChecked[nom] = !coursesChecked[nom]
+  var el = document.getElementById('courses-item-' + encodedNom)
+  if (!el) return
+  var done = !!coursesChecked[nom]
+  el.style.background = done ? 'rgba(122,158,126,0.08)' : 'var(--cream)'
+  el.style.borderColor = done ? 'rgba(122,158,126,0.3)' : 'transparent'
+  var circle = el.querySelector('span')
+  if (circle) {
+    circle.style.border = '2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)')
+    circle.style.background = done ? 'var(--sage)' : 'transparent'
+    circle.textContent = done ? '✓' : ''
+  }
+  var textSpan = el.querySelectorAll('span')[1]
+  if (textSpan) {
+    textSpan.style.color = done ? 'var(--text-light)' : 'var(--deep-brown)'
+    textSpan.style.textDecoration = done ? 'line-through' : 'none'
+  }
 }
 
 function fermerListeCourses() {
@@ -3021,7 +3116,7 @@ function afficherRecetteUnique(recette) {
   html += '<button onclick="sauvegarderRecetteUnique()"'
   html += ' style="width:100%;background:var(--sage);color:white;border:none;border-radius:16px;padding:14px;'
   html += ' font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;">'
-  html += '💚 Sauvegarder cette recette</button>'
+  html += '✅ Ajouter à faire</button>'
 
   html += '</div></div>'  // card-body + card
 
@@ -3269,6 +3364,16 @@ function afficherRecettesSauvegardees() {
            astuces +
            portionsStepper +
            selectBtn +
+           '    <div style="margin-top:12px;">' +
+           '      <div style="font-size:11px;color:var(--text-light);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Ma note</div>' +
+           '      <div style="display:flex;gap:6px;" id="saved-stars-' + idx + '">' +
+           [1,2,3,4,5].map(function(n) {
+             var lit = r.note && n <= r.note
+             return '<span onclick="noterRecetteSauvegardee(' + idx + ',' + n + ');event.stopPropagation();" ' +
+                    'style="font-size:22px;cursor:pointer;color:' + (lit ? 'var(--golden,#e8b84b)' : 'rgba(196,113,74,0.25)') + ';transition:color 0.15s;">★</span>'
+           }).join('') +
+           '      </div>' +
+           '    </div>' +
            '    <button onclick="supprimerRecetteSauvegardee(' + idx + ');event.stopPropagation();" style="margin-top:8px;width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Supprimer cette recette</button>' +
            '  </div>' +
            '</div>'
@@ -3289,6 +3394,55 @@ function afficherRecettesSauvegardees() {
   })
 }
 
+function afficherFavoris() {
+  var container = document.getElementById('favorisListe')
+  if (!container) return
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  var favs = saved.filter(function(r) { return r.note && r.note >= 4 })
+  if (!favs.length) {
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ pour l\'ajouter ici</div>'
+    return
+  }
+  container.innerHTML = favs.map(function(r, i) {
+    var nv   = r.valeurs_nutritionnelles || {}
+    var cal  = nv.calories ? nv.calories + ' kcal' : ''
+    var type = r.type_repas || ''
+    var date = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
+    var stars = '★'.repeat(Math.min(r.note, 5))
+    var rid  = 'fav-r-' + i
+
+    var ingredients = Array.isArray(r.ingredients) ? r.ingredients.map(function(ing) {
+      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' +
+             ing.nom + (ing.quantite ? ' ' + ing.quantite + '\u202f' + (ing.unite || 'g') : '') + '</span>'
+    }).join('') : ''
+
+    var instructions = Array.isArray(r.instructions) ? r.instructions.map(function(step, si) {
+      return '<div style="display:flex;gap:10px;margin-bottom:8px;">' +
+             '<span style="flex-shrink:0;width:20px;height:20px;background:var(--terracotta);color:white;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (si+1) + '</span>' +
+             '<span style="font-size:13px;color:var(--deep-brown);line-height:1.5;">' + step + '</span></div>'
+    }).join('') : ''
+
+    return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(232,184,75,0.3);overflow:hidden;">' +
+           '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+           '    <div style="flex:1;min-width:0;">' +
+           '      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + '</div>' +
+           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
+           '      <div style="font-size:13px;color:var(--golden,#e8b84b);margin-top:4px;">' + stars + '</div>' +
+           '    </div>' +
+           '    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">' +
+           (cal ? '<span style="font-size:12px;color:var(--text-light);">' + cal + '</span>' : '') +
+           '      <span id="arrow-' + rid + '" style="font-size:14px;color:var(--text-light);transition:transform 0.2s;">▼</span>' +
+           '    </div>' +
+           '  </div>' +
+           '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
+           instructions +
+           '  </div>' +
+           '</div>'
+  }).join('')
+}
+
 function toggleSavedRecette(id) {
   var el    = document.getElementById(id)
   var arrow = document.getElementById('arrow-' + id)
@@ -3306,6 +3460,64 @@ function supprimerRecetteSauvegardee(idx) {
     localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved))
   } catch(e) {}
   afficherRecettesSauvegardees()
+}
+
+async function noterRecetteSauvegardee(idx, note) {
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  if (!saved[idx]) return
+  saved[idx].note = note
+  try { localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved)) } catch(e) {}
+
+  // Update stars UI
+  var starsEl = document.getElementById('saved-stars-' + idx)
+  if (starsEl) {
+    starsEl.querySelectorAll('span').forEach(function(s, i) {
+      s.style.color = (i < note) ? 'var(--golden,#e8b84b)' : 'rgba(196,113,74,0.25)'
+    })
+  }
+
+  // Supabase PATCH
+  var r = saved[idx]
+  if (profil_id && profil_id !== 'new' && r.titre || r.nom) {
+    var titre = encodeURIComponent(r.titre || r.nom || '')
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&titre=eq.' + titre, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ note: note })
+      })
+    } catch(e) {}
+
+    // Gérer recettes_favorites
+    var favEntry = {
+      profil_id: profil_id,
+      titre: r.titre || r.nom || '',
+      moment: r.type_repas || '',
+      ingredients: r.ingredients || [],
+      steps: r.instructions || [],
+      tip: (r.astuces && r.astuces[0]) || '',
+      note: note
+    }
+    if (note >= 4) {
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'resolution=merge-duplicates' },
+          body: JSON.stringify(favEntry)
+        })
+      } catch(e) {}
+    } else {
+      try {
+        await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
+          method: 'DELETE',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+        })
+      } catch(e) {}
+    }
+  }
+
+  afficherToast(note >= 4 ? 'Ajouté aux favoris ⭐' : 'Note enregistrée')
 }
 
 // Toggle selection of a saved recipe for the shopping list

@@ -427,6 +427,8 @@ interface RepasSquelette {
   ingredients: string[];
   instructions: string[];
   macros: { calories: number; proteines: number; glucides: number; lipides: number };
+  temps_preparation?: number;
+  temps_cuisson?: number;
 }
 
 interface JourSquelette {
@@ -528,13 +530,17 @@ ${lignesPlanning}
         "nom": "Nom créatif du plat",
         "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
         "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
-        "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 }
+        "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 },
+        "temps_preparation": 10,
+        "temps_cuisson": 6
       },
       "diner": {
         "nom": "Nom créatif du plat",
         "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
         "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
-        "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 }
+        "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
+        "temps_preparation": 10,
+        "temps_cuisson": 25
       }
     }
     // ... 6 autres jours, même format
@@ -546,6 +552,13 @@ Règles instructions :
 - Déjeuner/Dîner : EXACTEMENT 4 étapes avec temps et températures précis
 - Chaque étape doit contenir une action culinaire concrète (pas de vague "cuisiner selon méthode")
 Macros visées : petit-déjeuner ~350 kcal/12g prot, déjeuner ~480 kcal/30g prot, dîner ~440 kcal/28g prot.
+Règles temps (cohérence obligatoire pour déjeuner/dîner) :
+- Poisson poêlé : temps_preparation=8, temps_cuisson=6
+- Poulet rôti : temps_preparation=10, temps_cuisson=30
+- Bœuf sauté wok : temps_preparation=10, temps_cuisson=8
+- Légumes vapeur/mijotés : temps_preparation=10, temps_cuisson=20
+- Salade/cru : temps_preparation=12, temps_cuisson=0
+- Plat mijoté (tajine, curry) : temps_preparation=12, temps_cuisson=35
 Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
 }
 
@@ -655,8 +668,8 @@ function squelettVersRepas(
     style_culinaire: styleCulinaire,
     ingredients,
     instructions: repasRaw.instructions || [],
-    temps_preparation: typeRepas === 'petit-dejeuner' ? 10 : 15,
-    temps_cuisson: typeRepas === 'petit-dejeuner' ? 0 : 20,
+    temps_preparation: repasRaw.temps_preparation ?? (typeRepas === 'petit-dejeuner' ? 10 : 15),
+    temps_cuisson: repasRaw.temps_cuisson ?? (typeRepas === 'petit-dejeuner' ? 0 : 20),
     portions: typeRepas === 'petit-dejeuner' ? 1 : 2,
     valeurs_nutritionnelles: {
       calories: repasRaw.macros.calories || 0,
