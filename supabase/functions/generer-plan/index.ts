@@ -91,6 +91,11 @@ const PETIT_DEJ_POOL: string[] = [
   "yaourt grec", "fromage blanc", "ricotta", "abricots secs", "raisins secs"
 ];
 
+// Ingrédients contenant du gluten dans les pools statiques
+const GLUTEN_FALLBACK = new Set(['pâtes complètes', "flocons d'avoine", 'pain complet', 'seigle', 'orge', 'épeautre', 'couscous', 'boulgour']);
+// Ingrédients poisson/fruits de mer dans PROTEINES_FALLBACK_ANIMALES
+const POISSON_FALLBACK = new Set(['pavé de saumon', 'filet de cabillaud', 'thon en conserve', 'maquereau', 'crevettes']);
+
 // Sélectionne les ingrédients pour les 3 repas du jour (fallback BDD vide)
 // Déjeuner & dîner : toujours 1 protéine + 1 légume + 1 féculent pour garantir
 // une recette nourrissante (évite "noix + cerises" comme repas principal).
@@ -101,12 +106,30 @@ function selectionnerIngredientsTroisRepas(
   ingredientsBanis: Set<string> = new Set(),
   profil?: any
 ): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
-  // Pool protéines adapté au régime alimentaire
+  // Extraire les allergènes déclarés pour filtrer les pools statiques
+  const allergenes: string[] = (profil?.allergenes || []).map((a: string) => a.toLowerCase());
+  const estSansGluten  = allergenes.includes('gluten');
+  const estSansPoisson = allergenes.includes('poisson') || allergenes.includes('fruits de mer');
+
+  // Pool protéines adapté au régime alimentaire ET aux allergies
   const estVegan      = profil?.regime_alimentaire?.some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())) ?? false;
   const estVegetarien = profil?.regime_alimentaire?.some((r: string) => ['vegetarien', 'végétarien'].includes(r.toLowerCase())) ?? false;
+
+  let proteinesAnimales = PROTEINES_FALLBACK_ANIMALES;
+  if (estSansPoisson) {
+    proteinesAnimales = proteinesAnimales.filter(p => !POISSON_FALLBACK.has(p.toLowerCase()));
+  }
   const proteinesPool = (estVegan || estVegetarien)
     ? PROTEINES_FALLBACK_VEGETALES
-    : [...PROTEINES_FALLBACK_ANIMALES, ...PROTEINES_FALLBACK_VEGETALES];
+    : [...proteinesAnimales, ...PROTEINES_FALLBACK_VEGETALES];
+
+  // Pool féculents filtré pour l'allergie gluten
+  let feculentsPool = FECULENTS_FALLBACK;
+  if (estSansGluten) {
+    feculentsPool = feculentsPool.filter(f => !GLUTEN_FALLBACK.has(f.toLowerCase()));
+    // Dernier recours si tout est filtré
+    if (feculentsPool.length === 0) feculentsPool = ['Quinoa', 'Riz basmati'];
+  }
 
   // Piocher un élément au hasard en excluant les bannis
   function piocher(pool: string[], exclu: Set<string>): string | undefined {
@@ -118,7 +141,7 @@ function selectionnerIngredientsTroisRepas(
   // Déjeuner : 1 protéine + 1 légume + 1 féculent
   const protDej     = piocher(proteinesPool, ingredientsBanis);
   const legumeDej   = piocher(LEGUMES_FALLBACK, ingredientsBanis);
-  const feculentDej = piocher(FECULENTS_FALLBACK, ingredientsBanis);
+  const feculentDej = piocher(feculentsPool, ingredientsBanis);
   const dejeuner    = [protDej, legumeDej, feculentDej].filter(Boolean) as string[];
 
   // Dîner : varier la protéine et le légume par rapport au déjeuner
@@ -129,7 +152,7 @@ function selectionnerIngredientsTroisRepas(
   ]);
   const protDin     = piocher(proteinesPool, excluDiner);
   const legumeDin   = piocher(LEGUMES_FALLBACK, excluDiner);
-  const feculentDin = piocher(FECULENTS_FALLBACK, ingredientsBanis);
+  const feculentDin = piocher(feculentsPool, ingredientsBanis);
   const diner       = [protDin, legumeDin, feculentDin].filter(Boolean) as string[];
 
   // Petit-déjeuner géré séparément via PETIT_DEJ_POOL (ne pas toucher ici)
@@ -526,7 +549,15 @@ serve(async (req) => {
     // → On charge le profil complet depuis Supabase via profil_id
     // =========================================================================
     const body = await req.json();
-    const { profil_id, symptomes, force_regeneration, meme_theme } = body;
+    const { profil_id, symptomes, force_regeneration, meme_theme, preferences_moment } = body;
+
+    // Helper : convertit un budget numérique (CHF) en catégorie 'faible'/'moyen'/'eleve'
+    function budgetNumeriquesVersCategorie(budgetChf: number | null | undefined): 'faible' | 'moyen' | 'eleve' {
+      if (!budgetChf) return 'moyen';
+      if (budgetChf <= 18) return 'faible';
+      if (budgetChf <= 32) return 'moyen';
+      return 'eleve';
+    }
 
     if (!profil_id) {
       return new Response(
@@ -593,8 +624,12 @@ serve(async (req) => {
       regime_alimentaire:      profilBDD.regimes_alimentaires   || [],
       allergenes:              profilBDD.allergies              || [],
       groupe_sanguin:          profilBDD.groupe_sanguin         || undefined,
-      budget:                  profilBDD.budget_complements     || 'moyen',
-      temps_preparation:       profilBDD.temps_cuisine_max      || 45,
+      // Budget : preference frontend > budget_max BDD > défaut 'moyen'
+      // NB: budget_complements est le budget suppléments (hors alimentation) — ne pas utiliser ici
+      budget:                  budgetNumeriquesVersCategorie(
+                                 preferences_moment?.budget_max ?? profilBDD.budget_max
+                               ),
+      temps_preparation:       preferences_moment?.temps_max ?? profilBDD.temps_cuisine_max ?? 45,
       styles_cuisines_favoris: profilBDD.styles_cuisines_favoris|| [],
       styles_cuisines_exclus:  profilBDD.styles_cuisines_exclus || [],
       niveau_variete:          profilBDD.niveau_variete         || 'moyenne'
@@ -779,13 +814,16 @@ serve(async (req) => {
     }
 
     // Petit-déjeuner : toujours depuis PETIT_DEJ_POOL (fruité/sucré, jamais protéines animales)
-    // Si sans lactose : retirer les laitiers du pool avant la sélection
+    // Filtrage allergies : lactose ET gluten retirés selon le profil
     const estSansLactose = profil.allergenes?.includes('lactose') ||
       profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
+    const estSansGlutenProfil = profil.allergenes?.includes('gluten') ||
+      profil.regime_alimentaire?.includes('sans-gluten');
     const LAITIERS_PETIT_DEJ = new Set(['yaourt grec', 'fromage blanc', 'ricotta']);
-    const poolPetitDej = estSansLactose
-      ? PETIT_DEJ_POOL.filter(item => !LAITIERS_PETIT_DEJ.has(item))
-      : PETIT_DEJ_POOL;
+    const GLUTEN_PETIT_DEJ   = new Set(["flocons d'avoine", 'granola']);
+    let poolPetitDej = PETIT_DEJ_POOL;
+    if (estSansLactose)    poolPetitDej = poolPetitDej.filter(item => !LAITIERS_PETIT_DEJ.has(item));
+    if (estSansGlutenProfil) poolPetitDej = poolPetitDej.filter(item => !GLUTEN_PETIT_DEJ.has(item));
     const shuffledPetitDej = [...poolPetitDej].sort(() => Math.random() - 0.5);
     ingPetitDej = shuffledPetitDej.slice(0, 3);
 
