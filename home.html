@@ -2814,7 +2814,6 @@ function afficherBoutonListeCourses() {
     try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste })) } catch(e) {}
   } else {
     bar.style.display = 'none'
-    try { localStorage.removeItem('vitalia_liste_courses') } catch(e) {}
   }
   // Refresh profil tab shopping list in real-time if it is visible
   afficherListeCoursesProfile()
