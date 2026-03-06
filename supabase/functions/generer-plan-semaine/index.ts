@@ -670,7 +670,9 @@ function squelettVersRepas(
     style_culinaire: styleCulinaire,
     ingredients,
     instructions: repasRaw.instructions || [],
-    temps_preparation: repasRaw.temps_preparation ?? (typeRepas === 'petit-dejeuner' ? 10 : 15),
+    temps_preparation: (repasRaw.temps_preparation && repasRaw.temps_preparation > 0)
+      ? repasRaw.temps_preparation
+      : (typeRepas === 'petit-dejeuner' ? 10 : 15),
     temps_cuisson: repasRaw.temps_cuisson ?? (typeRepas === 'petit-dejeuner' ? 0 : 20),
     portions: typeRepas === 'petit-dejeuner' ? 1 : 2,
     valeurs_nutritionnelles: {
@@ -793,7 +795,7 @@ serve(async (req: Request) => {
       regime_alimentaire: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire),
       allergenes: normaliserArray(profil.allergies || profil.allergenes),
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
-      budget: budgetRepasMap[profil.budget || 'moyen'] || '10-20 CHF par repas',
+      budget: budgetRepasMap[profil.budget_complements || profil.budget || 'moyen'] || '10-20 CHF par repas',
       estVegan: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
         .some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())),
       estVegetarien: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)

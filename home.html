@@ -1727,7 +1727,7 @@ function autoSauvegarderPreferences() {
   if (profilUtilisateur) {
     profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
     profilUtilisateur.temps_cuisine_max    = profilTempsCuisineCourant
-    profilUtilisateur.budget               = selectedBudget
+    profilUtilisateur.budget_complements   = selectedBudget
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
   clearTimeout(_prefTimer)
@@ -2010,14 +2010,6 @@ function buildActionsBar(m) {
       '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',-1)">&#8722;</button>' +
       '<span class="stepper-count" id="count-' + m + '">1</span>' +
       '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',1)">+</button>' +
-    '</div>' +
-    '<div class="recipe-rating">' +
-      '<span class="recipe-rating-label">Note</span>' +
-      '<div class="recipe-stars" id="stars-' + m + '">' +
-        [1,2,3,4,5].map(function(n) {
-          return '<span class="recipe-star" onclick="noterRecette(\'' + m + '\',' + n + ')">&#11088;</span>'
-        }).join('') +
-      '</div>' +
     '</div>' +
     '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">✅ À faire</button>' +
   '</div>'
@@ -2599,13 +2591,6 @@ function afficherSemaine(data) {
         html += '</div>'
       }
 
-      // Stars
-      html += '<div class="stars-semaine" id="stars-' + id + '">'
-      for (var s = 1; s <= 5; s++) {
-        html += '<span onclick="noterRecetteSemaine(\'' + id + '\',' + s + ');event.stopPropagation();">☆</span>'
-      }
-      html += '</div>'
-
       // Save
       html += '<button class="save-mini" onclick="sauvegarderRecetteSemaine(\'' + id + '\');event.stopPropagation();">✅ À faire</button>'
 
@@ -2821,17 +2806,10 @@ function afficherBoutonListeCourses() {
   var countSemaine = Object.values(semaineSelected).filter(Boolean).length
   var countSaved   = Object.values(savedSelected).filter(Boolean).length
   var count = countSemaine + countSaved
-  var bar   = document.getElementById('coursesBar')
-  var cnt   = document.getElementById('coursesCount')
-  if (!bar) return
+  // Auto-save list so À faire > Courses reflects current selection
   if (count > 0) {
-    if (cnt) cnt.textContent = count + (count > 1 ? ' recettes sélectionnées' : ' recette sélectionnée')
-    bar.style.display = 'flex'
-    // Auto-save immediately so Profil tab can show the list
     var liste = aggregerIngredients()
     try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste })) } catch(e) {}
-  } else {
-    bar.style.display = 'none'
   }
   // Refresh profil tab shopping list in real-time if it is visible
   afficherListeCoursesProfile()
@@ -3309,22 +3287,26 @@ async function sauvegarderProfil() {
     profilUtilisateur.regimes_alimentaires = selectedRegimes.slice()
     profilUtilisateur.allergies            = profilAllergiesCourantes.slice()
     profilUtilisateur.temps_cuisine_max    = profilTempsCuisineCourant
-    profilUtilisateur.budget               = selectedBudget
+    profilUtilisateur.budget_complements   = selectedBudget
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
 
-  afficherToast('Préférences sauvegardées ✓')
-
   if (profil_id && profil_id !== 'new') {
-    await _sb.from('profils_utilisateurs').update({
+    var result = await _sb.from('profils_utilisateurs').update({
       objectifs_generaux:   selectedSymptoms,
       regimes_alimentaires: selectedRegimes,
       allergies:            profilAllergiesCourantes,
       temps_cuisine_max:    profilTempsCuisineCourant,
       budget_complements:   selectedBudget,
     }).eq('id', profil_id)
+    if (result.error) {
+      afficherToast('Erreur sauvegarde : ' + result.error.message)
+      if (btn) { btn.disabled = false; btn.style.opacity = '1' }
+      return
+    }
   }
 
+  afficherToast('Préférences sauvegardées ✓')
   if (btn) { btn.disabled = false; btn.style.opacity = '1' }
 }
 
@@ -3437,11 +3419,10 @@ function afficherRecettesSauvegardees() {
 function afficherFavoris() {
   var container = document.getElementById('favorisListe')
   if (!container) return
-  var saved = []
-  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
-  var favs = saved.filter(function(r) { return r.note && r.note >= 4 })
+  var favs = []
+  try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
   if (!favs.length) {
-    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ pour l\'ajouter ici</div>'
+    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ dans "À faire > Recettes" pour l\'ajouter ici</div>'
     return
   }
   container.innerHTML = favs.map(function(r, i) {
@@ -3449,8 +3430,10 @@ function afficherFavoris() {
     var cal  = nv.calories ? nv.calories + ' kcal' : ''
     var type = r.type_repas || ''
     var date = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
-    var stars = '★'.repeat(Math.min(r.note, 5))
+    var stars = '★'.repeat(Math.min(r.note || 0, 5))
     var rid  = 'fav-r-' + i
+    var prep = r.temps_preparation || 0
+    var cook = r.temps_cuisson || 0
 
     var ingredients = Array.isArray(r.ingredients) ? r.ingredients.map(function(ing) {
       return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' +
@@ -3468,7 +3451,7 @@ function afficherFavoris() {
            '    <div style="flex:1;min-width:0;">' +
            '      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + '</div>' +
            '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
-           '      <div style="font-size:13px;color:var(--golden,#e8b84b);margin-top:4px;">' + stars + '</div>' +
+           (stars ? '      <div style="font-size:13px;color:var(--golden,#e8b84b);margin-top:4px;">' + stars + '</div>' : '') +
            '    </div>' +
            '    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">' +
            (cal ? '<span style="font-size:12px;color:var(--text-light);">' + cal + '</span>' : '') +
@@ -3476,11 +3459,36 @@ function afficherFavoris() {
            '    </div>' +
            '  </div>' +
            '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           ((prep > 0 || cook > 0) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+             (prep > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--terracotta);font-weight:500;">⏱ ' + prep + ' min prép.</span>' : '') +
+             (cook > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(232,184,75,0.1);border:1px solid rgba(232,184,75,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--mid-brown);font-weight:500;">🔥 ' + cook + ' min cuisson</span>' : '') +
+           '</div>' : '') +
            (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions +
+           '    <button onclick="supprimerFavori(' + i + ');event.stopPropagation();" style="margin-top:12px;width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Retirer des favoris</button>' +
            '  </div>' +
            '</div>'
   }).join('')
+}
+
+async function supprimerFavori(idx) {
+  if (!confirm('Retirer cette recette de vos favoris ?\n(La recette restera dans "À faire" si elle y est encore.)')) return
+  var favs = []
+  try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
+  var r = favs[idx]
+  if (!r) return
+  favs.splice(idx, 1)
+  try { localStorage.setItem('vitalia_favoris', JSON.stringify(favs)) } catch(e) {}
+  if (profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      })
+    } catch(e) {}
+  }
+  afficherFavoris()
+  afficherToast('Recette retirée des favoris')
 }
 
 function toggleSavedRecette(id) {
@@ -3493,7 +3501,7 @@ function toggleSavedRecette(id) {
 }
 
 function supprimerRecetteSauvegardee(idx) {
-  if (!confirm('Supprimer cette recette de vos favoris ?')) return
+  if (!confirm('Supprimer cette recette de "À faire" ?')) return
   try {
     var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
     saved.splice(idx, 1)
@@ -3517,9 +3525,28 @@ async function noterRecetteSauvegardee(idx, note) {
     })
   }
 
-  // Supabase PATCH
+  // Gérer favoris localStorage séparés
   var r = saved[idx]
-  if (profil_id && profil_id !== 'new' && r.titre || r.nom) {
+  try {
+    var favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]')
+    var nomCle = (r.nom || r.titre || '').toLowerCase().trim()
+    var favIdx = favs.findIndex(function(f) { return (f.nom || f.titre || '').toLowerCase().trim() === nomCle })
+    if (note >= 4) {
+      var entree = Object.assign({}, r, { note: note })
+      if (favIdx >= 0) favs[favIdx] = entree
+      else favs.unshift(entree)
+    } else {
+      if (favIdx >= 0) favs.splice(favIdx, 1)
+    }
+    localStorage.setItem('vitalia_favoris', JSON.stringify(favs))
+  } catch(e) {}
+
+  // Rafraîchir favoris si section visible
+  var favSection = document.getElementById('atfaire-section-favoris')
+  if (favSection && favSection.style.display !== 'none') afficherFavoris()
+
+  // Supabase PATCH note sur recettes_sauvegardees
+  if (profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
     var titre = encodeURIComponent(r.titre || r.nom || '')
     try {
       await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&titre=eq.' + titre, {
@@ -3529,7 +3556,7 @@ async function noterRecetteSauvegardee(idx, note) {
       })
     } catch(e) {}
 
-    // Gérer recettes_favorites
+    // Gérer recettes_favorites Supabase
     var favEntry = {
       profil_id: profil_id,
       titre: r.titre || r.nom || '',
