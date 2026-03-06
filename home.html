@@ -1718,7 +1718,7 @@ function autoSauvegarderProfilComplet() {
       allergies:            profilAllergiesCourantes,
       regimes_alimentaires: selectedRegimes,
       temps_cuisine_max:    profilTempsCuisineCourant,
-      budget:               selectedBudget,
+      budget_complements:   selectedBudget,
     }).eq('id', profil_id)
   }, 1500)
 }
@@ -1736,7 +1736,7 @@ function autoSauvegarderPreferences() {
     await _sb.from('profils_utilisateurs').update({
       regimes_alimentaires: selectedRegimes,
       temps_cuisine_max:    profilTempsCuisineCourant,
-      budget:               selectedBudget,
+      budget_complements:   selectedBudget,
     }).eq('id', profil_id)
   }, 1500)
 }
@@ -1942,7 +1942,7 @@ function appliquerProfil(p) {
     selectedRegimes = p.regimes_alimentaires
   }
   // Sync budget
-  if (p.budget) selectedBudget = p.budget
+  if (p.budget_complements) selectedBudget = p.budget_complements
   // Sync temps cuisine
   if (p.temps_cuisine_max) profilTempsCuisineCourant = p.temps_cuisine_max
   // Sync all chips
@@ -3321,7 +3321,7 @@ async function sauvegarderProfil() {
       regimes_alimentaires: selectedRegimes,
       allergies:            profilAllergiesCourantes,
       temps_cuisine_max:    profilTempsCuisineCourant,
-      budget:               selectedBudget,
+      budget_complements:   selectedBudget,
     }).eq('id', profil_id)
   }
 
