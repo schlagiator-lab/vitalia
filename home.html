@@ -1527,6 +1527,15 @@
 var SUPABASE_URL      = 'https://ptzmyuugxhsbrynjwlhp.supabase.co'
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0em15dXVneGhzYnJ5bmp3bGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwNDY1NjUsImV4cCI6MjA4NTYyMjU2NX0.Pel8am6iplwwFSqolEV7JOG6nxsOx4BxxJPLsObRC-4'
 
+// ── Client Supabase (récupère le JWT de session pour les PATCH authentifiés) ──
+var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+async function getAuthToken() {
+  try {
+    var res = await _sb.auth.getSession()
+    return res.data.session ? res.data.session.access_token : SUPABASE_ANON_KEY
+  } catch(_) { return SUPABASE_ANON_KEY }
+}
+
 // ── State ──
 var currentTab        = 'aujourdhui'
 var profil_id         = null
@@ -1713,11 +1722,12 @@ function autoSauvegarderPreferences() {
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
   clearTimeout(_prefTimer)
-  _prefTimer = setTimeout(function() {
+  _prefTimer = setTimeout(async function() {
     if (!profil_id || profil_id === 'new') return
+    var token = await getAuthToken()
     fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
       method: 'PATCH',
-      headers: { 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer '+SUPABASE_ANON_KEY },
+      headers: { 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer '+token },
       body: JSON.stringify({ regimes_alimentaires:selectedRegimes, temps_cuisine_max:profilTempsCuisineCourant, budget:selectedBudget })
     })
   }, 1500)
@@ -3296,22 +3306,24 @@ async function sauvegarderProfil() {
   afficherToast('Préférences sauvegardées ✓')
 
   if (profil_id && profil_id !== 'new') {
-    fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({
-        objectifs_generaux:   selectedSymptoms,
-        regimes_alimentaires: selectedRegimes,
-        allergies:            profilAllergiesCourantes,
-        temps_cuisine_max:    profilTempsCuisineCourant,
-        budget:               selectedBudget,
-      }),
-    }).catch(function() {})
+    getAuthToken().then(function(token) {
+      fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + token,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          objectifs_generaux:   selectedSymptoms,
+          regimes_alimentaires: selectedRegimes,
+          allergies:            profilAllergiesCourantes,
+          temps_cuisine_max:    profilTempsCuisineCourant,
+          budget:               selectedBudget,
+        }),
+      }).catch(function() {})
+    })
   }
 
   if (btn) { btn.disabled = false; btn.style.opacity = '1' }
