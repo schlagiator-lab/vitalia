@@ -3316,7 +3316,7 @@ async function sauvegarderProfil() {
   afficherToast('Préférences sauvegardées ✓')
 
   if (profil_id && profil_id !== 'new') {
-    _sb.from('profils_utilisateurs').update({
+    await _sb.from('profils_utilisateurs').update({
       objectifs_generaux:   selectedSymptoms,
       regimes_alimentaires: selectedRegimes,
       allergies:            profilAllergiesCourantes,
