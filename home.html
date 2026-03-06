@@ -3249,6 +3249,10 @@ function toggleProfilObjectif(el, val) {
     var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
     if (m && m[1] === val) c.classList.toggle('selected', selectedSymptoms.includes(val))
   })
+  if (profilUtilisateur) {
+    profilUtilisateur.objectifs_generaux = selectedSymptoms.slice()
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
+  }
 }
 
 // Toggle régime — delegates to shared master function
@@ -3263,6 +3267,10 @@ function toggleProfilAllergie(el, val) {
     if (!profilAllergiesCourantes.includes(val)) profilAllergiesCourantes.push(val)
   } else {
     profilAllergiesCourantes = profilAllergiesCourantes.filter(function(v) { return v !== val })
+  }
+  if (profilUtilisateur) {
+    profilUtilisateur.allergies = profilAllergiesCourantes.slice()
+    localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
 }
 
@@ -3285,30 +3293,25 @@ async function sauvegarderProfil() {
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
   }
 
+  afficherToast('Préférences sauvegardées ✓')
+
   if (profil_id && profil_id !== 'new') {
-    try {
-      var r = await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({
-          objectifs_generaux:   selectedSymptoms,
-          regimes_alimentaires: selectedRegimes,
-          allergies:            profilAllergiesCourantes,
-          temps_cuisine_max:    profilTempsCuisineCourant,
-          budget:               selectedBudget,
-        }),
-      })
-      afficherToast(r.ok ? 'Profil enregistré ✓' : 'Erreur lors de la sauvegarde')
-    } catch(e) {
-      afficherToast('Erreur réseau')
-    }
-  } else {
-    afficherToast('Préférences sauvegardées ✓')
+    fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        objectifs_generaux:   selectedSymptoms,
+        regimes_alimentaires: selectedRegimes,
+        allergies:            profilAllergiesCourantes,
+        temps_cuisine_max:    profilTempsCuisineCourant,
+        budget:               selectedBudget,
+      }),
+    }).catch(function() {})
   }
 
   if (btn) { btn.disabled = false; btn.style.opacity = '1' }
