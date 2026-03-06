@@ -469,6 +469,7 @@ function construirePromptBatch(
   const regimes = profilNorm.contraintesRegime.join(', ') || 'Aucune restriction';
   const allergenes = (profilNorm.allergenes || []).join(', ') || 'Aucun';
   const tempsMax = profilNorm.temps_preparation || 45;
+  const budgetLabel = profilNorm.budget || '10-20 CHF par repas';
   const omnivore = !profilNorm.estVegan && !profilNorm.estVegetarien;
 
   // Tableau de planning imposé
@@ -496,6 +497,7 @@ function construirePromptBatch(
 - Régime : ${regimes}
 - Allergènes à éviter absolument : ${allergenes}
 - Objectif nutritionnel : ${objectif}
+- Budget repas : ${budgetLabel}
 - Temps de préparation max : ${tempsMax} minutes (déjeuner/dîner)${consigneProteine}${consigneSansLactose}
 
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
@@ -781,10 +783,17 @@ serve(async (req: Request) => {
 
     const profil = profils?.[0] || {};
 
+    const budgetRepasMap: Record<string, string> = {
+      faible: '< 10 CHF par repas',
+      moyen:  '10-20 CHF par repas',
+      eleve:  '> 20 CHF par repas',
+    };
+
     const profilNorm = {
       regime_alimentaire: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire),
       allergenes: normaliserArray(profil.allergies || profil.allergenes),
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
+      budget: budgetRepasMap[profil.budget || 'moyen'] || '10-20 CHF par repas',
       estVegan: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
         .some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())),
       estVegetarien: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
