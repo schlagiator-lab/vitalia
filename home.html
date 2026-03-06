@@ -682,6 +682,9 @@
   .stars-semaine span:hover { transform:scale(1.2); }
   .save-mini { background:none; border:1px solid rgba(122,158,126,0.3); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--sage); cursor:pointer; white-space:nowrap; transition:background 0.15s; }
   .save-mini:hover { background:rgba(122,158,126,0.1); }
+  .steps-load-btn { width:100%; margin-top:10px; background:rgba(196,113,74,0.07); border:1px dashed rgba(196,113,74,0.3); border-radius:10px; padding:9px 12px; font-size:12px; color:var(--terracotta); cursor:pointer; text-align:center; transition:background 0.15s; }
+  .steps-load-btn:hover { background:rgba(196,113,74,0.13); }
+  .steps-loading { text-align:center; font-size:12px; color:var(--text-light); padding:8px; animation:pulse 1.2s ease-in-out infinite; }
   .select-btn-mini { background:rgba(196,113,74,0.1); border:none; border-radius:20px; padding:3px 10px; cursor:pointer; font-size:11px; color:var(--terracotta); flex-shrink:0; transition:all 0.15s; white-space:nowrap; }
   .select-btn-mini.selected { background:var(--sage); color:white; }
   .fallback-warning { background:rgba(232,184,75,0.12); border:1px solid rgba(232,184,75,0.3); border-radius:10px; padding:8px 12px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -1709,6 +1712,8 @@ function selectSharedBudget(el, val) {
 
 var _prefTimer = null
 var _profilTimer = null
+var _budgetMaxMap = { faible: 8, moyen: 15, eleve: 25 }
+
 function autoSauvegarderProfilComplet() {
   if (!profil_id || profil_id === 'new') return
   clearTimeout(_profilTimer)
@@ -1718,7 +1723,9 @@ function autoSauvegarderProfilComplet() {
       allergies:            profilAllergiesCourantes,
       regimes_alimentaires: selectedRegimes,
       temps_cuisine_max:    profilTempsCuisineCourant,
+      temps_max:            profilTempsCuisineCourant,
       budget_complements:   selectedBudget,
+      budget_max:           _budgetMaxMap[selectedBudget] || 15,
     }).eq('id', profil_id)
   }, 1500)
 }
@@ -1736,7 +1743,9 @@ function autoSauvegarderPreferences() {
     await _sb.from('profils_utilisateurs').update({
       regimes_alimentaires: selectedRegimes,
       temps_cuisine_max:    profilTempsCuisineCourant,
+      temps_max:            profilTempsCuisineCourant,
       budget_complements:   selectedBudget,
+      budget_max:           _budgetMaxMap[selectedBudget] || 15,
     }).eq('id', profil_id)
   }, 1500)
 }
@@ -1842,6 +1851,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Fetch fresh profile from Supabase
   chargerProfilSupabase(profil_id)
 
+  // Migrate and sync favorites
+  migrerFavoris()
+  chargerFavorisSupabase()
+
   // Date badge
   var db = document.getElementById('dateBadge')
   if (db) db.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' })
@@ -1924,6 +1937,43 @@ async function chargerProfilSupabase(id) {
       }
     }
   } catch(e) { console.warn('Profile load error:', e) }
+}
+
+// ── Migrate old favorites (note>=4 in vitalia_recettes_sauvegardees → vitalia_favoris) ──
+function migrerFavoris() {
+  try {
+    var favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]')
+    if (favs.length > 0) return  // already migrated
+    var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
+    var migrated = saved.filter(function(r) { return r.note && r.note >= 4 })
+    if (migrated.length > 0) {
+      localStorage.setItem('vitalia_favoris', JSON.stringify(migrated))
+    }
+  } catch(e) {}
+}
+
+// ── Load favorites from Supabase recettes_favorites ──
+async function chargerFavorisSupabase() {
+  if (!profil_id || profil_id === 'new') return
+  try {
+    var r = await fetch(
+      SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&order=created_at.desc&limit=50',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    )
+    if (!r.ok) return
+    var rows = await r.json()
+    if (!Array.isArray(rows) || !rows.length) return
+    var favs = []
+    try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
+    // Merge: add from Supabase any that aren't already in localStorage
+    rows.forEach(function(row) {
+      var nom = (row.titre || row.nom || '').toLowerCase().trim()
+      if (!nom) return
+      var exists = favs.some(function(f) { return (f.nom || f.titre || '').toLowerCase().trim() === nom })
+      if (!exists) favs.push(row)
+    })
+    localStorage.setItem('vitalia_favoris', JSON.stringify(favs))
+  } catch(e) {}
 }
 
 // ── Apply profile to UI ──
@@ -2209,9 +2259,21 @@ function updateAlliesFromPlan(plan) {
     avocat:'avocat', banane:'banane', patate:'patate douce', miel:'miel',
     epinards:'épinard', amandes:'amande'
   }
-  var planText = JSON.stringify(plan).toLowerCase()
+  // Collect only ingredient names from today's meals (matin/midi/soir)
+  var ingredientNames = []
+  var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner']
+  mealKeys.forEach(function(key) {
+    var meal = plan[key]
+    if (!meal) return
+    var ings = meal.ingredients || []
+    ings.forEach(function(ing) {
+      var nom = (typeof ing === 'string' ? ing : (ing.nom || '')).toLowerCase()
+      if (nom) ingredientNames.push(nom)
+    })
+  })
+  var allText = ingredientNames.join(' ')
   Object.keys(keywords).forEach(function(ally) {
-    var active = planText.includes(keywords[ally])
+    var active = allText.includes(keywords[ally])
     if (active) currentActiveAllies.push(ally)
     var el = document.getElementById('ally-' + ally)
     if (el) el.classList.toggle('active', active)
@@ -2566,13 +2628,19 @@ function afficherSemaine(data) {
         html += '</div>'
       }
 
-      // Steps (all steps — no limit)
+      // Steps — lazy-loaded on demand
+      var stepsId = 'steps-' + id
       if (recette.instructions && recette.instructions.length) {
-        html += '<div class="day-meal-steps" style="margin-top:10px;">'
+        // Fallback recipes already have hardcoded steps — show directly
+        html += '<div class="day-meal-steps" id="' + stepsId + '" style="margin-top:10px;">'
         recette.instructions.forEach(function(step, i) {
           html += '<div class="day-meal-step"><div class="day-meal-stepnum">' + (i+1) + '</div><div>' + step + '</div></div>'
         })
         html += '</div>'
+      } else {
+        // LLM-generated recipes: load steps on demand
+        html += '<div id="' + stepsId + '" style="margin-top:10px;"></div>'
+        html += '<button class="steps-load-btn" onclick="chargerEtapesRecette(\'' + jour + '\',\'' + m.key + '\',\'' + id + '\');event.stopPropagation();">📖 Voir les étapes de préparation</button>'
       }
 
       // Tip
@@ -2593,9 +2661,6 @@ function afficherSemaine(data) {
 
       // Save
       html += '<button class="save-mini" onclick="sauvegarderRecetteSemaine(\'' + id + '\');event.stopPropagation();">✅ À faire</button>'
-
-      // Shopping list
-      html += '<button class="select-btn-mini" id="select-btn-' + id + '" onclick="toggleSelectRecetteSemaine(\'' + id + '\');event.stopPropagation();">🛒 Sélectionner</button>'
 
       html += '</div>'  // semaine-meal-actions
       html += '</div></div>'  // day-meal-inner + day-meal-detail
@@ -2624,6 +2689,65 @@ function afficherSemaine(data) {
     autoRegenFallbacks(data)
   } else {
     toggleDay(semaineJourOuvert)
+  }
+}
+
+// ── Lazy-load recipe steps from generer-recette-details ──
+async function chargerEtapesRecette(jour, mealKey, id) {
+  var btn = document.querySelector('[onclick*="chargerEtapesRecette(\'' + jour + '\',\'' + mealKey + '\'"]')
+  var stepsDiv = document.getElementById('steps-' + id)
+  if (!stepsDiv) return
+
+  // Show loading state
+  if (btn) btn.style.display = 'none'
+  stepsDiv.innerHTML = '<div class="steps-loading">⏳ Génération des étapes...</div>'
+
+  // Get recipe data from semainePlanData
+  var recette = semainePlanData && semainePlanData.semaine && semainePlanData.semaine[jour] && semainePlanData.semaine[jour][mealKey]
+  if (!recette) {
+    stepsDiv.innerHTML = ''
+    if (btn) btn.style.display = ''
+    return
+  }
+
+  var typeRepas = { petit_dejeuner:'petit-dejeuner', dejeuner:'dejeuner', diner:'diner', pause:'collation' }[mealKey] || mealKey
+
+  try {
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-details', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        recette_nom: recette.nom || recette.titre,
+        ingredients: recette.ingredients || [],
+        type_repas:  typeRepas,
+        macros:      recette.macros,
+        symptomes:   selectedSymptoms || [],
+      })
+    })
+    var data = await resp.json()
+    if (data.success && Array.isArray(data.instructions) && data.instructions.length) {
+      // Cache steps back into semainePlanData
+      recette.instructions = data.instructions
+      if (data.astuces) recette.astuces = data.astuces
+      try { localStorage.setItem('vitalia_semaine_session', JSON.stringify(semainePlanData)) } catch(e) {}
+
+      // Render steps
+      var html = '<div class="day-meal-steps">'
+      data.instructions.forEach(function(step, i) {
+        html += '<div class="day-meal-step"><div class="day-meal-stepnum">' + (i+1) + '</div><div>' + step + '</div></div>'
+      })
+      html += '</div>'
+      if (data.astuces && data.astuces[0]) {
+        html += '<div class="day-meal-tip" style="margin-top:8px;">💡 ' + data.astuces[0] + '</div>'
+      }
+      stepsDiv.innerHTML = html
+    } else {
+      stepsDiv.innerHTML = ''
+      if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
+    }
+  } catch(e) {
+    stepsDiv.innerHTML = ''
+    if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
   }
 }
 
@@ -3297,7 +3421,9 @@ async function sauvegarderProfil() {
       regimes_alimentaires: selectedRegimes,
       allergies:            profilAllergiesCourantes,
       temps_cuisine_max:    profilTempsCuisineCourant,
+      temps_max:            profilTempsCuisineCourant,
       budget_complements:   selectedBudget,
+      budget_max:           _budgetMaxMap[selectedBudget] || 15,
     }).eq('id', profil_id)
     if (result.error) {
       afficherToast('Erreur sauvegarde : ' + result.error.message)

@@ -425,7 +425,6 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
 interface RepasSquelette {
   nom: string;
   ingredients: string[];
-  instructions: string[];
   macros: { calories: number; proteines: number; glucides: number; lipides: number };
   temps_preparation?: number;
   temps_cuisson?: number;
@@ -442,7 +441,6 @@ function validerRepasSquelette(repas: any): repas is RepasSquelette {
   return repas &&
     typeof repas.nom === 'string' && repas.nom.trim().length > 0 &&
     Array.isArray(repas.ingredients) && repas.ingredients.length >= 2 &&
-    Array.isArray(repas.instructions) && repas.instructions.length >= 2 &&
     repas.macros &&
     typeof repas.macros.calories === 'number' &&
     typeof repas.macros.proteines === 'number';
@@ -525,13 +523,11 @@ ${lignesPlanning}
       "petit_dejeuner": {
         "nom": "Nom créatif du plat",
         "ingredients": ["200g de flocons d'avoine", "1 banane mûre", "150ml de lait d'amande"],
-        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise."],
         "macros": { "calories": 350, "proteines": 12, "glucides": 45, "lipides": 10 }
       },
       "dejeuner": {
         "nom": "Nom créatif du plat",
         "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
-        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
         "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 },
         "temps_preparation": 10,
         "temps_cuisson": 6
@@ -539,7 +535,6 @@ ${lignesPlanning}
       "diner": {
         "nom": "Nom créatif du plat",
         "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
-        "instructions": ["Étape 1 précise.", "Étape 2 précise.", "Étape 3 précise.", "Étape 4 précise."],
         "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
         "temps_preparation": 10,
         "temps_cuisson": 25
@@ -549,10 +544,6 @@ ${lignesPlanning}
   ]
 }
 
-Règles instructions :
-- Petit-déjeuner : EXACTEMENT 3 étapes courtes (≤15 mots chacune), temps ≤ 10 min
-- Déjeuner/Dîner : EXACTEMENT 4 étapes avec temps et températures précis
-- Chaque étape doit contenir une action culinaire concrète (pas de vague "cuisiner selon méthode")
 Macros visées : petit-déjeuner ~350 kcal/12g prot, déjeuner ~480 kcal/30g prot, dîner ~440 kcal/28g prot.
 Règles temps (cohérence obligatoire pour déjeuner/dîner) :
 - Poisson poêlé : temps_preparation=8, temps_cuisson=6
