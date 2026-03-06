@@ -2272,11 +2272,18 @@ function updateAlliesFromPlan(plan) {
     })
   })
   var allText = ingredientNames.join(' ')
+  var matched = []
   Object.keys(keywords).forEach(function(ally) {
-    var active = allText.includes(keywords[ally])
-    if (active) currentActiveAllies.push(ally)
+    if (allText.includes(keywords[ally])) matched.push(ally)
+  })
+
+  // If no ally ingredient is in today's recipes → show only goji, curcuma, gingembre as defaults
+  var activeSet = matched.length > 0 ? matched : ['goji', 'curcuma', 'gingembre']
+  currentActiveAllies = activeSet.slice()
+
+  Object.keys(keywords).forEach(function(ally) {
     var el = document.getElementById('ally-' + ally)
-    if (el) el.classList.toggle('active', active)
+    if (el) el.classList.toggle('active', activeSet.includes(ally))
   })
 }
 
@@ -2640,7 +2647,7 @@ function afficherSemaine(data) {
       } else {
         // LLM-generated recipes: load steps on demand
         html += '<div id="' + stepsId + '" style="margin-top:10px;"></div>'
-        html += '<button class="steps-load-btn" onclick="chargerEtapesRecette(\'' + jour + '\',\'' + m.key + '\',\'' + id + '\');event.stopPropagation();">📖 Voir les étapes de préparation</button>'
+        html += '<button id="steps-btn-' + id + '" class="steps-load-btn" onclick="chargerEtapesRecette(\'' + jour + '\',\'' + m.key + '\',\'' + id + '\');event.stopPropagation();">📖 Voir les étapes de préparation</button>'
       }
 
       // Tip
@@ -2694,7 +2701,7 @@ function afficherSemaine(data) {
 
 // ── Lazy-load recipe steps from generer-recette-details ──
 async function chargerEtapesRecette(jour, mealKey, id) {
-  var btn = document.querySelector('[onclick*="chargerEtapesRecette(\'' + jour + '\',\'' + mealKey + '\'"]')
+  var btn = document.getElementById('steps-btn-' + id)
   var stepsDiv = document.getElementById('steps-' + id)
   if (!stepsDiv) return
 

@@ -119,9 +119,11 @@ function selectionnerIngredientsTroisRepas(
   if (estSansPoisson) {
     proteinesAnimales = proteinesAnimales.filter(p => !POISSON_FALLBACK.has(p.toLowerCase()));
   }
+  // Omnivore → animal proteins ONLY (never mix with vegetale in the same pool)
+  // Mixing caused ~43% chance of selecting a vegetable protein for omnivore profiles
   const proteinesPool = (estVegan || estVegetarien)
     ? PROTEINES_FALLBACK_VEGETALES
-    : [...proteinesAnimales, ...PROTEINES_FALLBACK_VEGETALES];
+    : proteinesAnimales;
 
   // Pool féculents filtré pour l'allergie gluten
   let feculentsPool = FECULENTS_FALLBACK;
@@ -795,10 +797,17 @@ serve(async (req) => {
 
     let ingPetitDej: string[], ingDejeuner: string[], ingDiner: string[];
 
-    if (protDej && autreDej) {
-      // Déjeuner & dîner depuis BDD : protéine DB + autre aliment DB
-      ingDejeuner = [protDej, autreDej];
-      ingDiner    = (protDin && autreDin) ? [protDin, autreDin] : ingDejeuner;
+    if (protDej) {
+      // At least one animal protein from DB — supplement other ingredient from static pool if needed
+      const legumesDispos = LEGUMES_FALLBACK.filter(l => !ingredientsBanis.has(l.toLowerCase()));
+      const legumeFallback = () => {
+        const pool = legumesDispos.length > 0 ? legumesDispos : LEGUMES_FALLBACK;
+        return pool[Math.floor(Math.random() * pool.length)];
+      };
+      const suppDej = autreDej || legumeFallback();
+      ingDejeuner = [protDej, suppDej];
+      const suppDin = autreDin || legumeFallback();
+      ingDiner = protDin ? [protDin, suppDin] : ingDejeuner;
       console.log(`[NIVEAU 2] Protéines DB — Déjeuner: ${protDej} | Dîner: ${protDin || protDej}`);
     } else {
       // Fallback pool statique si pas assez d'aliments BDD
