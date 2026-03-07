@@ -852,6 +852,25 @@
       <circle cx="37" cy="46" r="1" fill="white"/><circle cx="45" cy="46" r="1" fill="white"/>
       <path d="M34 54 Q40 59 46 54" stroke="#78350F" stroke-width="2" fill="none" stroke-linecap="round"/>
     </symbol>
+    <symbol id="mascot-miel" viewBox="0 0 80 80">
+      <!-- pot -->
+      <path d="M26 38 Q24 62 40 64 Q56 62 54 38 Z" fill="#D97706"/>
+      <path d="M28 38 Q26 60 40 62 Q54 60 52 38 Z" fill="#F59E0B"/>
+      <!-- ouverture -->
+      <ellipse cx="40" cy="38" rx="14" ry="5" fill="#FDE68A"/>
+      <!-- col -->
+      <rect x="30" y="30" width="20" height="9" rx="3" fill="#D97706"/>
+      <rect x="32" y="30" width="16" height="8" rx="2" fill="#F59E0B"/>
+      <!-- couvercle -->
+      <ellipse cx="40" cy="30" rx="10" ry="4" fill="#92400E"/>
+      <!-- reflet -->
+      <ellipse cx="36" cy="46" rx="4" ry="6" fill="rgba(255,255,255,0.18)" transform="rotate(-15,36,46)"/>
+      <!-- yeux -->
+      <circle cx="36" cy="50" r="3" fill="#000" opacity="0.7"/><circle cx="44" cy="50" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="37" cy="49" r="1" fill="white"/><circle cx="45" cy="49" r="1" fill="white"/>
+      <!-- sourire -->
+      <path d="M34 57 Q40 62 46 57" stroke="#92400E" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -1110,6 +1129,10 @@
         <div class="companion-chip" onclick="ouvrirAlly('amandes')">
           <div class="companion-avatar" id="ally-amandes" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"><svg width="40" height="40"><use href="#mascot-amandes"/></svg></div>
           <div class="companion-name">Amandes</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('miel')">
+          <div class="companion-avatar" id="ally-miel" style="background:linear-gradient(135deg,#FEF3C7,#FCD34D)"><svg width="40" height="40"><use href="#mascot-miel"/></svg></div>
+          <div class="companion-name">Miel</div>
         </div>
       </div>
     </div>
@@ -2290,17 +2313,15 @@ function updateAlliesFromPlan(plan) {
   currentActiveAllies = []
   var keywords = {
     goji:'goji', curcuma:'curcuma', gingembre:'gingembre', myrtille:'myrtille',
-    avocat:'avocat', banane:'banane', patate:'patate douce', miel:'miel',
-    epinards:'épinard', amandes:'amande'
+    avocat:'avocat', banane:'banane', miel:'miel', amandes:'amande'
   }
   var allyNames = {
     goji:'Goji', curcuma:'Curcuma', gingembre:'Gingembre', myrtille:'Myrtille',
-    avocat:'Avocat', banane:'Banane', patate:'Patate douce', miel:'Miel',
-    epinards:'Épinards', amandes:'Amandes'
+    avocat:'Avocat', banane:'Banane', miel:'Miel', amandes:'Amandes'
   }
   // Collect ingredient names from all meals including pause/collation
   var ingredientNames = []
-  var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner', 'pause', 'collation']
+  var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner', 'pause', 'collation', 'apres_midi']
   mealKeys.forEach(function(key) {
     var meal = plan[key]
     if (!meal) return
