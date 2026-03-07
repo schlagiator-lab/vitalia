@@ -2293,6 +2293,11 @@ function updateAlliesFromPlan(plan) {
     avocat:'avocat', banane:'banane', patate:'patate douce', miel:'miel',
     epinards:'épinard', amandes:'amande'
   }
+  var allyNames = {
+    goji:'Goji', curcuma:'Curcuma', gingembre:'Gingembre', myrtille:'Myrtille',
+    avocat:'Avocat', banane:'Banane', patate:'Patate douce', miel:'Miel',
+    epinards:'Épinards', amandes:'Amandes'
+  }
   // Collect ingredient names from all meals including pause/collation
   var ingredientNames = []
   var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner', 'pause', 'collation']
@@ -2305,22 +2310,44 @@ function updateAlliesFromPlan(plan) {
       if (nom) ingredientNames.push(nom)
     })
   })
-  // Word-boundary match: keyword must appear as a complete word in ingredient name
-  // (avoids false positives like "vinaigre de gingembre confit" matching "gingembre" when it shouldn't)
+  // Strict word match: keyword must appear as an exact word in the ingredient name
+  // Handles plurals (amande → amandes, épinard → épinards)
+  // Multi-word keywords (patate douce) use substring match since they're unambiguous
   function matchesIngredient(nom, kw) {
-    return nom === kw || nom.startsWith(kw + ' ') || nom.includes(' ' + kw)
+    if (kw.includes(' ')) return nom.includes(kw)
+    var words = nom.split(/[\s,\-()+]+/)
+    return words.some(function(w) { return w === kw || w === kw + 's' || w === kw + 'x' })
   }
   var matched = Object.keys(keywords).filter(function(ally) {
     return ingredientNames.some(function(nom) { return matchesIngredient(nom, keywords[ally]) })
   })
 
-  // If no ally ingredient is in today's recipes → show only goji, curcuma, gingembre as defaults
-  var activeSet = matched.length > 0 ? matched : ['goji', 'curcuma', 'gingembre']
-  currentActiveAllies = activeSet.slice()
+  var isDefault = matched.length === 0
+  // Only real matches count for modal "présent dans ton plan" badge
+  currentActiveAllies = matched.slice()
+  // If nothing matches → show 3 default allies with "hors plan" indicator
+  var activeSet = isDefault ? ['goji', 'curcuma', 'gingembre'] : matched
 
   Object.keys(keywords).forEach(function(ally) {
     var el = document.getElementById('ally-' + ally)
-    if (el) el.classList.toggle('active', activeSet.includes(ally))
+    if (!el) return
+    var chip = el.parentElement
+    var inActive = activeSet.includes(ally)
+    // Show only allies present in plan (or the 3 defaults when nothing matches)
+    if (chip) chip.style.display = inActive ? '' : 'none'
+    // Highlight only if truly present in the plan (not a default fallback)
+    el.classList.toggle('active', matched.includes(ally))
+    // Update chip label: add "hors plan" note on default allies
+    if (chip) {
+      var nameEl = chip.querySelector('.companion-name')
+      if (nameEl) {
+        if (isDefault && inActive) {
+          nameEl.innerHTML = allyNames[ally] + '<br><span style="font-size:9px;color:var(--text-light);font-style:italic;line-height:1;">hors plan</span>'
+        } else {
+          nameEl.textContent = allyNames[ally]
+        }
+      }
+    }
   })
 }
 
