@@ -494,8 +494,8 @@
   .companions-scroll::-webkit-scrollbar { display: none; }
   .companion-chip { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: transform 0.2s; }
   .companion-chip:hover { transform: translateY(-3px); }
-  .companion-avatar { width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(196,113,74,0.22); transition: all 0.25s; box-shadow: 0 2px 8px rgba(90,50,20,0.10), inset 0 0 0 1px rgba(255,255,255,0.5); }
-  .companion-avatar.active { border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(196,113,74,0.20), 0 4px 14px rgba(90,50,20,0.14), inset 0 0 0 1px rgba(255,255,255,0.5); transform: scale(1.06); }
+  .companion-avatar { width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(196,113,74,0.50); transition: all 0.25s; box-shadow: 0 3px 10px rgba(90,50,20,0.18), inset 0 0 0 1.5px rgba(255,255,255,0.7); }
+  .companion-avatar.active { border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(196,113,74,0.30), 0 4px 14px rgba(90,50,20,0.20), inset 0 0 0 1.5px rgba(255,255,255,0.7); transform: scale(1.06); }
   .companion-avatar svg { width: 40px; height: 40px; }
   .companion-name { font-size: 11px; color: var(--mid-brown); text-align: center; font-weight: 500; line-height: 1.3; }
 
@@ -2095,7 +2095,16 @@ async function chargerFavorisSupabase() {
       var nom = (row.titre || row.nom || '').toLowerCase().trim()
       if (!nom) return
       var exists = favs.some(function(f) { return (f.nom || f.titre || '').toLowerCase().trim() === nom })
-      if (!exists) favs.push(row)
+      if (!exists) favs.push({
+        nom: row.titre || row.nom,
+        titre: row.titre || row.nom,
+        ingredients: row.ingredients || [],
+        instructions: row.steps || [],
+        astuces: row.tip ? [row.tip] : [],
+        type_repas: row.moment || '',
+        saved_at: row.sauvegardee_le || row.saved_at,
+        note: row.note || 0
+      })
     })
     localStorage.setItem('vitalia_favoris', JSON.stringify(favs))
   } catch(e) {}
@@ -3648,16 +3657,17 @@ function afficherRecettesSauvegardees() {
     var rid   = 'saved-r-' + idx
 
     var ingredients = Array.isArray(r.ingredients) ? r.ingredients.map(function(i) {
-      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' +
-             i.nom + (i.quantite ? ' ' + i.quantite + '\u202f' + (i.unite || 'g') : '') + '</span>'
+      var label = typeof i === 'string' ? i : ((i.nom || i.name || '') + (i.quantite ? ' ' + i.quantite + '\u202f' + (i.unite || 'g') : ''))
+      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' + label + '</span>'
     }).join('') : ''
 
-    var instructions = Array.isArray(r.instructions) ? r.instructions.map(function(step, si) {
+    var steps = Array.isArray(r.instructions) && r.instructions.length ? r.instructions : (Array.isArray(r.steps) ? r.steps : [])
+    var instructions = steps.map(function(step, si) {
       return '<div style="display:flex;gap:10px;margin-bottom:8px;">' +
              '<span style="flex-shrink:0;width:20px;height:20px;background:var(--terracotta);color:white;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (si+1) + '</span>' +
              '<span style="font-size:13px;color:var(--deep-brown);line-height:1.5;">' + step + '</span>' +
              '</div>'
-    }).join('') : ''
+    }).join('')
 
     var astuces = Array.isArray(r.astuces) && r.astuces.length
       ? '<div style="margin-top:10px;background:rgba(122,158,126,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--sage);">💡 ' + r.astuces[0] + '</div>'
@@ -3680,7 +3690,7 @@ function afficherRecettesSauvegardees() {
            '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
            '    <div style="flex:1;min-width:0;">' +
            '      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + (temps ? ' · ' + temps : '') + '</div>' +
-           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
+           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || r.titre || 'Recette') + '</div>' +
            (stars ? '      <div style="font-size:13px;color:var(--golden);margin-top:4px;">' + stars + '</div>' : '') +
            '    </div>' +
            '    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">' +
@@ -3741,29 +3751,31 @@ function afficherFavoris() {
   container.innerHTML = favs.map(function(r, i) {
     var nv   = r.valeurs_nutritionnelles || {}
     var cal  = nv.calories ? nv.calories + ' kcal' : ''
-    var type = r.type_repas || ''
-    var date = r.saved_at ? new Date(r.saved_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
+    var type = r.type_repas || r.moment || ''
+    var savedAt = r.saved_at || r.sauvegardee_le || ''
+    var date = savedAt ? new Date(savedAt).toLocaleDateString('fr-FR', { day:'numeric', month:'short' }) : ''
     var stars = '★'.repeat(Math.min(r.note || 0, 5))
     var rid  = 'fav-r-' + i
     var prep = r.temps_preparation || 0
     var cook = r.temps_cuisson || 0
 
     var ingredients = Array.isArray(r.ingredients) ? r.ingredients.map(function(ing) {
-      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' +
-             ing.nom + (ing.quantite ? ' ' + ing.quantite + '\u202f' + (ing.unite || 'g') : '') + '</span>'
+      var label = typeof ing === 'string' ? ing : ((ing.nom || ing.name || '') + (ing.quantite ? ' ' + ing.quantite + '\u202f' + (ing.unite || 'g') : ''))
+      return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' + label + '</span>'
     }).join('') : ''
 
-    var instructions = Array.isArray(r.instructions) ? r.instructions.map(function(step, si) {
+    var favSteps = Array.isArray(r.instructions) && r.instructions.length ? r.instructions : (Array.isArray(r.steps) ? r.steps : [])
+    var instructions = favSteps.map(function(step, si) {
       return '<div style="display:flex;gap:10px;margin-bottom:8px;">' +
              '<span style="flex-shrink:0;width:20px;height:20px;background:var(--terracotta);color:white;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (si+1) + '</span>' +
              '<span style="font-size:13px;color:var(--deep-brown);line-height:1.5;">' + step + '</span></div>'
-    }).join('') : ''
+    }).join('')
 
     return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(232,184,75,0.3);overflow:hidden;">' +
            '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
            '    <div style="flex:1;min-width:0;">' +
            '      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:3px;">' + type + (date ? ' · ' + date : '') + '</div>' +
-           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</div>' +
+           '      <div style="font-family:\'Fraunces\',serif;font-size:15px;font-weight:600;color:var(--deep-brown);line-height:1.3;">' + (r.nom || r.titre || 'Recette') + '</div>' +
            (stars ? '      <div style="font-size:13px;color:var(--golden,#e8b84b);margin-top:4px;">' + stars + '</div>' : '') +
            '    </div>' +
            '    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">' +
