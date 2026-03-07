@@ -433,17 +433,6 @@
     overflow: hidden;
     padding-bottom: 8px;
   }
-  .aujourdhui-top::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80');
-    background-size: cover;
-    background-position: center 30%;
-    filter: brightness(0.88) saturate(1.05);
-    opacity: 0.28;
-    z-index: 0;
-  }
   .app-header {
     position: relative;
     z-index: 10;
@@ -505,8 +494,8 @@
   .companions-scroll::-webkit-scrollbar { display: none; }
   .companion-chip { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: transform 0.2s; }
   .companion-chip:hover { transform: translateY(-3px); }
-  .companion-avatar { width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; transition: all 0.25s; box-shadow: 0 2px 8px rgba(90,50,20,0.10); }
-  .companion-avatar.active { border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(196,113,74,0.18), 0 4px 12px rgba(90,50,20,0.12); transform: scale(1.04); }
+  .companion-avatar { width: 58px; height: 58px; border-radius: 18px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(196,113,74,0.22); transition: all 0.25s; box-shadow: 0 2px 8px rgba(90,50,20,0.10), inset 0 0 0 1px rgba(255,255,255,0.5); }
+  .companion-avatar.active { border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(196,113,74,0.20), 0 4px 14px rgba(90,50,20,0.14), inset 0 0 0 1px rgba(255,255,255,0.5); transform: scale(1.06); }
   .companion-avatar svg { width: 40px; height: 40px; }
   .companion-name { font-size: 11px; color: var(--mid-brown); text-align: center; font-weight: 500; line-height: 1.3; }
 
@@ -1397,8 +1386,25 @@
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="semaine-controls">
+    <!-- Empty state -->
+    <div class="semaine-empty" id="semaineEmpty">
+      <div class="semaine-empty-icon">📅</div>
+      <div class="semaine-empty-text">Votre plan sur 7 jours</div>
+      <div class="semaine-empty-sub">Générez un plan nutritionnel<br>complet et personnalisé</div>
+    </div>
+
+    <!-- Day cards (populated by JS) -->
+    <div class="day-cards" id="dayCards" style="display:none;"></div>
+
+    <!-- Conseil de la semaine (populated by JS) -->
+    <div id="semaineConseil" style="display:none;padding:0 20px 16px;"></div>
+
+    <!-- Wellness section (nutraceutique + routine) — populated by JS -->
+    <div class="semaine-wellness" id="semaineWellness" style="display:none;"></div>
+
+    <!-- Controls (objectifs + profil + générer) — toujours en bas -->
+    <div class="semaine-controls" style="padding-bottom:calc(var(--tab-bar-height) + 24px);">
+      <div style="height:1px;background:rgba(196,113,74,0.12);margin-bottom:4px;"></div>
       <div>
         <div class="field-label">Objectifs de la semaine</div>
         <div class="chips" id="semaineSymptomChips" style="margin-top:10px;">
@@ -1439,19 +1445,6 @@
         <div id="semaineProgressText" style="text-align:center;font-size:12px;color:var(--text-light);margin-top:7px;font-family:'DM Sans',sans-serif;">Analyse du profil…</div>
       </div>
     </div>
-
-    <!-- Empty state -->
-    <div class="semaine-empty" id="semaineEmpty">
-      <div class="semaine-empty-icon">📅</div>
-      <div class="semaine-empty-text">Votre plan sur 7 jours</div>
-      <div class="semaine-empty-sub">Générez un plan nutritionnel<br>complet et personnalisé</div>
-    </div>
-
-    <!-- Day cards (populated by JS) -->
-    <div class="day-cards" id="dayCards" style="display:none;"></div>
-
-    <!-- Wellness section (nutraceutique + routine) — populated by JS -->
-    <div class="semaine-wellness" id="semaineWellness" style="display:none;padding-bottom:calc(var(--tab-bar-height) + 80px);"></div>
 
   </div>
 
@@ -2841,6 +2834,21 @@ function afficherSemaine(data) {
   var empty = document.getElementById('semaineEmpty')
   if (cards) { cards.innerHTML = html; cards.style.display = 'flex' }
   if (empty) empty.style.display = 'none'
+
+  // Render conseil de la semaine
+  var conseilEl = document.getElementById('semaineConseil')
+  if (conseilEl) {
+    var conseil = data.conseil_du_jour || (data.semaine && Object.values(data.semaine)[0] && Object.values(data.semaine)[0].conseil)
+    if (conseil) {
+      conseilEl.style.display = 'block'
+      conseilEl.innerHTML = '<div class="conseil-card">' +
+        '<div class="conseil-title">💡 Conseil de la semaine</div>' +
+        '<div class="conseil-text">' + conseil + '</div>' +
+        '</div>'
+    } else {
+      conseilEl.style.display = 'none'
+    }
+  }
 
   // Render wellness section
   renderWellnessSemaine(data)
