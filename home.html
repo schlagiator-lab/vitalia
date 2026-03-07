@@ -2377,7 +2377,7 @@ async function sauvegarderRecetteSupabase(r, m) {
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
                  'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ profil_id: profil_id, titre: r.nom || r.titre, moment: m,
-        ingredients: r.ingredients, steps: r.instructions, tip: r.astuces && r.astuces[0], note: 0 })
+        ingredients: r.ingredients, steps: r.instructions, tip: r.astuces && r.astuces[0] })
     })
   } catch(e) {}
 }
@@ -2647,7 +2647,7 @@ function afficherSemaine(data) {
       html += '</div>'
 
       // Collapsible detail
-      html += '<div class="day-meal-detail" id="day-detail-' + id + '">'
+      html += '<div class="day-meal-detail" id="day-detail-' + id + '" onclick="event.stopPropagation()">'
       html += '<div class="day-meal-inner">'
 
       // (fallback warning removed — auto-regen triggered after render)
@@ -2963,7 +2963,8 @@ function sauvegarderRecetteSemaine(id) {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + SUPABASE_ANON_KEY },
       body: JSON.stringify({ profil_id:profil_id, titre:recette.nom||recette.titre, moment:mealKey,
-      ingredients:recette.ingredients||[], steps:recette.instructions||[], tip:(recette.astuces&&recette.astuces[0])||'', note:semaineRatings[id]||0 }),
+      ingredients:recette.ingredients||[], steps:recette.instructions||[], tip:(recette.astuces&&recette.astuces[0])||'',
+      ...(semaineRatings[id] ? { note: semaineRatings[id] } : {}) }),
     }).catch(function() {})
   }
   afficherToast('Recette sauvegardée ! 💚')
@@ -3356,7 +3357,6 @@ async function sauvegarderRecetteUnique() {
           ingredients: recetteCourante.ingredients || [],
           steps:       recetteCourante.instructions || [],
           tip:         (recetteCourante.astuces && recetteCourante.astuces[0]) || '',
-          note:        0,
         }),
       })
     } catch(e) {}
