@@ -1851,9 +1851,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Fetch fresh profile from Supabase
   chargerProfilSupabase(profil_id)
 
-  // Migrate and sync favorites
+  // Migrate and sync favorites + "À faire"
   migrerFavoris()
   chargerFavorisSupabase()
+  chargerRecettesSauvegardeesSupabase()
 
   // Date badge
   var db = document.getElementById('dateBadge')
@@ -1952,12 +1953,45 @@ function migrerFavoris() {
   } catch(e) {}
 }
 
+// ── Load "À faire" recipes from Supabase recettes_sauvegardees ──
+async function chargerRecettesSauvegardeesSupabase() {
+  if (!profil_id || profil_id === 'new') return
+  try {
+    var r = await fetch(
+      SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&order=date_sauvegarde.desc&limit=50',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    )
+    if (!r.ok) return
+    var rows = await r.json()
+    if (!Array.isArray(rows) || !rows.length) return
+    var saved = []
+    try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+    // Merge: add from Supabase any that aren't already in localStorage
+    rows.forEach(function(row) {
+      var nom = (row.titre || row.nom || '').toLowerCase().trim()
+      if (!nom) return
+      var exists = saved.some(function(s) { return (s.nom || s.titre || '').toLowerCase().trim() === nom })
+      if (!exists) saved.push({
+        nom: row.titre || row.nom,
+        titre: row.titre || row.nom,
+        ingredients: row.ingredients || [],
+        instructions: row.steps || [],
+        astuces: row.tip ? [row.tip] : [],
+        type_repas: row.moment || '',
+        saved_at: row.date_sauvegarde,
+        note: row.note || 0
+      })
+    })
+    localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0, 50)))
+  } catch(e) {}
+}
+
 // ── Load favorites from Supabase recettes_favorites ──
 async function chargerFavorisSupabase() {
   if (!profil_id || profil_id === 'new') return
   try {
     var r = await fetch(
-      SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&order=created_at.desc&limit=50',
+      SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&order=sauvegardee_le.desc&limit=50',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
     )
     if (!r.ok) return
@@ -2259,9 +2293,9 @@ function updateAlliesFromPlan(plan) {
     avocat:'avocat', banane:'banane', patate:'patate douce', miel:'miel',
     epinards:'épinard', amandes:'amande'
   }
-  // Collect only ingredient names from today's meals (matin/midi/soir)
+  // Collect ingredient names from all meals including pause/collation
   var ingredientNames = []
-  var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner']
+  var mealKeys = ['matin', 'petit_dejeuner', 'midi', 'dejeuner', 'soir', 'diner', 'pause', 'collation']
   mealKeys.forEach(function(key) {
     var meal = plan[key]
     if (!meal) return
@@ -2271,10 +2305,13 @@ function updateAlliesFromPlan(plan) {
       if (nom) ingredientNames.push(nom)
     })
   })
-  var allText = ingredientNames.join(' ')
-  var matched = []
-  Object.keys(keywords).forEach(function(ally) {
-    if (allText.includes(keywords[ally])) matched.push(ally)
+  // Word-boundary match: keyword must appear as a complete word in ingredient name
+  // (avoids false positives like "vinaigre de gingembre confit" matching "gingembre" when it shouldn't)
+  function matchesIngredient(nom, kw) {
+    return nom === kw || nom.startsWith(kw + ' ') || nom.includes(' ' + kw)
+  }
+  var matched = Object.keys(keywords).filter(function(ally) {
+    return ingredientNames.some(function(nom) { return matchesIngredient(nom, keywords[ally]) })
   })
 
   // If no ally ingredient is in today's recipes → show only goji, curcuma, gingembre as defaults
@@ -2737,6 +2774,15 @@ async function chargerEtapesRecette(jour, mealKey, id) {
       recette.instructions = data.instructions
       if (data.astuces) recette.astuces = data.astuces
       try { localStorage.setItem('vitalia_semaine_session', JSON.stringify(semainePlanData)) } catch(e) {}
+      // Sync steps to Supabase so other devices get them without regenerating
+      if (profil_id && profil_id !== 'new') {
+        fetch(SUPABASE_URL + '/rest/v1/plans_generes_cache?profil_id=eq.' + profil_id + '&source=eq.semaine', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ plan_json: semainePlanData })
+        }).catch(function() {})
+      }
 
       // Render steps
       var html = '<div class="day-meal-steps">'
@@ -2916,7 +2962,8 @@ function sauvegarderRecetteSemaine(id) {
     fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey':SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + SUPABASE_ANON_KEY },
-      body: JSON.stringify({ profil_id:profil_id, recette_json:recette, nom:recette.nom, type_repas:recette.type_repas, note:semaineRatings[id]||0 }),
+      body: JSON.stringify({ profil_id:profil_id, titre:recette.nom||recette.titre, moment:mealKey,
+      ingredients:recette.ingredients||[], steps:recette.instructions||[], tip:(recette.astuces&&recette.astuces[0])||'', note:semaineRatings[id]||0 }),
     }).catch(function() {})
   }
   afficherToast('Recette sauvegardée ! 💚')
@@ -3304,9 +3351,11 @@ async function sauvegarderRecetteUnique() {
         },
         body: JSON.stringify({
           profil_id:   profil_id,
-          recette_json: recetteCourante,
-          nom:         recetteCourante.nom,
-          type_repas:  recetteTypeRepas,
+          titre:       recetteCourante.nom || recetteCourante.titre || '',
+          moment:      recetteTypeRepas,
+          ingredients: recetteCourante.ingredients || [],
+          steps:       recetteCourante.instructions || [],
+          tip:         (recetteCourante.astuces && recetteCourante.astuces[0]) || '',
           note:        0,
         }),
       })
@@ -3635,11 +3684,19 @@ function toggleSavedRecette(id) {
 
 function supprimerRecetteSauvegardee(idx) {
   if (!confirm('Supprimer cette recette de "À faire" ?')) return
-  try {
-    var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
-    saved.splice(idx, 1)
-    localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved))
-  } catch(e) {}
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  var r = saved[idx]
+  saved.splice(idx, 1)
+  try { localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved)) } catch(e) {}
+  // Sync deletion to Supabase
+  if (r && profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
+    var titre = encodeURIComponent(r.titre || r.nom || '')
+    fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&titre=eq.' + titre, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    }).catch(function() {})
+  }
   afficherRecettesSauvegardees()
 }
 
