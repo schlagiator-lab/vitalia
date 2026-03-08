@@ -1754,6 +1754,19 @@ function switchTab(name) {
     if (!semaineCheckedThisSession) {
       semaineCheckedThisSession = true
       genererSemaine(false)
+    } else if (semainePlanData) {
+      // Plan déjà chargé : ouvrir et scroller vers le jour courant
+      var JOURS_IDX = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+      var jourAujourdhui = JOURS_IDX[new Date().getDay()]
+      var jourCible = (semainePlanData.semaine && semainePlanData.semaine[jourAujourdhui]) ? jourAujourdhui : 'lundi'
+      if (semaineJourOuvert !== jourCible) {
+        semaineJourOuvert = jourCible
+        toggleDay(jourCible)
+      }
+      setTimeout(function() {
+        var el = document.getElementById('day-card-' + jourCible)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     }
   }
   if (name === 'atfaire') { afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
@@ -2389,6 +2402,7 @@ function renderRoutineDetail(key, data) {
 
 // ── Display plan ──
 function afficherPlan(plan) {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
   currentPlan = plan
   // Normalize keys (edge function may use different names)
   plan.matin      = plan.petit_dejeuner || plan.matin
@@ -2959,14 +2973,28 @@ function afficherSemaine(data) {
   // Reset courses bar
   afficherBoutonListeCourses()
 
-  // Auto-open Monday (only on first render, not on regen refresh)
+  // Jour courant de la semaine
+  var JOURS_IDX = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+  var jourAujourdhui = JOURS_IDX[new Date().getDay()]
+  // Vérifier que le jour existe dans le plan (peut être absent si plan partiel)
+  var jourCible = (data.semaine && data.semaine[jourAujourdhui]) ? jourAujourdhui : 'lundi'
+
+  // Auto-open (only on first render, not on regen refresh)
   if (!data._regenRefresh) {
-    semaineJourOuvert = 'lundi'
-    toggleDay('lundi')
+    semaineJourOuvert = jourCible
+    toggleDay(jourCible)
     // Auto-regenerate fallback recipes silently
     autoRegenFallbacks(data)
   } else {
     toggleDay(semaineJourOuvert)
+  }
+
+  // Si on est déjà sur l'onglet semaine, scroller vers le jour courant
+  if (currentTab === 'semaine' && !data._regenRefresh) {
+    setTimeout(function() {
+      var el = document.getElementById('day-card-' + jourCible)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 200)
   }
 }
 
