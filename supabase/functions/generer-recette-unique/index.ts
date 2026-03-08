@@ -263,17 +263,41 @@ function construirePrompt(
 - Maximum 4 ingrédients, pas de compléments en poudre
 ` : '';
 
+  const PATISSERIE_TYPES = [
+    'tarte aux fruits frais (ex: fraises, framboises, poires, abricots) sur crème pâtissière légère',
+    'muffins moelleux à la banane et aux noix de pécan',
+    'panna cotta à la vanille et coulis de fruits rouges',
+    'crumble aux pommes et cannelle avec topping avoine-amandes',
+    'cheesecake léger à la ricotta et zestes de citron',
+    'clafoutis aux cerises ou aux myrtilles',
+    'cookies croustillants aux flocons d\'avoine, dattes et noix',
+    'mousse légère au citron et meringue',
+    'gâteau yaourt aux agrumes et pavot',
+    'financiers aux amandes et framboises',
+    'tarte tatin aux poires et caramel de coco',
+    'rochers coco chocolat noir',
+    'pudding chia aux fruits exotiques',
+    'galette des rois frangipane amandes-noisettes',
+    'cake marbré vanille-cacao',
+    'tartelettes aux fraises et crème d\'amandes',
+    'beignets légers aux pommes et sucre de coco',
+    'soufflé glacé aux fruits de la passion',
+    'madeleines au miel et fleur d\'oranger',
+    'brownie à la patate douce et pépites de chocolat',
+  ];
+  const patisserieInspiration = PATISSERIE_TYPES[Math.floor(Math.random() * PATISSERIE_TYPES.length)];
+
   const contraintesPatisserie = estPatisserie ? `
 ## CONTRAINTES PÂTISSERIE — RÈGLES ABSOLUES
 - C'est un DESSERT GOURMAND, PAS un plat principal
 - INTERDIT ABSOLUMENT : légumes salés, viandes, poissons, fruits de mer, protéines animales brutes
 - INTERDIT : recettes salées ou plats de résistance sous quelque forme que ce soit
-- Ingrédients sucrés obligatoires : farine (ou alternative), sucre/miel/sirop d'érable, œufs, beurre/huile de coco, chocolat, fruits, vanille, épices douces...
-- Saveurs UNIQUEMENT sucrées : chocolat, fruits, vanille, caramel, cannelle, noisette, agrumes, coco...
+- Saveurs UNIQUEMENT sucrées : fruits, vanille, caramel, cannelle, noisette, agrumes, coco, chocolat...
 - Le dessert doit être APPÉTISSANT et GOURMAND tout en étant nutritionnellement valorisé
-- Exemples acceptés : fondant chocolat noir, tarte aux fruits, muffins avoine-banane, cookies protéinés, cheesecake ricotta, clafoutis, crumble, brownie patate douce, panna cotta, mousse chocolat...
-- Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT si ils servent la dimension sucrée et dessert
-- Astuce : valorise la dimension nutritionnelle dans les "astuces" sans compromettre le côté dessert
+- Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT s'ils servent la dimension sucrée
+- Valorise la dimension nutritionnelle dans les "astuces" sans compromettre le côté dessert
+- **DIRECTION CRÉATIVE IMPOSÉE pour cette génération** : crée une recette dans l'esprit de → ${patisserieInspiration}
+- Sois ORIGINAL sur le nom et les détails, ne copie pas mot pour mot la direction, inspire-t'en
 ` : '';
 
   return `Tu es un chef pâtissier nutritionniste expert. Crée une recette ORIGINALE et CREATIVE.
