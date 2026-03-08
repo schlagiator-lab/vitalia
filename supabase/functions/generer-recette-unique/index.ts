@@ -22,6 +22,38 @@ const CORS_HEADERS = {
 // ─── Fallback recette riche (même logique que generer-plan-semaine) ──────────
 
 function recetteFallback(typeRepas: string, ingredientsFrigo: string[]): any {
+  if (typeRepas === 'patisserie') {
+    return {
+      nom: 'Fondant Chocolat Noir & Amandes',
+      type_repas: typeRepas,
+      style_culinaire: 'maison',
+      ingredients: [
+        { nom: 'Chocolat noir 70%', quantite: 100, unite: 'g' },
+        { nom: 'Beurre doux', quantite: 60, unite: 'g' },
+        { nom: 'Œufs', quantite: 2, unite: 'pièces' },
+        { nom: 'Sucre de coco', quantite: 40, unite: 'g' },
+        { nom: 'Farine de riz ou farine T65', quantite: 30, unite: 'g' },
+        { nom: 'Amandes effilées', quantite: 20, unite: 'g' },
+      ],
+      instructions: [
+        'Préchauffer le four à 180 °C. Beurrer deux petits moules à fondant ou ramequins.',
+        'Faire fondre le chocolat et le beurre au bain-marie à feu doux, en remuant jusqu\'à obtenir un mélange lisse et brillant.',
+        'Hors du feu, incorporer le sucre de coco au mélange chocolaté. Bien mélanger.',
+        'Ajouter les œufs un à un en fouettant vivement après chaque ajout pour incorporer de l\'air.',
+        'Tamiser la farine sur la préparation et mélanger délicatement à la spatule jusqu\'à ce qu\'elle soit entièrement absorbée.',
+        'Répartir dans les moules, parsemer d\'amandes effilées et enfourner 9 à 11 minutes — le cœur doit rester légèrement tremblant.',
+        'Laisser reposer 2 minutes avant de démouler. Déguster tiède avec quelques framboises fraîches.',
+      ],
+      temps_preparation: 10,
+      temps_cuisson: 11,
+      portions: 2,
+      valeurs_nutritionnelles: { calories: 420, proteines: 9, glucides: 32, lipides: 28 },
+      astuces: ['Le chocolat noir 70%+ est riche en magnésium et en antioxydants (flavonoïdes) pour la sérénité et la vitalité.'],
+      variantes: ['Remplacez la farine par de la poudre d\'amandes pour une version sans gluten encore plus fondante.'],
+      genere_par_llm: false,
+    };
+  }
+
   if (typeRepas === 'petit-dejeuner' || typeRepas === 'collation') {
     return {
       nom: 'Bol Énergie du Matin',
@@ -177,6 +209,7 @@ function construirePrompt(
 ): string {
 
   const estPetitDej = typeRepas === 'petit-dejeuner' || typeRepas === 'collation';
+  const estPatisserie = typeRepas === 'patisserie';
 
   const regimes: string[] = [];
   if (profil.regime_alimentaire?.some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase()))) {
@@ -230,21 +263,35 @@ function construirePrompt(
 - Maximum 4 ingrédients, pas de compléments en poudre
 ` : '';
 
-  return `Tu es un chef nutritionniste expert. Crée une recette ORIGINALE et CREATIVE.
+  const contraintesPatisserie = estPatisserie ? `
+## CONTRAINTES PÂTISSERIE — RÈGLES ABSOLUES
+- C'est un DESSERT GOURMAND, PAS un plat principal
+- INTERDIT ABSOLUMENT : légumes salés, viandes, poissons, fruits de mer, protéines animales brutes
+- INTERDIT : recettes salées ou plats de résistance sous quelque forme que ce soit
+- Ingrédients sucrés obligatoires : farine (ou alternative), sucre/miel/sirop d'érable, œufs, beurre/huile de coco, chocolat, fruits, vanille, épices douces...
+- Saveurs UNIQUEMENT sucrées : chocolat, fruits, vanille, caramel, cannelle, noisette, agrumes, coco...
+- Le dessert doit être APPÉTISSANT et GOURMAND tout en étant nutritionnellement valorisé
+- Exemples acceptés : fondant chocolat noir, tarte aux fruits, muffins avoine-banane, cookies protéinés, cheesecake ricotta, clafoutis, crumble, brownie patate douce, panna cotta, mousse chocolat...
+- Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT si ils servent la dimension sucrée et dessert
+- Astuce : valorise la dimension nutritionnelle dans les "astuces" sans compromettre le côté dessert
+` : '';
+
+  return `Tu es un chef pâtissier nutritionniste expert. Crée une recette ORIGINALE et CREATIVE.
 
 ## CONTRAINTES STRICTES
 
-**Type de repas** : ${typeRepas}
+**Type de repas** : ${estPatisserie ? 'DESSERT / PÂTISSERIE GOURMANDE' : typeRepas}
 **Régime** : ${regimes.join(', ') || 'Aucune restriction'}
 **Allergènes à éviter** : ${allergenes.join(', ') || 'Aucun'}
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
 **Budget** : ${budgetLabel}
-**Objectif nutritionnel** : ${objectif}
+**Objectif nutritionnel** : ${estPatisserie ? 'Dessert gourmand avec ingrédients de qualité nutritionnelle (chocolat noir, fruits, oléagineux)' : objectif}
 **Portions** : 2 personnes
 
 ${frigoSection}
 ${contraintesPetitDej}
 ${contraintesCollation}
+${contraintesPatisserie}
 
 ## FORMAT JSON STRICT (sans backticks, sans texte autour)
 
