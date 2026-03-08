@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vitalia — Mon espace bien-être</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500&family=Quicksand:wght@400;500;700&family=Nunito:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   /* ── Variables ── */
   :root {
@@ -814,13 +814,13 @@
   .recette-card { background: var(--warm-white); border-radius: 24px; border: 1.5px solid rgba(196,113,74,0.1); overflow: hidden; box-shadow: 0 4px 20px rgba(61,43,31,0.06); }
   .recette-card-header { background: linear-gradient(135deg, var(--terracotta), var(--dusty-rose)); padding: 24px 20px 20px; }
   .recette-card-type  { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.75); margin-bottom: 6px; font-weight: 600; }
-  .recette-card-name  { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 700; color: white; line-height: 1.3; margin-bottom: 12px; }
+  .recette-card-name  { font-family: 'Quicksand', sans-serif; font-size: 22px; font-weight: 700; color: white; line-height: 1.3; margin-bottom: 12px; }
   .recette-card-meta  { display: flex; gap: 10px; flex-wrap: wrap; }
   .recette-meta-chip  { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 4px 10px; font-size: 12px; color: white; }
   .recette-card-body  { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
   .recette-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-light); font-weight: 600; margin-bottom: 8px; }
   .recette-ingredients { display: flex; flex-wrap: wrap; gap: 6px; }
-  .recette-ing-tag { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
+  .recette-ing-tag { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); font-family: 'Quicksand', sans-serif; font-weight: 500; }
   .recette-steps { display: flex; flex-direction: column; gap: 10px; }
   .recette-step  { display: flex; gap: 10px; align-items: flex-start; }
   .recette-stepnum { width: 22px; height: 22px; background: var(--terracotta); color: white; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
@@ -828,8 +828,8 @@
   .recette-tip { background: rgba(232,184,75,0.12); border-left: 3px solid var(--golden); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 12.5px; color: var(--mid-brown); font-style: italic; }
   .recette-nutrition { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .recette-nutri-box { background: var(--cream); border-radius: 12px; padding: 10px 8px; text-align: center; }
-  .recette-nutri-val  { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--terracotta); }
-  .recette-nutri-lbl  { font-size: 10px; color: var(--text-light); font-weight: 500; margin-top: 2px; }
+  .recette-nutri-val  { font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 300; color: var(--terracotta); }
+  .recette-nutri-lbl  { font-family: 'Nunito', sans-serif; font-size: 10px; color: var(--text-light); font-weight: 300; margin-top: 2px; }
   .recette-variantes  { display: flex; flex-direction: column; gap: 6px; }
   .recette-variante   { font-size: 13px; color: var(--mid-brown); line-height: 1.4; padding-left: 12px; border-left: 2px solid var(--sage); }
   .recette-empty { text-align: center; padding: 48px 24px; }
@@ -1535,10 +1535,11 @@
       <div>
         <div class="field-label">Type de repas</div>
         <div class="chips" id="recetteTypeChips" style="margin-top:10px;">
-          <div class="chip selected" data-val="dejeuner" onclick="selectTypeRepas(this,'dejeuner')">☀️ Déjeuner</div>
-          <div class="chip" data-val="diner" onclick="selectTypeRepas(this,'diner')">🌙 Dîner</div>
           <div class="chip" data-val="petit-dejeuner" onclick="selectTypeRepas(this,'petit-dejeuner')">🌅 Petit-déj</div>
+          <div class="chip selected" data-val="dejeuner" onclick="selectTypeRepas(this,'dejeuner')">☀️ Déjeuner</div>
           <div class="chip" data-val="collation" onclick="selectTypeRepas(this,'collation')">🍎 Collation</div>
+          <div class="chip" data-val="diner" onclick="selectTypeRepas(this,'diner')">🌙 Dîner</div>
+          <div class="chip" data-val="patisserie" onclick="selectTypeRepas(this,'patisserie')" style="margin-left:8px; border-style:dashed;">🧁 Pâtisserie</div>
         </div>
       </div>
 
@@ -3472,10 +3473,11 @@ async function genererRecetteUnique() {
 
 function afficherRecetteUnique(recette) {
   var typeLabels = {
-    'dejeuner':        'Déjeuner',
-    'diner':           'Dîner',
     'petit-dejeuner':  'Petit-déjeuner',
+    'dejeuner':        'Déjeuner',
     'collation':       'Collation',
+    'diner':           'Dîner',
+    'patisserie':      'Pâtisserie',
   }
   var typeLabel = typeLabels[recetteTypeRepas] || recetteTypeRepas
   var nv = recette.valeurs_nutritionnelles || {}
