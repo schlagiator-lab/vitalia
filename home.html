@@ -3499,7 +3499,13 @@ function afficherRecetteUnique(recette) {
 
   // Nutrition
   if (nv.calories) {
-    html += '<div><div class="recette-section-label">Valeurs nutritionnelles</div>'
+    var sourceLabel = nv.source === 'calculé'    ? '✅ calculé depuis la base d\'aliments (' + nv.couverture + ')'
+                    : nv.source === 'partiel'    ? '⚠️ partiel (' + nv.couverture + ' matchés)'
+                    : nv.source === 'estimé_llm' ? '🤖 estimé par l\'IA'
+                    : ''
+    html += '<div><div class="recette-section-label">Valeurs nutritionnelles'
+    if (sourceLabel) html += ' <span style="font-size:9px;font-weight:400;opacity:0.7;text-transform:none;letter-spacing:0;">' + sourceLabel + '</span>'
+    html += '</div>'
     html += '<div class="recette-nutrition">'
     html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.calories||'—') + '</div><div class="recette-nutri-lbl">kcal</div></div>'
     html += '<div class="recette-nutri-box"><div class="recette-nutri-val">' + (nv.proteines||'—') + 'g</div><div class="recette-nutri-lbl">Protéines</div></div>'

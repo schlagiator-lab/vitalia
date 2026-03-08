@@ -240,3 +240,131 @@ export function genererIdUnique(): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+// ============================================================================
+// CALCUL NUTRITION RÉELLE DEPUIS LA TABLE ALIMENTATION
+// ============================================================================
+
+export interface NutritionCalculee {
+  calories:  number;
+  proteines: number;
+  glucides:  number;
+  lipides:   number;
+  couverture: string;   // ex: "4/7 ingrédients"
+  source: 'calculé' | 'partiel' | 'estimé_llm';
+}
+
+/**
+ * Convertit une quantité+unité en grammes.
+ * Retourne null si l'unité est inconnue ou la quantité nulle.
+ */
+export function convertirEnGrammes(quantite: number, unite: string, nomIng: string): number | null {
+  if (!quantite || quantite <= 0) return null;
+  const u = (unite || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  if (['g', 'gr', 'gramme', 'grammes', 'grams'].includes(u)) return quantite;
+  if (u === 'kg' || u === 'kilogramme') return quantite * 1000;
+  if (u === 'ml')  return quantite;          // 1 ml ≈ 1 g (eau)
+  if (u === 'cl')  return quantite * 10;
+  if (u === 'l' || u === 'litre' || u === 'litres') return quantite * 1000;
+  if (u.includes('soupe') || u === 'cas' || u === 'tbsp') return quantite * 15;
+  if (u.includes('cafe')  || u === 'cac' || u === 'tsp')  return quantite * 5;
+  if (u === 'verre')                    return quantite * 200;
+  if (u === 'poignee' || u === 'poignees') return quantite * 30;
+
+  // pièce — conversion par nom d'ingrédient
+  if (['piece', 'pieces', 'pc', 'pcs', 'unite', 'unites', ''].includes(u)) {
+    const n = nomIng.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const table: Record<string, number> = {
+      'oeuf': 55, 'egg': 55,
+      'citron': 100, 'orange': 150, 'pomme': 130, 'poire': 140,
+      'banane': 120, 'tomate': 100, 'oignon': 80, 'echalote': 40,
+      'gousse': 5, 'carotte': 80, 'courgette': 200, 'poivron': 150,
+      'avocat': 150, 'mangue': 200, 'peche': 130, 'prune': 50,
+      'figue': 50, 'kiwi': 75, 'abricot': 40,
+    };
+    for (const [key, g] of Object.entries(table)) {
+      if (n.includes(key)) return quantite * g;
+    }
+    return quantite * 100; // défaut 100 g / pièce
+  }
+  return null; // unité non reconnue → ingrédient ignoré
+}
+
+/**
+ * Extrait le mot-clé principal d'un nom d'ingrédient pour la recherche ILIKE.
+ */
+export function extraireMotCle(nom: string): string | null {
+  const stopWords = new Set([
+    'de', 'du', 'des', 'le', 'la', 'les', 'et', 'en', 'au', 'aux',
+    'un', 'une', 'avec', 'sans', 'frais', 'fraiche', 'fraîche', 'bio',
+    'nature', 'maison', 'sur', 'par', 'pour',
+    // mots de préparation
+    'filet', 'pave', 'tranche', 'steak', 'cuisse', 'aile', 'blanc',
+    'rouge', 'noir', 'vert', 'dore', 'grille', 'cuit', 'cru', 'entier',
+    'hache', 'emincer', 'coupe',
+    // assaisonnements ignorés (très peu caloriques)
+    'sel', 'poivre', 'herbe', 'epice', 'persil', 'ciboulette', 'thym',
+    'romarin', 'basilic', 'laurier', 'ail', 'echalote',
+  ]);
+
+  const normalized = nom.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z\s]/g, '').trim();
+
+  const words = normalized.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+  return words[0] || (normalized.length > 2 ? normalized.split(/\s+/)[0] : null);
+}
+
+/**
+ * Calcule les macros réelles en croisant les ingrédients avec la table alimentation.
+ * - Ingrédients matchés  → kcal réelles calculées (quantite / 100 × valeur_100g)
+ * - Ingrédients manquants → ignorés (0 kcal comptés pour eux)
+ * - Si < 2 ingrédients matchés → retourne null (on garde l'estimation LLM)
+ */
+export async function calculerNutritionReelle(
+  ingredients: Array<{ nom: string; quantite: number; unite: string }>,
+  supabase: SupabaseClient
+): Promise<NutritionCalculee | null> {
+
+  let totCal = 0, totProt = 0, totGluc = 0, totLip = 0;
+  let matched = 0;
+
+  for (const ing of ingredients) {
+    const grammes = convertirEnGrammes(ing.quantite, ing.unite, ing.nom);
+    if (!grammes) continue;
+
+    const keyword = extraireMotCle(ing.nom);
+    if (!keyword || keyword.length < 3) continue;
+
+    const { data } = await supabase
+      .from('alimentation')
+      .select('calories, proteines, glucides, lipides')
+      .ilike('nom', `%${keyword}%`)
+      .limit(1);
+
+    const ali = data?.[0];
+    if (ali?.calories != null) {
+      const r = grammes / 100;
+      totCal  += (ali.calories  || 0) * r;
+      totProt += (ali.proteines || 0) * r;
+      totGluc += (ali.glucides  || 0) * r;
+      totLip  += (ali.lipides   || 0) * r;
+      matched++;
+    }
+  }
+
+  if (matched < 2) return null; // pas assez fiable → fallback LLM
+
+  const couverture = matched >= Math.ceil(ingredients.length * 0.6) ? 'calculé' : 'partiel';
+  return {
+    calories:  Math.round(totCal),
+    proteines: Math.round(totProt * 10) / 10,
+    glucides:  Math.round(totGluc * 10) / 10,
+    lipides:   Math.round(totLip  * 10) / 10,
+    couverture: `${matched}/${ingredients.length} ingrédients`,
+    source: couverture,
+  };
+}

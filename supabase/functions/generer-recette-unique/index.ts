@@ -334,6 +334,93 @@ ${contraintesPatisserie}
 }`;
 }
 
+// ─── Calcul nutrition réelle depuis alimentation ───────────────────────────
+
+function convertirEnGrammes(quantite: number, unite: string, nomIng: string): number | null {
+  if (!quantite || quantite <= 0) return null;
+  const u = (unite || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+  if (['g', 'gr', 'gramme', 'grammes'].includes(u)) return quantite;
+  if (u === 'kg') return quantite * 1000;
+  if (u === 'ml') return quantite;
+  if (u === 'cl') return quantite * 10;
+  if (u === 'l' || u === 'litre') return quantite * 1000;
+  if (u.includes('soupe') || u === 'cas' || u === 'tbsp') return quantite * 15;
+  if (u.includes('cafe')  || u === 'cac' || u === 'tsp')  return quantite * 5;
+  if (u === 'verre')   return quantite * 200;
+  if (u === 'poignee') return quantite * 30;
+  if (['piece', 'pieces', 'pc', 'pcs', 'unite', ''].includes(u)) {
+    const n = nomIng.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const table: Record<string, number> = {
+      'oeuf': 55, 'citron': 100, 'orange': 150, 'pomme': 130, 'poire': 140,
+      'banane': 120, 'tomate': 100, 'oignon': 80, 'echalote': 40,
+      'gousse': 5, 'carotte': 80, 'courgette': 200, 'poivron': 150,
+      'avocat': 150, 'mangue': 200, 'peche': 130, 'prune': 50, 'kiwi': 75,
+    };
+    for (const [key, g] of Object.entries(table)) {
+      if (n.includes(key)) return quantite * g;
+    }
+    return quantite * 100;
+  }
+  return null;
+}
+
+function extraireMotCle(nom: string): string | null {
+  const stop = new Set([
+    'de','du','des','le','la','les','et','en','au','aux','un','une','avec','sans',
+    'frais','fraiche','bio','nature','maison','sur','par','pour',
+    'filet','pave','tranche','steak','cuisse','aile','blanc','rouge','noir','vert',
+    'dore','grille','cuit','cru','entier','hache',
+    'sel','poivre','herbe','epice','persil','ciboulette','thym','romarin','basilic',
+  ]);
+  const normalized = nom.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z\s]/g, '').trim();
+  const words = normalized.split(/\s+/).filter(w => w.length > 3 && !stop.has(w));
+  return words[0] || (normalized.length > 2 ? normalized.split(/\s+/)[0] : null);
+}
+
+async function calculerNutritionReelle(
+  ingredients: Array<{ nom: string; quantite: number; unite: string }>,
+  supabase: any
+): Promise<{ calories: number; proteines: number; glucides: number; lipides: number; couverture: string; source: string } | null> {
+  let totCal = 0, totProt = 0, totGluc = 0, totLip = 0, matched = 0;
+
+  for (const ing of ingredients) {
+    const g = convertirEnGrammes(ing.quantite, ing.unite, ing.nom);
+    if (!g) continue;
+    const kw = extraireMotCle(ing.nom);
+    if (!kw || kw.length < 3) continue;
+
+    const { data } = await supabase
+      .from('alimentation')
+      .select('calories, proteines, glucides, lipides')
+      .ilike('nom', `%${kw}%`)
+      .limit(1);
+
+    const ali = data?.[0];
+    if (ali?.calories != null) {
+      const r = g / 100;
+      totCal  += (ali.calories  || 0) * r;
+      totProt += (ali.proteines || 0) * r;
+      totGluc += (ali.glucides  || 0) * r;
+      totLip  += (ali.lipides   || 0) * r;
+      matched++;
+    }
+  }
+
+  if (matched < 2) return null;
+  return {
+    calories:  Math.round(totCal),
+    proteines: Math.round(totProt * 10) / 10,
+    glucides:  Math.round(totGluc * 10) / 10,
+    lipides:   Math.round(totLip  * 10) / 10,
+    couverture: `${matched}/${ingredients.length} ingrédients`,
+    source: matched >= Math.ceil(ingredients.length * 0.6) ? 'calculé' : 'partiel',
+  };
+}
+
 // ─── Appel Claude AI ───────────────────────────────────────────────────────
 
 async function genererRecetteIA(
@@ -468,6 +555,23 @@ serve(async (req: Request) => {
     if (!recette) {
       console.warn('[WARN] Fallback recette par défaut');
       recette = recetteFallback(typeRepasNorm, ingredientsFrigo);
+    }
+
+    // Calcul nutrition réelle depuis la table alimentation
+    if (recette?.ingredients?.length) {
+      const nutritionReelle = await calculerNutritionReelle(recette.ingredients, supabase);
+      if (nutritionReelle) {
+        console.log(`[nutrition] calculée (${nutritionReelle.couverture}) → ${nutritionReelle.calories} kcal`);
+        recette.valeurs_nutritionnelles = {
+          ...nutritionReelle,
+          llm_estime: recette.valeurs_nutritionnelles,
+        };
+      } else {
+        console.log(`[nutrition] < 2 ingrédients matchés → estimation LLM conservée`);
+        if (recette.valeurs_nutritionnelles) {
+          recette.valeurs_nutritionnelles.source = 'estimé_llm';
+        }
+      }
     }
 
     return new Response(

@@ -3,15 +3,19 @@
 // - FIX P2 : Model string corrigé → 'claude-opus-4-5-20251022' (Sonnet 4.5)
 //            L'ancien 'claude-sonnet-4-20250514' n'existe pas → erreur 400 Anthropic
 
-import { 
-  RecetteGeneree, 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  RecetteGeneree,
   Ingredient,
   ProfilUtilisateur,
-  ContexteUtilisateur 
+  ContexteUtilisateur
 } from './types.ts';
+import { calculerNutritionReelle } from './utils.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // FIX P2 : Identifiant de modèle valide
 // Utiliser claude-haiku-4-5-20251001 pour coût réduit, ou claude-sonnet-4-5-20251022 pour qualité
@@ -171,22 +175,36 @@ export async function genererRecetteLLM(
         return null;
       }
 
+      const ingredientsBuilt = (recetteJSON.ingredients || []).map((ing: any) => ({
+        nom:      ing.nom      || ing.name || 'Ingrédient',
+        quantite: ing.quantite || ing.quantity || 0,
+        unite:    ing.unite    || ing.unit || 'g'
+      }));
+
+      // Calcul nutrition réelle depuis la table alimentation
+      const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const nutritionReelle = await calculerNutritionReelle(ingredientsBuilt, supabaseClient);
+      const llmNutri = recetteJSON.valeurs_nutritionnelles;
+      const valeurs_nutritionnelles = nutritionReelle
+        ? { ...nutritionReelle, llm_estime: llmNutri }  // calcul réel prioritaire
+        : { ...(llmNutri || {}), source: 'estimé_llm' }; // fallback LLM
+
+      console.log(`[NIVEAU 3] Nutrition ${recetteJSON.nom}: ${nutritionReelle
+        ? `calculée (${nutritionReelle.couverture}) → ${nutritionReelle.calories} kcal`
+        : `estimée LLM → ${llmNutri?.calories ?? '?'} kcal`}`);
+
       const recette: RecetteGeneree = {
         nom:             recetteJSON.nom,
         type_repas:      typeRepas,
         style_culinaire: styleCulinaire,
-        ingredients:     (recetteJSON.ingredients || []).map((ing: any) => ({
-          nom:      ing.nom      || ing.name || 'Ingrédient',
-          quantite: ing.quantite || ing.quantity || 0,
-          unite:    ing.unite    || ing.unit || 'g'
-        })),
+        ingredients:     ingredientsBuilt,
         instructions:    recetteJSON.instructions || [],
         temps_preparation: recetteJSON.temps_preparation ?? 15,
         temps_cuisson:   typeRepas === 'petit-dejeuner'
           ? Math.min(recetteJSON.temps_cuisson ?? 0, 2)
           : (recetteJSON.temps_cuisson ?? 20),
         portions:        recetteJSON.portions || 2,
-        valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles || undefined,
+        valeurs_nutritionnelles,
         astuces:         recetteJSON.astuces || [],
         variantes:       recetteJSON.variantes || [],
         genere_par_llm:  true
