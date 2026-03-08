@@ -803,7 +803,8 @@
   .courses-bar-count { font-size:13px; }
   .courses-bar-btn { background:white; color:var(--deep-brown); border:none; border-radius:14px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; }
   .courses-modal { position:fixed; inset:0; background:rgba(61,43,31,0.4); z-index:90; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px); }
-  .courses-modal-inner { background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px calc(var(--tab-bar-height) + 24px); width:100%; max-width:480px; max-height:80vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
+  .courses-modal-inner { background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px 28px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
+  @media (max-width: 600px) { .courses-modal-inner { padding-bottom: calc(var(--tab-bar-height) + 24px); } }
   .courses-modal-handle { width:36px; height:4px; background:var(--peach); border-radius:2px; margin:0 auto 20px; }
   .courses-item { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--cream); border-radius:12px; border:1px solid rgba(196,113,74,0.1); }
   .courses-item input[type=checkbox] { width:18px; height:18px; accent-color:var(--terracotta); flex-shrink:0; cursor:pointer; }
@@ -2087,6 +2088,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Pre-load shopping list for À faire > Courses section
   afficherListeCoursesProfile()
 
+  // Close courses modal on Escape key (PC UX)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { fermerListeCourses() }
+  })
+
   // Restore on-demand recipe from localStorage
   var recetteSession = localStorage.getItem('vitalia_recette_session')
   if (recetteSession) {
@@ -3249,11 +3255,67 @@ function afficherBoutonListeCourses() {
   var count = countSemaine + countSaved
   // Auto-save list so À faire > Courses reflects current selection
   if (count > 0) {
-    var liste = aggregerIngredients()
-    try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste })) } catch(e) {}
+    var liste    = aggregerIngredients()
+    var recettes = construireListeRecettes()
+    try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste, recettes: recettes })) } catch(e) {}
   }
   // Refresh profil tab shopping list in real-time if it is visible
   afficherListeCoursesProfile()
+}
+
+// Build the array of selected recipes with their base ingredients (used for portions recalculation)
+function construireListeRecettes() {
+  var result = []
+  var MEAL_LABEL = { petit_dejeuner: 'Petit-déj.', dejeuner: 'Déjeuner', diner: 'Dîner', pause: 'Collation' }
+  var JOUR_LABEL = { lundi:'Lun.', mardi:'Mar.', mercredi:'Mer.', jeudi:'Jeu.', vendredi:'Ven.', samedi:'Sam.', dimanche:'Dim.' }
+
+  Object.keys(semaineSelected).forEach(function(id) {
+    if (!semaineSelected[id]) return
+    var parts   = id.split('_'), jour = parts[0], mealKey = parts.slice(1).join('_')
+    var recette = semainePlanData && semainePlanData.semaine && semainePlanData.semaine[jour] && semainePlanData.semaine[jour][mealKey]
+    if (!recette) return
+    result.push({
+      type: 'semaine', id: id,
+      nom: recette.nom || ((MEAL_LABEL[mealKey] || mealKey) + ' ' + (JOUR_LABEL[jour] || jour)),
+      portions: semaineServings[id] || 2,
+      basePortions: 2,
+      ingredients: recette.ingredients || []
+    })
+  })
+
+  var savedList = []
+  try { savedList = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  Object.keys(savedSelected).forEach(function(idx) {
+    if (!savedSelected[idx]) return
+    var recette = savedList[parseInt(idx)]
+    if (!recette) return
+    result.push({
+      type: 'saved', id: parseInt(idx),
+      nom: recette.nom || 'Recette sauvegardée',
+      portions: savedServings[parseInt(idx)] || 2,
+      basePortions: recette.portions || 2,
+      ingredients: recette.ingredients || []
+    })
+  })
+  return result
+}
+
+// Re-aggregate ingredients from stored recipe list (works without in-memory plan data)
+function reagregerDepuisRecettes(recettes) {
+  var map = {}
+  ;(recettes || []).forEach(function(r) {
+    if (!r.ingredients || !r.ingredients.length) return
+    var ratio = r.portions / Math.max(r.basePortions || 2, 1)
+    r.ingredients.forEach(function(ing) {
+      var key = ing.nom.toLowerCase().trim()
+      if (map[key]) {
+        if (map[key].unite === (ing.unite || 'g') && ing.quantite) map[key].quantite = Math.round((map[key].quantite || 0) + ing.quantite * ratio)
+      } else {
+        map[key] = { nom: ing.nom, quantite: ing.quantite ? Math.round(ing.quantite * ratio) : null, unite: ing.unite || 'g' }
+      }
+    })
+  })
+  return Object.values(map).sort(function(a, b) { return a.nom.localeCompare(b.nom) })
 }
 
 // Aggregate ingredients from selected recipes (semaine + saved)
@@ -3377,8 +3439,9 @@ function fermerListeCourses() {
 }
 
 function sauvegarderListeCourses() {
-  var liste = aggregerIngredients()
-  localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste }))
+  var liste    = aggregerIngredients()
+  var recettes = construireListeRecettes()
+  localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste, recettes: recettes }))
   afficherToast('Liste sauvegardée dans le profil !')
   fermerListeCourses()
   afficherListeCoursesProfile()
@@ -4122,7 +4185,7 @@ function changerPortionsSaved(idx, delta) {
   if (savedSelected[idx]) afficherBoutonListeCourses()
 }
 
-// Display saved shopping list in Profil tab (with toggle-Vu per ingredient)
+// Display saved shopping list in the "À faire > Courses" tab
 function afficherListeCoursesProfile() {
   var container = document.getElementById('listeCoursesProfile')
   if (!container) return
@@ -4137,35 +4200,143 @@ function afficherListeCoursesProfile() {
 
   var vu = {}
   try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
-  var dateStr = raw.date ? new Date(raw.date).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) : ''
+  var dateStr  = raw.date ? new Date(raw.date).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) : ''
   var restants = raw.ingredients.filter(function(i) { return !vu[i.nom] }).length
   var total    = raw.ingredients.length
 
-  container.innerHTML =
-    (dateStr ? '<div style="font-size:11px;color:var(--text-light);margin-bottom:8px;">Générée le ' + dateStr + '</div>' : '') +
-    '<div style="font-size:12px;color:var(--sage);font-weight:600;margin-bottom:10px;">' + restants + ' / ' + total + ' ingrédients restants</div>' +
-    raw.ingredients.map(function(ing) {
-      var qte  = ing.quantite ? (Math.round(ing.quantite) + '\u202f' + (ing.unite || 'g')) : ''
-      var done = !!vu[ing.nom]
-      var key  = encodeURIComponent(ing.nom).replace(/'/g, '%27')
-      return '<div onclick="toggleCoursesVu(\'' + key + '\')" style="cursor:pointer;background:' + (done ? 'rgba(122,158,126,0.08)' : 'var(--cream)') + ';border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid ' + (done ? 'rgba(122,158,126,0.3)' : 'transparent') + ';transition:all 0.2s;">' +
-             '<span style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)') + ';background:' + (done ? 'var(--sage)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;">' + (done ? '✓' : '') + '</span>' +
-             '<span style="flex:1;font-size:13px;font-weight:500;color:' + (done ? 'var(--text-light)' : 'var(--deep-brown)') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';">' + ing.nom + '</span>' +
-             (qte ? '<span style="font-size:12px;color:var(--text-light);flex-shrink:0;">' + qte + '</span>' : '') +
-             '</div>'
-    }).join('') +
-    '<div style="display:flex;gap:8px;margin-top:12px;">' +
+  // ── Ingredient list ──
+  var html = (dateStr ? '<div style="font-size:11px;color:var(--text-light);margin-bottom:8px;">Générée le ' + dateStr + '</div>' : '')
+  html += '<div style="font-size:12px;color:var(--sage);font-weight:600;margin-bottom:10px;">' + restants + ' / ' + total + ' ingrédients restants</div>'
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">'
+  raw.ingredients.forEach(function(ing, idx) {
+    var qte  = ing.quantite ? (Math.round(ing.quantite) + '\u202f' + (ing.unite || 'g')) : ''
+    var done = !!vu[ing.nom]
+    html += '<div onclick="toggleCoursesVuByIdx(' + idx + ')" style="cursor:pointer;background:' + (done ? 'rgba(122,158,126,0.08)' : 'var(--cream)') + ';border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid ' + (done ? 'rgba(122,158,126,0.3)' : 'transparent') + ';transition:all 0.2s;" id="courses-profile-item-' + idx + '">' +
+           '<span style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)') + ';background:' + (done ? 'var(--sage)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;">' + (done ? '✓' : '') + '</span>' +
+           '<span style="flex:1;font-size:13px;font-weight:500;color:' + (done ? 'var(--text-light)' : 'var(--deep-brown)') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';">' + ing.nom + '</span>' +
+           (qte ? '<span style="font-size:12px;color:var(--text-light);flex-shrink:0;">' + qte + '</span>' : '') +
+           '</div>'
+  })
+  html += '</div>'
+
+  // ── Action buttons ──
+  html += '<div style="display:flex;gap:8px;margin-top:12px;">' +
     '<button onclick="localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">↺ Réinitialiser</button>' +
     '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
     '</div>'
+
+  // ── Recipes section ──
+  var recettes = raw.recettes || []
+  if (recettes.length > 0) {
+    html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(196,113,74,0.15);">'
+    html += '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-light);font-weight:600;margin-bottom:10px;">Recettes dans la liste (' + recettes.length + ')</div>'
+    recettes.forEach(function(r, ri) {
+      var typeStr = r.type === 'semaine' ? '📅' : '📋'
+      html += '<div style="background:var(--warm-white);border-radius:14px;padding:12px 14px;border:1px solid rgba(196,113,74,0.12);display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+      html += '<span style="font-size:18px;flex-shrink:0;">' + typeStr + '</span>'
+      html += '<span style="flex:1;font-size:13px;font-weight:500;color:var(--deep-brown);line-height:1.3;">' + (r.nom || 'Recette') + '</span>'
+      // Portions stepper
+      html += '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+      html += '<button onclick="changerPortionsListeProfile(\'' + r.type + '\',' + JSON.stringify(r.id) + ',-1)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(196,113,74,0.3);background:var(--cream);color:var(--terracotta);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding-bottom:1px;">−</button>'
+      html += '<span id="liste-portions-' + ri + '" style="font-size:13px;font-weight:600;color:var(--deep-brown);min-width:24px;text-align:center;">' + r.portions + '</span>'
+      html += '<button onclick="changerPortionsListeProfile(\'' + r.type + '\',' + JSON.stringify(r.id) + ',+1)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(196,113,74,0.3);background:var(--cream);color:var(--terracotta);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding-bottom:1px;">+</button>'
+      html += '<span style="font-size:11px;color:var(--text-light);margin-left:2px;">pers.</span>'
+      // Delete button
+      html += '<button onclick="supprimerRecetteDeListeProfile(\'' + r.type + '\',' + JSON.stringify(r.id) + ')" title="Retirer de la liste" style="margin-left:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(196,113,74,0.1);color:var(--terracotta);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>'
+      html += '</div></div>'
+    })
+    html += '</div>'
+  }
+
+  container.innerHTML = html
 }
 
+// Toggle a shopping list item checked/unchecked (index-based, no encoding issues)
+function toggleCoursesVuByIdx(idx) {
+  var raw = null
+  try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  if (!raw || !raw.ingredients || !raw.ingredients[idx]) return
+  var nom = raw.ingredients[idx].nom
+  var vu = {}
+  try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+  if (vu[nom]) delete vu[nom]; else vu[nom] = true
+  localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
+  afficherListeCoursesProfile()
+}
+
+// Keep for backward compatibility with the floating modal
 function toggleCoursesVu(encodedNom) {
   var nom = decodeURIComponent(encodedNom)
   var vu = {}
   try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
-  vu[nom] = !vu[nom]
+  if (vu[nom]) delete vu[nom]; else vu[nom] = true
   localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
+  afficherListeCoursesProfile()
+}
+
+// Remove a recipe from the shopping list
+function supprimerRecetteDeListeProfile(type, id) {
+  var raw = null
+  try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  if (!raw || !raw.recettes) return
+
+  // Remove from stored recipe list
+  raw.recettes = raw.recettes.filter(function(r) { return !(r.type === type && String(r.id) === String(id)) })
+
+  // Update in-memory selection state (for when plan is still loaded)
+  if (type === 'semaine') {
+    semaineSelected[id] = false
+    var btn = document.getElementById('select-btn-' + id)
+    if (btn) { btn.classList.remove('selected'); btn.textContent = '🛒 Sélectionner' }
+  } else {
+    var idx = parseInt(id)
+    savedSelected[idx] = false
+    var btn2 = document.getElementById('saved-select-btn-' + idx)
+    if (btn2) { btn2.textContent = '🛒 Sélectionner pour la liste'; btn2.style.background = 'rgba(196,113,74,0.08)'; btn2.style.borderColor = 'rgba(196,113,74,0.25)'; btn2.style.color = 'var(--terracotta)' }
+  }
+
+  // Recompute ingredients from remaining recipes
+  raw.ingredients = reagregerDepuisRecettes(raw.recettes)
+
+  if (!raw.recettes.length) {
+    localStorage.removeItem('vitalia_liste_courses')
+    localStorage.removeItem('vitalia_courses_vu')
+  } else {
+    raw.date = new Date().toISOString()
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
+  }
+  afficherListeCoursesProfile()
+}
+
+// Change portions for a recipe in the stored list and recompute ingredients
+function changerPortionsListeProfile(type, id, delta) {
+  var raw = null
+  try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  if (!raw || !raw.recettes) return
+
+  var recette = raw.recettes.find(function(r) { return r.type === type && String(r.id) === String(id) })
+  if (!recette) return
+
+  recette.portions = Math.max(1, Math.min(8, (recette.portions || 2) + delta))
+
+  // Sync in-memory state too
+  if (type === 'semaine') {
+    semaineServings[id] = recette.portions
+    var portEl = document.getElementById('portions-' + id)
+    if (portEl) portEl.textContent = recette.portions + ' pers.'
+  } else {
+    var idx = parseInt(id)
+    savedServings[idx] = recette.portions
+    var portEl2 = document.getElementById('saved-portions-' + idx)
+    if (portEl2) portEl2.textContent = recette.portions
+  }
+
+  // Recompute ingredient list from all recipes
+  raw.ingredients = reagregerDepuisRecettes(raw.recettes)
+  // Clear checked items since quantities changed
+  localStorage.removeItem('vitalia_courses_vu')
+  raw.date = new Date().toISOString()
+  localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
   afficherListeCoursesProfile()
 }
 
