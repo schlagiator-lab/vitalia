@@ -2598,7 +2598,10 @@ function noterPlan(note) {
 // ── Generate daily plan ──
 async function genererPlan(forcer) {
   fermerConfig()
-  if (forcer) sessionStorage.removeItem('vitalia_plan_session_home')
+  if (forcer) {
+    sessionStorage.removeItem('vitalia_plan_session_home')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   if (!profil_id || profil_id === 'new') { window.location.href = 'onboarding.html'; return }
 
   var ls = document.getElementById('loadingScreen')
@@ -2693,6 +2696,7 @@ function toggleDayMeal(jour, meal) {
 // Generate 7-day plan
 async function genererSemaine(forcer) {
   if (!profil_id) { afficherToast('Profil non trouvé'); return }
+  if (forcer) window.scrollTo({ top: 0, behavior: 'smooth' })
   // Silent mode = background refresh when data already displayed (for cross-device sync)
   var silentMode   = !forcer && semainePlanData !== null
   var btn          = document.getElementById('semaineBtnGenerate')
