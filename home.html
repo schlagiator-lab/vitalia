@@ -1714,14 +1714,19 @@ _sb.auth.onAuthStateChange(function(event, session) {
   if (session && session.access_token) {
     authToken = session.access_token
   } else {
-    // Toujours fallback sur anon (jamais de token invalide en circulation)
     authToken = SUPABASE_ANON_KEY
+    // SIGNED_OUT inattendu (token révoqué côté serveur) → redirection reconnexion
+    if (event === 'SIGNED_OUT' && !_deconnexionEnCours) {
+      console.warn('[auth] SIGNED_OUT inattendu → redirection reconnexion')
+      setTimeout(function() {
+        window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
+      }, 500)
+    }
   }
 })
 
 // Wrapper fetch : injecte toujours le token courant et gère le 401 avec refresh+retry
 async function authFetch(url, options) {
-  // Toujours injecter le token courant (évite d'utiliser un token périmé bakté dans options)
   var opts = Object.assign({}, options, {
     headers: Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
   })
@@ -1739,10 +1744,14 @@ async function authFetch(url, options) {
         return fetch(url, Object.assign({}, opts, { headers: retryHeaders }))
       }
     } catch(e) { console.warn('[authFetch] Refresh échoué:', e) }
-    // Refresh impossible → retry avec anon (sans modifier authToken global)
-    console.warn('[authFetch] ⚠️ Retry clé anon après échec refresh')
-    var anonHeaders = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY })
-    return fetch(url, Object.assign({}, opts, { headers: anonHeaders }))
+    // Refresh impossible → session définitivement expirée, redirection reconnexion
+    if (!_deconnexionEnCours) {
+      console.warn('[authFetch] Session expirée sans refresh possible → redirection')
+      afficherToast('Session expirée – reconnecte-toi')
+      setTimeout(function() {
+        window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
+      }, 1500)
+    }
   }
   return resp
 }
@@ -2093,8 +2102,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
         return
       } else {
-        // Token expiré mais refresh échoué (réseau mobile) → fallback anon temporaire
-        console.warn('[auth] Refresh échoué (réseau ?) → fallback anon temporaire')
+        // Token expiré et refresh échoué
+        var refreshErr = refreshResult && refreshResult.error
+        if (refreshErr && refreshErr.message) {
+          // Refresh token invalide/révoqué côté serveur → reconnexion obligatoire
+          console.warn('[auth] Refresh token invalide (' + refreshErr.message + ') → redirection reconnexion')
+          window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
+          return
+        }
+        // Pas de message d'erreur → probablement une perte réseau temporaire → on continue
+        console.warn('[auth] Refresh sans réponse (réseau ?) → token expiré en cache, les appels API peuvent échouer')
       }
     }
   } catch(e) { console.warn('[auth] Session init error:', e) }
@@ -3537,6 +3554,11 @@ async function genererRecettePourRepas(jour, mealKey, typeRepas) {
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ profil_id:profil_id, type_repas:typeRepas, ingredients_frigo:[], symptomes:selectedSymptoms }),
     })
+    if (!resp.ok) {
+      if (resp.status !== 401) afficherToast('Erreur serveur ' + resp.status)
+      if (btn) { btn.disabled = false; btn.textContent = '✨ Regénérer' }
+      return
+    }
     var data = await resp.json()
     if (data.success && data.recette && semainePlanData && semainePlanData.semaine && semainePlanData.semaine[jour]) {
       semainePlanData.semaine[jour][mealKey] = data.recette
@@ -3630,6 +3652,13 @@ async function genererRecetteUnique() {
         directive_chef:     (document.getElementById('directiveChefInput') || {}).value || '',
       }),
     })
+    if (!resp.ok) {
+      var errData = {}
+      try { errData = await resp.json() } catch(_) {}
+      console.error('[genererRecetteUnique]', resp.status, errData)
+      if (resp.status !== 401) afficherToast('Erreur serveur ' + resp.status + ' – réessaie dans un instant')
+      return
+    }
     var data = await resp.json()
     if (data.success && data.recette) {
       recetteCourante = data.recette

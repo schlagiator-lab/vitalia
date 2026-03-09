@@ -949,7 +949,7 @@ window.addEventListener('load', async () => {
       const emailInput = document.getElementById('emailInput')
       if (emailInput) emailInput.value = savedEmail
     }
-    allerStep(0)
+    afficherEtape('Email')
   }
 
   if (urlParams.get('edit') === 'true') {
@@ -1173,14 +1173,31 @@ async function connecterOuCreer() {
 
     if (authMode === 'signup') {
       const { data, error } = await window._sb.auth.signUp({ email, password })
-      if (error) throw error
-      // Si session null → email déjà existant, on tente login direct
-      if (data.session) {
+      if (error) {
+        // "User already registered" → basculer sur login direct
+        if (error.message && error.message.includes('already registered')) {
+          const { data: loginData, error: loginErr } = await window._sb.auth.signInWithPassword({ email, password })
+          if (loginErr) throw new Error('Ce compte existe déjà. Clique sur « Se connecter » et entre ton mot de passe.')
+          user = loginData.user
+        } else {
+          throw error
+        }
+      } else if (data.session) {
+        // Inscription réussie avec session immédiate (confirmation email désactivée)
         user = data.user
-      } else {
+      } else if (data.user && !data.session) {
+        // Session null = confirmation email requise OU compte existant sans session
+        // On tente un login pour déterminer lequel
         const { data: loginData, error: loginErr } = await window._sb.auth.signInWithPassword({ email, password })
-        if (loginErr) throw new Error('Ce compte existe déjà. Clique sur « Se connecter » et entre ton mot de passe.')
+        if (loginErr) {
+          if (loginErr.message && loginErr.message.includes('Email not confirmed')) {
+            throw new Error('Confirme ton adresse email avant de te connecter.')
+          }
+          throw new Error('Ce compte existe déjà. Clique sur « Se connecter » et entre ton mot de passe.')
+        }
         user = loginData.user
+      } else {
+        throw new Error('Erreur inattendue lors de l\'inscription. Réessaie.')
       }
     } else {
       const { data, error } = await window._sb.auth.signInWithPassword({ email, password })
