@@ -936,6 +936,22 @@ window.addEventListener('load', async () => {
 
   // ── Mode édition profil ──────────────────────────────────────────────────
   const urlParams = new URLSearchParams(window.location.search)
+
+  // Reconnexion silencieuse (session expirée depuis home.html)
+  if (urlParams.get('reconnect') === '1') {
+    const authTitle = document.getElementById('authTitle')
+    const authDesc  = document.getElementById('authDesc')
+    if (authTitle) authTitle.textContent = 'Reconnexion requise'
+    if (authDesc)  authDesc.textContent  = 'Ta session a expiré. Reconnecte-toi pour continuer — tes données sont préservées.'
+    // Pré-remplir l'email si disponible
+    const savedEmail = localStorage.getItem('vitalia_email')
+    if (savedEmail) {
+      const emailInput = document.getElementById('emailInput')
+      if (emailInput) emailInput.value = savedEmail
+    }
+    allerStep(0)
+  }
+
   if (urlParams.get('edit') === 'true') {
     // Adapter le label du bouton terminer
     const btnT = document.getElementById('btnTerminer')

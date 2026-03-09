@@ -1710,7 +1710,20 @@ var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ── Token d'auth : maintenu à jour par onAuthStateChange (gère le refresh auto) ──
 var authToken = SUPABASE_ANON_KEY
 _sb.auth.onAuthStateChange(function(event, session) {
-  authToken = (session && session.access_token) ? session.access_token : SUPABASE_ANON_KEY
+  if (session && session.access_token) {
+    authToken = session.access_token
+  } else {
+    authToken = SUPABASE_ANON_KEY
+    // Session expirée ou révoquée → forcer reconnexion silencieuse
+    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      var pid = localStorage.getItem('vitalia_profil_id')
+      if (pid && !session) {
+        localStorage.removeItem('vitalia_user_id')
+        localStorage.removeItem('vitalia_email')
+        window.location.href = 'onboarding.html?reconnect=1&profil_id=' + pid
+      }
+    }
+  }
 })
 
 // ── State ──
