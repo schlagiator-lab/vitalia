@@ -1707,8 +1707,11 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // ── Client Supabase (SDK avec auth automatique, partagé avec onboarding) ──
 var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// ── Token d'auth : remplacé par le JWT utilisateur dès que la session est disponible ──
+// ── Token d'auth : maintenu à jour par onAuthStateChange (gère le refresh auto) ──
 var authToken = SUPABASE_ANON_KEY
+_sb.auth.onAuthStateChange(function(event, session) {
+  authToken = (session && session.access_token) ? session.access_token : SUPABASE_ANON_KEY
+})
 
 // ── State ──
 var currentTab        = 'aujourdhui'
@@ -2030,14 +2033,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     return
   }
 
-  // Récupérer le JWT de la session Supabase Auth pour sécuriser les appels REST
+  // Initialiser la session Supabase Auth (onAuthStateChange met authToken à jour automatiquement)
+  // getSession() déclenche le refresh du token si expiré via le refresh_token stocké
   try {
-    var sessionData = await _sb.auth.getSession()
-    var session = sessionData && sessionData.data && sessionData.data.session
-    if (session && session.access_token) {
-      authToken = session.access_token
-    }
-  } catch(e) { console.warn('[auth] Impossible de récupérer la session:', e) }
+    await _sb.auth.getSession()
+  } catch(e) { console.warn('[auth] Session init error:', e) }
 
   localStorage.setItem('vitalia_profil_id', profil_id)
 
