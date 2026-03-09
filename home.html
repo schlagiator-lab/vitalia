@@ -4073,7 +4073,7 @@ function ajouterFavoriAuxCourses(idx) {
   // Ajouter la recette dans la section "Recettes dans la liste" si pas déjà présente
   var nomRecette = r.nom || r.titre || ''
   if (nomRecette && !recettes.find(function(x) { return (x.nom || '').toLowerCase() === nomRecette.toLowerCase() })) {
-    recettes.push({ nom: nomRecette, type: 'favori', id: idx, portions: 2 })
+    recettes.push({ nom: nomRecette, type: 'favori', id: idx, portions: 2, basePortions: 2, ingredients: nouveaux })
   }
   try {
     localStorage.setItem('vitalia_liste_courses', JSON.stringify({
