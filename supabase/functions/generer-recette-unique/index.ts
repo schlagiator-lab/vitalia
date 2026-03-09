@@ -205,7 +205,8 @@ function construirePrompt(
   typeRepas: string,
   ingredientsFrigo: string[],
   symptomes: string[],
-  profil: any
+  profil: any,
+  directiveChef: string = ''
 ): string {
 
   const estPetitDej = typeRepas === 'petit-dejeuner' || typeRepas === 'collation';
@@ -300,6 +301,10 @@ function construirePrompt(
 - Sois ORIGINAL sur le nom et les détails, ne copie pas mot pour mot la direction, inspire-t'en
 ` : '';
 
+  const directiveSection = directiveChef.trim()
+    ? `\n## DIRECTIVE DU CHEF — PRIORITÉ ABSOLUE\nL'utilisateur demande SPÉCIFIQUEMENT : "${directiveChef.trim()}"\nTu DOIS créer une recette qui correspond exactement à cette demande. C'est la contrainte la plus importante.\n`
+    : '';
+
   return `Tu es un chef pâtissier nutritionniste expert. Crée une recette ORIGINALE et CREATIVE.
 
 ## CONTRAINTES STRICTES
@@ -311,7 +316,7 @@ function construirePrompt(
 **Budget** : ${budgetLabel}
 **Objectif nutritionnel** : ${estPatisserie ? 'Dessert gourmand avec ingrédients de qualité nutritionnelle (chocolat noir, fruits, oléagineux)' : objectif}
 **Portions** : 2 personnes
-
+${directiveSection}
 ${frigoSection}
 ${contraintesPetitDej}
 ${contraintesCollation}
@@ -427,7 +432,8 @@ async function genererRecetteIA(
   typeRepas: string,
   ingredientsFrigo: string[],
   symptomes: string[],
-  profil: any
+  profil: any,
+  directiveChef: string = ''
 ): Promise<any | null> {
 
   if (!ANTHROPIC_API_KEY) {
@@ -435,7 +441,7 @@ async function genererRecetteIA(
     return null;
   }
 
-  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil);
+  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil, directiveChef);
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -509,7 +515,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, type_repas, ingredients_frigo, symptomes } = body;
+    const { profil_id, type_repas, ingredients_frigo, symptomes, directive_chef } = body;
 
     if (!profil_id || !type_repas) {
       return new Response(
@@ -527,6 +533,7 @@ serve(async (req: Request) => {
       ? ingredients_frigo.slice(0, 10)
       : [];
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
+    const directiveChef: string = typeof directive_chef === 'string' ? directive_chef.slice(0, 120) : '';
 
     // Charger le profil utilisateur
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -546,10 +553,10 @@ serve(async (req: Request) => {
       budget: profil.budget_complements || profil.budget || 'moyen',
     };
 
-    console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}`);
+    console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}, directive="${directiveChef}"`);
 
     // Générer la recette via Claude
-    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm);
+    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef);
 
     // Fallback si la génération échoue
     if (!recette) {

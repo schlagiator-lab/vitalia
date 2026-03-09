@@ -1557,6 +1557,13 @@
         <div class="chips" id="frigoChips"></div>
       </div>
 
+      <!-- Directive du chef -->
+      <div>
+        <div class="field-label">Directive du chef <span style="font-size:10px;font-style:italic;text-transform:none;letter-spacing:0;font-weight:400;">(optionnel)</span></div>
+        <input type="text" id="directiveChefInput" maxlength="120" placeholder="Ex : une soupe, un gâteau au chocolat, un curry…"
+          style="width:100%;box-sizing:border-box;margin-top:10px;background:var(--warm-white);border:1.5px solid rgba(196,113,74,0.2);border-radius:12px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--deep-brown);outline:none;" />
+      </div>
+
       <!-- Objectif nutritionnel -->
       <div>
         <div class="field-label">Objectif nutritionnel</div>
@@ -3548,6 +3555,7 @@ async function genererRecetteUnique() {
         type_repas:         recetteTypeRepas,
         ingredients_frigo:  recetteIngredientsFrigo,
         symptomes:          recetteSelectedSymptoms,
+        directive_chef:     (document.getElementById('directiveChefInput') || {}).value || '',
       }),
     })
     var data = await resp.json()
