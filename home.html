@@ -1709,15 +1709,16 @@ var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // ── Token d'auth : maintenu à jour par onAuthStateChange (gère le refresh auto) ──
 var authToken = SUPABASE_ANON_KEY
+var _deconnexionEnCours = false
 _sb.auth.onAuthStateChange(function(event, session) {
   if (session && session.access_token) {
     authToken = session.access_token
   } else {
     authToken = SUPABASE_ANON_KEY
-    // Session expirée ou révoquée → forcer reconnexion silencieuse
-    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+    // Session révoquée côté serveur (ex: token rotation) → reconnexion, sauf si déconnexion volontaire
+    if (event === 'SIGNED_OUT' && !_deconnexionEnCours) {
       var pid = localStorage.getItem('vitalia_profil_id')
-      if (pid && !session) {
+      if (pid) {
         localStorage.removeItem('vitalia_user_id')
         localStorage.removeItem('vitalia_email')
         window.location.href = 'onboarding.html?reconnect=1&profil_id=' + pid
@@ -4432,11 +4433,20 @@ function modifierProfilComplet() {
 }
 
 // Clear session and redirect to onboarding
-function deconnexion() {
+async function deconnexion() {
   if (!confirm('Changer de compte ? Vos données locales seront effacées.')) return
-  ['vitalia_user_id','vitalia_email','vitalia_profil_id','vitalia_profil',
-   'vitalia_profil_complet','vitalia_plan_session_home','vitalia_recettes_sauvegardees']
-    .forEach(function(k) { localStorage.removeItem(k); sessionStorage.removeItem(k) })
+  _deconnexionEnCours = true
+  // Déconnecter la session Supabase Auth (invalide le refresh token côté serveur)
+  try { await _sb.auth.signOut() } catch(e) {}
+  // Effacer toutes les données locales y compris le token Supabase
+  var keysToRemove = [
+    'vitalia_user_id','vitalia_email','vitalia_profil_id','vitalia_profil',
+    'vitalia_profil_complet','vitalia_plan_session_home','vitalia_recettes_sauvegardees',
+    'vitalia_favoris','vitalia_liste_courses','vitalia_courses_vu',
+    'vitalia_semaine_session','vitalia_recette_session',
+    'sb-ptzmyuugxhsbrynjwlhp-auth-token'
+  ]
+  keysToRemove.forEach(function(k) { localStorage.removeItem(k); sessionStorage.removeItem(k) })
   window.location.href = 'onboarding.html'
 }
 
