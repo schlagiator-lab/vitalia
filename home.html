@@ -1727,28 +1727,40 @@ _sb.auth.onAuthStateChange(function(event, session) {
   }
 })
 
-// Wrapper fetch : injecte toujours le token courant et gère le 401 avec refresh+retry
+// Wrapper fetch : injecte le bon token et gère le 401 avec retry
 async function authFetch(url, options) {
+  // Les Edge Functions utilisent SERVICE_ROLE_KEY en interne et le profil_id du body :
+  // elles n'ont pas besoin du user JWT. Le gateway Supabase accepte la clé anon (HS256)
+  // mais peut rejeter les user tokens ES256 selon la version du runtime.
+  var isFunctionUrl = url.includes('/functions/v1/')
+  var tokenEffectif = isFunctionUrl ? SUPABASE_ANON_KEY : authToken
+
   var opts = Object.assign({}, options, {
-    headers: Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
+    headers: Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + tokenEffectif })
   })
-  if (authToken === SUPABASE_ANON_KEY) console.warn('[authFetch] ⚠️ Clé anon utilisée :', url.split('/').pop())
   var resp = await fetch(url, opts)
+
   if (resp.status === 401) {
-    console.warn('[authFetch] 401 reçu → tentative refreshSession()')
+    if (isFunctionUrl) {
+      // Edge Function : la clé anon devrait toujours fonctionner → log erreur persistante
+      console.error('[authFetch] Edge Function 401 persistant avec clé anon :', url.split('/').pop())
+      return resp
+    }
+    // REST API : tenter un refresh du token utilisateur
+    console.warn('[authFetch] REST 401 → tentative refreshSession()')
     try {
       var refreshed = await _sb.auth.refreshSession()
       var newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token
       if (newToken) {
         authToken = newToken
-        console.log('[authFetch] ✓ Refresh réussi, retry avec nouveau token')
+        console.log('[authFetch] ✓ Refresh réussi, retry REST avec nouveau token')
         var retryHeaders = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + newToken })
         return fetch(url, Object.assign({}, opts, { headers: retryHeaders }))
       }
     } catch(e) { console.warn('[authFetch] Refresh échoué:', e) }
-    // Refresh impossible → session définitivement expirée, redirection reconnexion
+    // Refresh impossible → session expirée
     if (!_deconnexionEnCours) {
-      console.warn('[authFetch] Session expirée sans refresh possible → redirection')
+      console.warn('[authFetch] Session REST expirée → redirection')
       afficherToast('Session expirée – reconnecte-toi')
       setTimeout(function() {
         window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
