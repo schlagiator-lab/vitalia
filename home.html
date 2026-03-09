@@ -1710,13 +1710,15 @@ var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ── Token d'auth : mis à jour uniquement sur token valide confirmé ──
 var authToken = SUPABASE_ANON_KEY
 var _deconnexionEnCours = false
+var _sessionInitialisee = false  // true une fois init() confirmée avec token valide
 _sb.auth.onAuthStateChange(function(event, session) {
+  console.log('[onAuthStateChange]', event, session ? 'session=' + (session.access_token ? session.access_token.slice(0,20) + '...' : 'no_token') : 'null')
   if (session && session.access_token) {
     authToken = session.access_token
   } else {
     authToken = SUPABASE_ANON_KEY
-    // SIGNED_OUT inattendu (token révoqué côté serveur) → redirection reconnexion
-    if (event === 'SIGNED_OUT' && !_deconnexionEnCours) {
+    // SIGNED_OUT inattendu seulement APRÈS que la session soit confirmée (évite boucle redirect)
+    if (event === 'SIGNED_OUT' && !_deconnexionEnCours && _sessionInitialisee) {
       console.warn('[auth] SIGNED_OUT inattendu → redirection reconnexion')
       setTimeout(function() {
         window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
@@ -2115,6 +2117,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     }
   } catch(e) { console.warn('[auth] Session init error:', e) }
+
+  // Marquer la session comme initialisée (active le SIGNED_OUT handler)
+  _sessionInitialisee = true
+  console.log('[auth] Session initialisée, authToken=', authToken === SUPABASE_ANON_KEY ? 'ANON_KEY' : 'user_token(' + authToken.slice(0,20) + '...)')
 
   localStorage.setItem('vitalia_profil_id', profil_id)
 
