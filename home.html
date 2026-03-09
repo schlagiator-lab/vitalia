@@ -1719,29 +1719,30 @@ _sb.auth.onAuthStateChange(function(event, session) {
   }
 })
 
-// Wrapper fetch avec fallback automatique sur 401
+// Wrapper fetch : injecte toujours le token courant et gère le 401 avec refresh+retry
 async function authFetch(url, options) {
-  var usingAnon = authToken === SUPABASE_ANON_KEY
-  if (usingAnon) console.warn('[authFetch] ⚠️ Utilisation clé anon (pas de session utilisateur) :', url.split('/').pop())
-  var resp = await fetch(url, options)
+  // Toujours injecter le token courant (évite d'utiliser un token périmé bakté dans options)
+  var opts = Object.assign({}, options, {
+    headers: Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
+  })
+  if (authToken === SUPABASE_ANON_KEY) console.warn('[authFetch] ⚠️ Clé anon utilisée :', url.split('/').pop())
+  var resp = await fetch(url, opts)
   if (resp.status === 401) {
     console.warn('[authFetch] 401 reçu → tentative refreshSession()')
-    // Token invalide ou expiré → refresh et retry une fois
     try {
       var refreshed = await _sb.auth.refreshSession()
       var newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token
       if (newToken) {
         authToken = newToken
         console.log('[authFetch] ✓ Refresh réussi, retry avec nouveau token')
-        var newHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
-        return fetch(url, Object.assign({}, options, { headers: newHeaders }))
+        var retryHeaders = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + newToken })
+        return fetch(url, Object.assign({}, opts, { headers: retryHeaders }))
       }
     } catch(e) { console.warn('[authFetch] Refresh échoué:', e) }
-    // Refresh impossible → fallback anon
-    console.warn('[authFetch] ⚠️ Fallback clé anon après échec refresh')
-    authToken = SUPABASE_ANON_KEY
-    var anonHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
-    return fetch(url, Object.assign({}, options, { headers: anonHeaders }))
+    // Refresh impossible → retry avec anon (sans modifier authToken global)
+    console.warn('[authFetch] ⚠️ Retry clé anon après échec refresh')
+    var anonHeaders = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY })
+    return fetch(url, Object.assign({}, opts, { headers: anonHeaders }))
   }
   return resp
 }
@@ -2066,22 +2067,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     return
   }
 
-  // Initialiser le token d'auth AVANT tout appel réseau (évite la race condition sur mobile)
+  // Initialiser le token d'auth AVANT tout appel réseau
   try {
     var sessionResult = await _sb.auth.getSession()
     var initSession = sessionResult && sessionResult.data && sessionResult.data.session
-    if (initSession && initSession.access_token) {
+    // Vérifier que le token n'est pas expiré (expires_at est en secondes Unix)
+    // getSession() retourne le token stocké même s'il est périmé — ne pas le faire confiance sans vérif
+    var maintenant = Math.floor(Date.now() / 1000)
+    var tokenFrais = initSession && initSession.access_token &&
+                     initSession.expires_at && (initSession.expires_at - maintenant > 60)
+    if (tokenFrais) {
       authToken = initSession.access_token
-      console.log('[auth] Token initialisé depuis getSession() ✓')
+      console.log('[auth] Token valide initialisé depuis getSession() ✓')
     } else {
-      // Pas de session valide → tenter un refresh du token
+      // Token absent ou expiré → refresh explicite
+      if (initSession) console.warn('[auth] Token expiré (exp=' + initSession.expires_at + ') → refreshSession()')
       var refreshResult = await _sb.auth.refreshSession()
       var refreshedSession = refreshResult && refreshResult.data && refreshResult.data.session
       if (refreshedSession && refreshedSession.access_token) {
         authToken = refreshedSession.access_token
-        console.log('[auth] Token initialisé après refreshSession() ✓')
+        console.log('[auth] Token rafraîchi via refreshSession() ✓')
+      } else if (!initSession) {
+        // Aucune session en mémoire et refresh impossible → l'utilisateur doit se reconnecter
+        console.warn('[auth] Aucune session → redirection reconnexion')
+        window.location.href = 'onboarding.html?reconnect=1' + (profil_id ? '&profil_id=' + profil_id : '')
+        return
       } else {
-        console.warn('[auth] Aucune session active → fallback anon')
+        // Token expiré mais refresh échoué (réseau mobile) → fallback anon temporaire
+        console.warn('[auth] Refresh échoué (réseau ?) → fallback anon temporaire')
       }
     }
   } catch(e) { console.warn('[auth] Session init error:', e) }
@@ -2709,7 +2722,7 @@ async function genererPlan(forcer) {
     }
     var res  = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
       body: JSON.stringify(body)
     })
     if (!res.ok) throw new Error('Erreur serveur ' + res.status)
