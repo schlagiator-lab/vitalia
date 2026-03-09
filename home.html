@@ -1707,25 +1707,39 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // ── Client Supabase (SDK avec auth automatique, partagé avec onboarding) ──
 var _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// ── Token d'auth : maintenu à jour par onAuthStateChange (gère le refresh auto) ──
+// ── Token d'auth : mis à jour uniquement sur token valide confirmé ──
 var authToken = SUPABASE_ANON_KEY
 var _deconnexionEnCours = false
 _sb.auth.onAuthStateChange(function(event, session) {
   if (session && session.access_token) {
     authToken = session.access_token
   } else {
+    // Toujours fallback sur anon (jamais de token invalide en circulation)
     authToken = SUPABASE_ANON_KEY
-    // Session révoquée côté serveur (ex: token rotation) → reconnexion, sauf si déconnexion volontaire
-    if (event === 'SIGNED_OUT' && !_deconnexionEnCours) {
-      var pid = localStorage.getItem('vitalia_profil_id')
-      if (pid) {
-        localStorage.removeItem('vitalia_user_id')
-        localStorage.removeItem('vitalia_email')
-        window.location.href = 'onboarding.html?reconnect=1&profil_id=' + pid
-      }
-    }
   }
 })
+
+// Wrapper fetch avec fallback automatique sur 401
+async function authFetch(url, options) {
+  var resp = await fetch(url, options)
+  if (resp.status === 401) {
+    // Token invalide ou expiré → refresh et retry une fois
+    try {
+      var refreshed = await _sb.auth.refreshSession()
+      var newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token
+      if (newToken) {
+        authToken = newToken
+        var newHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
+        return fetch(url, Object.assign({}, options, { headers: newHeaders }))
+      }
+    } catch(e) {}
+    // Refresh impossible → fallback anon
+    authToken = SUPABASE_ANON_KEY
+    var anonHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
+    return fetch(url, Object.assign({}, options, { headers: anonHeaders }))
+  }
+  return resp
+}
 
 // ── State ──
 var currentTab        = 'aujourdhui'
@@ -2149,7 +2163,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 // ── Load profile from Supabase ──
 async function chargerProfilSupabase(id) {
   try {
-    var r = await fetch(
+    var r = await authFetch(
       SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + id + '&limit=1',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken } }
     )
@@ -2181,7 +2195,7 @@ function migrerFavoris() {
 async function chargerRecettesSauvegardeesSupabase() {
   if (!profil_id || profil_id === 'new') return
   try {
-    var r = await fetch(
+    var r = await authFetch(
       SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&order=date_sauvegarde.desc&limit=50',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken } }
     )
@@ -2214,7 +2228,7 @@ async function chargerRecettesSauvegardeesSupabase() {
 async function chargerFavorisSupabase() {
   if (!profil_id || profil_id === 'new') return
   try {
-    var r = await fetch(
+    var r = await authFetch(
       SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&order=sauvegardee_le.desc&limit=50',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken } }
     )
@@ -2631,7 +2645,7 @@ function sauvegarderRecette(m) {
 async function sauvegarderRecetteSupabase(r, m) {
   if (!profil_id || profil_id === 'new') return
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
+    await authFetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
                  'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
@@ -2674,7 +2688,7 @@ async function genererPlan(forcer) {
       force_regeneration: forcer === true,
       meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false
     }
-    var res  = await fetch(SUPABASE_URL + '/functions/v1/generer-plan', {
+    var res  = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
       body: JSON.stringify(body)
@@ -2813,7 +2827,7 @@ async function genererSemaine(forcer) {
   }
 
   try {
-    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
+    var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3058,7 +3072,7 @@ async function chargerEtapesRecette(jour, mealKey, id) {
   var typeRepas = { petit_dejeuner:'petit-dejeuner', dejeuner:'dejeuner', diner:'diner', pause:'collation' }[mealKey] || mealKey
 
   try {
-    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-details', {
+    var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-details', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + authToken },
       body: JSON.stringify({
@@ -3133,7 +3147,7 @@ async function autoRegenFallbacks(data) {
     var batch = fallbacks.slice(bi, bi + 3)
     await Promise.all(batch.map(async function(f) {
       try {
-        var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+        var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken, 'apikey': SUPABASE_ANON_KEY },
           body: JSON.stringify({ profil_id: profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: selectedSymptoms }),
@@ -3486,7 +3500,7 @@ async function genererRecettePourRepas(jour, mealKey, typeRepas) {
   var btn = document.getElementById('regen-btn-' + id)
   if (btn) { btn.disabled = true; btn.textContent = '⏳…' }
   try {
-    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+    var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + authToken, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ profil_id:profil_id, type_repas:typeRepas, ingredients_frigo:[], symptomes:selectedSymptoms }),
@@ -3569,7 +3583,7 @@ async function genererRecetteUnique() {
   if (result)  result.style.display = 'none'
   if (empty)   empty.style.display = 'flex'
   try {
-    var resp = await fetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+    var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3703,7 +3717,7 @@ async function sauvegarderRecetteUnique() {
   // Supabase
   if (profil_id && profil_id !== 'new') {
     try {
-      await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
+      await authFetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -4061,7 +4075,7 @@ async function supprimerFavori(idx) {
   try { localStorage.setItem('vitalia_favoris', JSON.stringify(favs)) } catch(e) {}
   if (profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
     try {
-      await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
+      await authFetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
         method: 'DELETE',
         headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
       })
@@ -4187,7 +4201,7 @@ async function noterRecetteSauvegardee(idx, note) {
   if (profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
     var titre = encodeURIComponent(r.titre || r.nom || '')
     try {
-      await fetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&titre=eq.' + titre, {
+      await authFetch(SUPABASE_URL + '/rest/v1/recettes_sauvegardees?profil_id=eq.' + profil_id + '&titre=eq.' + titre, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
         body: JSON.stringify({ note: note })
@@ -4206,7 +4220,7 @@ async function noterRecetteSauvegardee(idx, note) {
     }
     if (note >= 4) {
       try {
-        await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites', {
+        await authFetch(SUPABASE_URL + '/rest/v1/recettes_favorites', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Prefer': 'resolution=merge-duplicates' },
           body: JSON.stringify(favEntry)
@@ -4214,7 +4228,7 @@ async function noterRecetteSauvegardee(idx, note) {
       } catch(e) {}
     } else {
       try {
-        await fetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
+        await authFetch(SUPABASE_URL + '/rest/v1/recettes_favorites?profil_id=eq.' + profil_id + '&titre=eq.' + encodeURIComponent(r.titre || r.nom || ''), {
           method: 'DELETE',
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
         })
@@ -4459,7 +4473,7 @@ async function syncBesoinsVersProfil() {
   }
   if (!profil_id || profil_id === 'new') return
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
+    await authFetch(SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
                  'Authorization': 'Bearer ' + authToken },
