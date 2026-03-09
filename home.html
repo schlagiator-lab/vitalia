@@ -1721,19 +1721,24 @@ _sb.auth.onAuthStateChange(function(event, session) {
 
 // Wrapper fetch avec fallback automatique sur 401
 async function authFetch(url, options) {
+  var usingAnon = authToken === SUPABASE_ANON_KEY
+  if (usingAnon) console.warn('[authFetch] ⚠️ Utilisation clé anon (pas de session utilisateur) :', url.split('/').pop())
   var resp = await fetch(url, options)
   if (resp.status === 401) {
+    console.warn('[authFetch] 401 reçu → tentative refreshSession()')
     // Token invalide ou expiré → refresh et retry une fois
     try {
       var refreshed = await _sb.auth.refreshSession()
       var newToken = refreshed && refreshed.data && refreshed.data.session && refreshed.data.session.access_token
       if (newToken) {
         authToken = newToken
+        console.log('[authFetch] ✓ Refresh réussi, retry avec nouveau token')
         var newHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
         return fetch(url, Object.assign({}, options, { headers: newHeaders }))
       }
-    } catch(e) {}
+    } catch(e) { console.warn('[authFetch] Refresh échoué:', e) }
     // Refresh impossible → fallback anon
+    console.warn('[authFetch] ⚠️ Fallback clé anon après échec refresh')
     authToken = SUPABASE_ANON_KEY
     var anonHeaders = Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + authToken })
     return fetch(url, Object.assign({}, options, { headers: anonHeaders }))
@@ -2061,10 +2066,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     return
   }
 
-  // Initialiser la session Supabase Auth (onAuthStateChange met authToken à jour automatiquement)
-  // getSession() déclenche le refresh du token si expiré via le refresh_token stocké
+  // Initialiser le token d'auth AVANT tout appel réseau (évite la race condition sur mobile)
   try {
-    await _sb.auth.getSession()
+    var sessionResult = await _sb.auth.getSession()
+    var initSession = sessionResult && sessionResult.data && sessionResult.data.session
+    if (initSession && initSession.access_token) {
+      authToken = initSession.access_token
+      console.log('[auth] Token initialisé depuis getSession() ✓')
+    } else {
+      // Pas de session valide → tenter un refresh du token
+      var refreshResult = await _sb.auth.refreshSession()
+      var refreshedSession = refreshResult && refreshResult.data && refreshResult.data.session
+      if (refreshedSession && refreshedSession.access_token) {
+        authToken = refreshedSession.access_token
+        console.log('[auth] Token initialisé après refreshSession() ✓')
+      } else {
+        console.warn('[auth] Aucune session active → fallback anon')
+      }
+    }
   } catch(e) { console.warn('[auth] Session init error:', e) }
 
   localStorage.setItem('vitalia_profil_id', profil_id)
