@@ -4006,7 +4006,10 @@ function afficherFavoris() {
            '</div>' : '') +
            (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions +
-           '    <button onclick="supprimerFavori(' + i + ');event.stopPropagation();" style="margin-top:12px;width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Retirer des favoris</button>' +
+           '    <div style="display:flex;gap:8px;margin-top:12px;">' +
+           '      <button onclick="ajouterFavoriAuxCourses(' + i + ');event.stopPropagation();" style="flex:1;background:rgba(122,158,126,0.1);border:1.5px solid rgba(122,158,126,0.35);border-radius:10px;padding:8px;font-size:12px;color:var(--sage,#7a9e7e);font-weight:600;cursor:pointer;">🛒 Ajouter aux courses</button>' +
+           '      <button onclick="supprimerFavori(' + i + ');event.stopPropagation();" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Retirer des favoris</button>' +
+           '    </div>' +
            '  </div>' +
            '</div>'
   }).join('')
@@ -4032,6 +4035,56 @@ async function supprimerFavori(idx) {
   }
   afficherFavoris()
   afficherToast('Recette retirée des favoris')
+}
+
+function ajouterFavoriAuxCourses(idx) {
+  var favs = []
+  try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
+  var r = favs[idx]
+  if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) {
+    afficherToast('Pas d\'ingrédients à ajouter')
+    return
+  }
+
+  // Normaliser les ingrédients (string ou objet)
+  var nouveaux = r.ingredients.map(function(ing) {
+    if (typeof ing === 'string') return { nom: ing, quantite: null, unite: 'g' }
+    return { nom: ing.nom || ing.name || ing, quantite: ing.quantite || null, unite: ing.unite || 'g' }
+  }).filter(function(ing) { return ing.nom })
+
+  // Charger la liste existante
+  var existing = null
+  try { existing = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  var liste = (existing && Array.isArray(existing.ingredients)) ? existing.ingredients : []
+
+  // Fusionner : si l'ingrédient existe déjà avec la même unité, additionner les quantités
+  nouveaux.forEach(function(ing) {
+    var key = ing.nom.toLowerCase().trim()
+    var found = liste.find(function(e) { return e.nom.toLowerCase().trim() === key })
+    if (found) {
+      if (ing.quantite && found.unite === ing.unite) found.quantite = Math.round((found.quantite || 0) + ing.quantite)
+    } else {
+      liste.push({ nom: ing.nom, quantite: ing.quantite, unite: ing.unite })
+    }
+  })
+
+  // Sauvegarder
+  var recettes = (existing && existing.recettes) ? existing.recettes : []
+  // Ajouter la recette dans la section "Recettes dans la liste" si pas déjà présente
+  var nomRecette = r.nom || r.titre || ''
+  if (nomRecette && !recettes.find(function(x) { return (x.nom || '').toLowerCase() === nomRecette.toLowerCase() })) {
+    recettes.push({ nom: nomRecette, type: 'favori', id: idx, portions: 2 })
+  }
+  try {
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify({
+      date: existing && existing.date ? existing.date : new Date().toISOString(),
+      ingredients: liste,
+      recettes: recettes
+    }))
+  } catch(e) {}
+
+  afficherListeCoursesProfile()
+  afficherToast('Ingrédients ajoutés à la liste de courses !')
 }
 
 function toggleSavedRecette(id) {
