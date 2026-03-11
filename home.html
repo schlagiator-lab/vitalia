@@ -3371,7 +3371,11 @@ function afficherBoutonListeCourses() {
   if (count > 0) {
     var liste    = aggregerIngredients()
     var recettes = construireListeRecettes()
-    try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste, recettes: recettes })) } catch(e) {}
+    // Preserve manually added items
+    var existingRaw = null
+    try { existingRaw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    var manuels = existingRaw ? (existingRaw.ingredients || []).filter(function(i) { return i.manuel }) : []
+    try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste.concat(manuels), recettes: recettes })) } catch(e) {}
   }
   // Refresh profil tab shopping list in real-time if it is visible
   afficherListeCoursesProfile()
@@ -3555,7 +3559,11 @@ function fermerListeCourses() {
 function sauvegarderListeCourses() {
   var liste    = aggregerIngredients()
   var recettes = construireListeRecettes()
-  localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste, recettes: recettes }))
+  // Preserve manually added items
+  var existingRaw = null
+  try { existingRaw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  var manuels = existingRaw ? (existingRaw.ingredients || []).filter(function(i) { return i.manuel }) : []
+  localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste.concat(manuels), recettes: recettes }))
   afficherToast('Liste sauvegardée dans le profil !')
   fermerListeCourses()
   afficherListeCoursesProfile()
