@@ -4534,10 +4534,11 @@ function supprimerRecetteDeListeProfile(type, id) {
     if (btn2) { btn2.textContent = '🛒 Sélectionner pour la liste'; btn2.style.background = 'rgba(196,113,74,0.08)'; btn2.style.borderColor = 'rgba(196,113,74,0.25)'; btn2.style.color = 'var(--terracotta)' }
   }
 
-  // Recompute ingredients from remaining recipes
-  raw.ingredients = reagregerDepuisRecettes(raw.recettes)
+  // Recompute ingredients from remaining recipes, preserving manual items
+  var manuels = (raw.ingredients || []).filter(function(i) { return i.manuel })
+  raw.ingredients = reagregerDepuisRecettes(raw.recettes).concat(manuels)
 
-  if (!raw.recettes.length) {
+  if (!raw.recettes.length && !manuels.length) {
     localStorage.removeItem('vitalia_liste_courses')
     localStorage.removeItem('vitalia_courses_vu')
   } else {
@@ -4570,8 +4571,9 @@ function changerPortionsListeProfile(type, id, delta) {
     if (portEl2) portEl2.textContent = recette.portions
   }
 
-  // Recompute ingredient list from all recipes
-  raw.ingredients = reagregerDepuisRecettes(raw.recettes)
+  // Recompute ingredient list from all recipes, preserving manual items
+  var manuels = (raw.ingredients || []).filter(function(i) { return i.manuel })
+  raw.ingredients = reagregerDepuisRecettes(raw.recettes).concat(manuels)
   // Clear checked items since quantities changed
   localStorage.removeItem('vitalia_courses_vu')
   raw.date = new Date().toISOString()
