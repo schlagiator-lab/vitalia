@@ -4373,8 +4373,17 @@ function afficherListeCoursesProfile() {
   var raw = null
   try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
 
+  var addInputHTML = '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+    '<input type="text" id="courses-add-input" placeholder="Ajouter un article manuellement…" ' +
+    'style="flex:1;border:1.5px solid rgba(196,113,74,0.25);border-radius:12px;padding:9px 14px;font-size:13px;font-family:\'DM Sans\',sans-serif;background:var(--warm-white);color:var(--deep-brown);outline:none;" ' +
+    'onkeydown="if(event.key===\'Enter\')ajouterArticleManuelCourses()">' +
+    '<button onclick="ajouterArticleManuelCourses()" ' +
+    'style="background:var(--terracotta);color:white;border:none;border-radius:12px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:\'DM Sans\',sans-serif;">+ Ajouter</button>' +
+    '</div>'
+
   if (!raw || !raw.ingredients || !raw.ingredients.length) {
-    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Sélectionnez des recettes pour générer votre liste de courses</div>'
+    container.innerHTML = addInputHTML +
+      '<div style="text-align:center;padding:16px;color:var(--text-light);font-size:13px;">Sélectionnez des recettes ou ajoutez des articles manuellement</div>'
     return
   }
 
@@ -4385,16 +4394,22 @@ function afficherListeCoursesProfile() {
   var total    = raw.ingredients.length
 
   // ── Ingredient list ──
-  var html = (dateStr ? '<div style="font-size:11px;color:var(--text-light);margin-bottom:8px;">Générée le ' + dateStr + '</div>' : '')
+  var html = addInputHTML
+  html += (dateStr ? '<div style="font-size:11px;color:var(--text-light);margin-bottom:8px;">Générée le ' + dateStr + '</div>' : '')
   html += '<div style="font-size:12px;color:var(--sage);font-weight:600;margin-bottom:10px;">' + restants + ' / ' + total + ' ingrédients restants</div>'
   html += '<div style="display:flex;flex-direction:column;gap:6px;">'
   raw.ingredients.forEach(function(ing, idx) {
     var qte  = ing.quantite ? (Math.round(ing.quantite) + '\u202f' + (ing.unite || 'g')) : ''
     var done = !!vu[ing.nom]
+    var deleteBtn = ing.manuel
+      ? '<button onclick="supprimerArticleManuelCourses(' + idx + ');event.stopPropagation();" ' +
+        'style="width:22px;height:22px;border:none;background:rgba(196,113,74,0.12);border-radius:50%;color:var(--terracotta);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>'
+      : ''
     html += '<div onclick="toggleCoursesVuByIdx(' + idx + ')" style="cursor:pointer;background:' + (done ? 'rgba(122,158,126,0.08)' : 'var(--cream)') + ';border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid ' + (done ? 'rgba(122,158,126,0.3)' : 'transparent') + ';transition:all 0.2s;" id="courses-profile-item-' + idx + '">' +
            '<span style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (done ? 'var(--sage)' : 'rgba(196,113,74,0.3)') + ';background:' + (done ? 'var(--sage)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:white;">' + (done ? '✓' : '') + '</span>' +
-           '<span style="flex:1;font-size:13px;font-weight:500;color:' + (done ? 'var(--text-light)' : 'var(--deep-brown)') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';">' + ing.nom + '</span>' +
+           '<span style="flex:1;font-size:13px;font-weight:500;color:' + (done ? 'var(--text-light)' : 'var(--deep-brown)') + ';text-decoration:' + (done ? 'line-through' : 'none') + ';">' + ing.nom + (ing.manuel ? ' <span style="font-size:10px;color:var(--text-light);font-style:italic;">(manuel)</span>' : '') + '</span>' +
            (qte ? '<span style="font-size:12px;color:var(--text-light);flex-shrink:0;">' + qte + '</span>' : '') +
+           deleteBtn +
            '</div>'
   })
   html += '</div>'
@@ -4441,6 +4456,50 @@ function toggleCoursesVuByIdx(idx) {
   try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
   if (vu[nom]) delete vu[nom]; else vu[nom] = true
   localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
+  afficherListeCoursesProfile()
+}
+
+// Add a manual article to the shopping list
+function ajouterArticleManuelCourses() {
+  var input = document.getElementById('courses-add-input')
+  if (!input) return
+  var nom = input.value.trim()
+  if (!nom) return
+
+  var raw = null
+  try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  if (!raw) raw = { date: new Date().toISOString(), ingredients: [], recettes: [] }
+  if (!raw.ingredients) raw.ingredients = []
+
+  // Avoid exact duplicate
+  var exists = raw.ingredients.some(function(i) { return i.nom.toLowerCase() === nom.toLowerCase() })
+  if (exists) { afficherToast('Cet article est déjà dans la liste'); input.value = ''; return }
+
+  raw.ingredients.push({ nom: nom, quantite: null, unite: null, manuel: true })
+  localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
+  input.value = ''
+  afficherListeCoursesProfile()
+  // Re-focus the input for fast multi-add
+  setTimeout(function() { var el = document.getElementById('courses-add-input'); if (el) el.focus() }, 50)
+}
+
+// Remove a manually-added article from the shopping list
+function supprimerArticleManuelCourses(idx) {
+  var raw = null
+  try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+  if (!raw || !raw.ingredients || !raw.ingredients[idx]) return
+  var nom = raw.ingredients[idx].nom
+  raw.ingredients.splice(idx, 1)
+  // Clean up "vu" state for that item
+  var vu = {}
+  try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+  delete vu[nom]
+  localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
+  if (!raw.ingredients.length && (!raw.recettes || !raw.recettes.length)) {
+    localStorage.removeItem('vitalia_liste_courses')
+  } else {
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
+  }
   afficherListeCoursesProfile()
 }
 
