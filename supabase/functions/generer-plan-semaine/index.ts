@@ -723,7 +723,7 @@ async function ecrireCachePlan(
         symptomes,
         plan_json: planJson,
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       },
       { onConflict: 'profil_id,source' }
     );
@@ -755,16 +755,39 @@ serve(async (req: Request) => {
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ── 1. LECTURE CACHE (si pas force_refresh) ────────────────────────────
-    if (!force_refresh) {
-      const cached = await lireCachePlan(supabase, profil_id);
-      if (cached) {
-        console.log('[generer-plan-semaine] Retour depuis le cache');
-        return new Response(
-          JSON.stringify({ ...cached, _source: 'cache' }),
-          { status: 200, headers: CORS_HEADERS }
-        );
+    // ── 1. LECTURE CACHE + RATE LIMITING ──────────────────────────────────
+    // Rate limiting : même avec force_refresh=true, on bloque si le cache
+    // a moins d'1h (protection contre les appels LLM abusifs).
+    const COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+    try {
+      const { data: cachedRow } = await supabase
+        .from('plans_generes_cache')
+        .select('plan_json, created_at')
+        .eq('profil_id', profil_id)
+        .eq('source', 'semaine')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cachedRow?.plan_json) {
+        const ageMs = Date.now() - new Date(cachedRow.created_at).getTime();
+        if (!force_refresh) {
+          console.log('[generer-plan-semaine] Retour depuis le cache');
+          return new Response(
+            JSON.stringify({ ...cachedRow.plan_json, _source: 'cache' }),
+            { status: 200, headers: CORS_HEADERS }
+          );
+        }
+        if (ageMs < COOLDOWN_MS) {
+          console.warn(`[RATE LIMIT] force_refresh bloqué — dernier plan il y a ${Math.round(ageMs / 60000)} min`);
+          return new Response(
+            JSON.stringify({ ...cachedRow.plan_json, _source: 'cache', _rate_limited: true }),
+            { status: 200, headers: CORS_HEADERS }
+          );
+        }
       }
+    } catch (cacheErr) {
+      console.warn('[CACHE] Lecture cache semaine échouée (non bloquant):', cacheErr);
     }
 
     // ── 2. CHARGEMENT PROFIL ───────────────────────────────────────────────

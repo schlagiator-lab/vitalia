@@ -572,27 +572,38 @@ serve(async (req) => {
 
     // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
     // Activé si force_regeneration !== true
-    if (!force_regeneration) {
-      try {
-        const { data: cached } = await supabase
-          .from('plans_generes_cache')
-          .select('plan_json, created_at')
-          .eq('profil_id', profil_id)
-          .eq('source', 'journalier')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    // Rate limiting : même avec force_regeneration=true, on bloque si le cache
+    // a moins d'1h (protection contre les appels LLM abusifs).
+    try {
+      const { data: cached } = await supabase
+        .from('plans_generes_cache')
+        .select('plan_json, created_at')
+        .eq('profil_id', profil_id)
+        .eq('source', 'journalier')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-        if (cached?.plan_json) {
+      if (cached?.plan_json) {
+        const ageMs = Date.now() - new Date(cached.created_at).getTime();
+        const COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+        if (!force_regeneration) {
           console.log(`[CACHE] Plan journalier trouvé — généré le ${cached.created_at}`);
           return new Response(
             JSON.stringify({ ...cached.plan_json, _source: 'cache' }),
             { status: 200, headers: CORS_HEADERS }
           );
         }
-      } catch (cacheErr) {
-        console.warn('[CACHE] Lecture cache journalier échouée (non bloquant):', cacheErr);
+        if (ageMs < COOLDOWN_MS) {
+          console.warn(`[RATE LIMIT] force_regeneration bloqué — dernier plan il y a ${Math.round(ageMs / 60000)} min`);
+          return new Response(
+            JSON.stringify({ ...cached.plan_json, _source: 'cache', _rate_limited: true }),
+            { status: 200, headers: CORS_HEADERS }
+          );
+        }
       }
+    } catch (cacheErr) {
+      console.warn('[CACHE] Lecture cache journalier échouée (non bloquant):', cacheErr);
     }
 
     // ── Charger le profil complet depuis la BDD ─────────────────────────────
@@ -1045,7 +1056,7 @@ serve(async (req) => {
           symptomes: Array.isArray(symptomes) ? symptomes : [],
           plan_json: planFormatePourCache,
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         },
         { onConflict: 'profil_id,source' }
       );

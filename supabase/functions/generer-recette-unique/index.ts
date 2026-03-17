@@ -19,9 +19,78 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
 };
 
+// ─── Rate limiting in-memory (par instance Deno) ────────────────────────────
+const _rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+function checkRateLimit(profilId: string): boolean {
+  const now = Date.now();
+  const calls = (_rateLimitMap.get(profilId) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  if (calls.length >= RATE_LIMIT_MAX) return false;
+  calls.push(now);
+  _rateLimitMap.set(profilId, calls);
+  return true;
+}
+
 // ─── Fallback recette riche (même logique que generer-plan-semaine) ──────────
 
-function recetteFallback(typeRepas: string, ingredientsFrigo: string[]): any {
+function recetteFallback(typeRepas: string, ingredientsFrigo: string[], directiveChef = ''): any {
+  // Essayer d'honorer la directive chef avec des fallbacks ciblés
+  if (directiveChef && (typeRepas === 'dejeuner' || typeRepas === 'diner')) {
+    const dir = directiveChef.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (dir.includes('soupe') || dir.includes('potage') || dir.includes('veloute')) {
+      return {
+        nom: `Soupe maison aux légumes — ${directiveChef}`,
+        type_repas: typeRepas,
+        style_culinaire: 'maison',
+        ingredients: [
+          { nom: 'Carottes', quantite: 200, unite: 'g' },
+          { nom: 'Courgette', quantite: 150, unite: 'g' },
+          { nom: 'Oignon', quantite: 80, unite: 'g' },
+          { nom: 'Bouillon de légumes', quantite: 800, unite: 'ml' },
+          { nom: "Huile d'olive", quantite: 10, unite: 'ml' },
+        ],
+        instructions: [
+          'Éplucher et couper les légumes en cubes.',
+          "Faire revenir l'oignon dans l'huile d'olive 3 min.",
+          'Ajouter les légumes et le bouillon. Porter à ébullition.',
+          'Laisser mijoter 20 min à feu moyen. Mixer selon la consistance souhaitée.',
+          'Rectifier l\'assaisonnement et servir chaud.',
+        ],
+        temps_preparation: 10, temps_cuisson: 25, portions: 2,
+        valeurs_nutritionnelles: { calories: 180, proteines: 5, glucides: 28, lipides: 5 },
+        astuces: ['Une soupe maison simple et nourrissante, riche en fibres et vitamines.'],
+        variantes: ['Ajoutez des lentilles corail pour une version plus protéinée.'],
+        genere_par_llm: false,
+      };
+    }
+    if (dir.includes('salade')) {
+      return {
+        nom: `Salade composée — ${directiveChef}`,
+        type_repas: typeRepas,
+        style_culinaire: 'maison',
+        ingredients: [
+          { nom: 'Salade verte', quantite: 100, unite: 'g' },
+          { nom: 'Tomates cerises', quantite: 100, unite: 'g' },
+          { nom: 'Concombre', quantite: 80, unite: 'g' },
+          { nom: 'Pois chiches cuits', quantite: 120, unite: 'g' },
+          { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' },
+        ],
+        instructions: [
+          'Laver et essuyer la salade. Couper les tomates en deux et le concombre en rondelles.',
+          'Rincer et égoutter les pois chiches.',
+          'Assembler tous les ingrédients dans un grand saladier.',
+          "Assaisonner d'huile d'olive, jus de citron, sel et poivre. Mélanger et servir.",
+        ],
+        temps_preparation: 10, temps_cuisson: 0, portions: 2,
+        valeurs_nutritionnelles: { calories: 280, proteines: 12, glucides: 35, lipides: 10 },
+        astuces: ['Les pois chiches apportent protéines végétales et fibres pour la satiété.'],
+        variantes: ['Ajoutez du feta ou de l\'avocat pour enrichir la salade.'],
+        genere_par_llm: false,
+      };
+    }
+  }
   if (typeRepas === 'patisserie') {
     return {
       nom: 'Fondant Chocolat Noir & Amandes',
@@ -524,6 +593,14 @@ serve(async (req: Request) => {
       );
     }
 
+    if (!checkRateLimit(profil_id)) {
+      console.warn(`[RATE LIMIT] profil ${profil_id} a dépassé ${RATE_LIMIT_MAX} appels en 10 min`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Trop de requêtes. Réessaie dans quelques minutes.' }),
+        { status: 429, headers: CORS_HEADERS }
+      );
+    }
+
     const typeRepasNorm = type_repas.toLowerCase()
       .replace('déjeuner', 'dejeuner')
       .replace('dîner', 'diner')
@@ -561,7 +638,7 @@ serve(async (req: Request) => {
     // Fallback si la génération échoue
     if (!recette) {
       console.warn('[WARN] Fallback recette par défaut');
-      recette = recetteFallback(typeRepasNorm, ingredientsFrigo);
+      recette = recetteFallback(typeRepasNorm, ingredientsFrigo, directiveChef);
     }
 
     // Calcul nutrition réelle depuis la table alimentation

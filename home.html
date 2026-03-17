@@ -240,6 +240,7 @@
   }
   .chip.selected { background: var(--terracotta); border-color: var(--terracotta); color: white; }
   .chip:hover:not(.selected) { border-color: var(--terracotta-light); color: var(--terracotta); }
+  .chip-principal-badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:0.04em; background:rgba(255,255,255,0.25); border-radius:8px; padding:1px 5px; margin-left:5px; vertical-align:middle; text-transform:uppercase; }
 
   /* ── Buttons ── */
   .btn-primary {
@@ -1901,7 +1902,7 @@ function afficherToast(msg) {
   t.textContent = msg
   t.classList.add('show')
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(function() { t.classList.remove('show') }, 1500)
+  toastTimer = setTimeout(function() { t.classList.remove('show') }, 3000)
 }
 
 // ── Chip helpers (config panel) ──
@@ -1912,6 +1913,7 @@ function toggleSymptom(el, val) {
   } else {
     selectedSymptoms = selectedSymptoms.filter(function(v) { return v !== val })
   }
+  updateObjectifPrincipalBadge()
 }
 // ── Shared chipset IDs ──
 var ALL_REGIMES_IDS = ['regimesChips','semaineRegimesChips','recetteRegimesChips','profilRegimesChips']
@@ -2200,6 +2202,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // Pre-load shopping list for À faire > Courses section
+  chargerListeCoursesSupabase()  // sync multi-appareils avant affichage
   afficherListeCoursesProfile()
 
   // Close courses modal on Escape key (PC UX)
@@ -2225,6 +2228,20 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     } catch(e) { localStorage.removeItem('vitalia_recette_session') }
   }
+})
+
+// ── Sync données Supabase quand l'onglet redevient visible (cross-device) ──
+var _lastVisibilitySync = 0
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState !== 'visible') return
+  if (!profil_id || profil_id === 'new') return
+  var now = Date.now()
+  if (now - _lastVisibilitySync < 5 * 60 * 1000) return  // cooldown 5 min
+  _lastVisibilitySync = now
+  chargerProfilSupabase(profil_id)
+  chargerFavorisSupabase()
+  chargerRecettesSauvegardeesSupabase()
+  chargerListeCoursesSupabase()
 })
 
 // ── Load profile from Supabase ──
@@ -2280,7 +2297,7 @@ async function chargerRecettesSauvegardeesSupabase() {
         nom: row.titre || row.nom,
         titre: row.titre || row.nom,
         ingredients: row.ingredients || [],
-        instructions: row.steps || [],
+        instructions: row.instructions || row.steps || [],
         astuces: row.tip ? [row.tip] : [],
         type_repas: row.moment || '',
         saved_at: row.date_sauvegarde,
@@ -2288,6 +2305,52 @@ async function chargerRecettesSauvegardeesSupabase() {
       })
     })
     localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0, 50)))
+  } catch(e) {}
+}
+
+// ── Sync liste de courses vers Supabase (multi-appareils) ──
+var _coursesDebounceTimer = null
+function sauvegarderListeCoursesSupabase() {
+  if (!profil_id || profil_id === 'new') return
+  clearTimeout(_coursesDebounceTimer)
+  _coursesDebounceTimer = setTimeout(function() {
+    try {
+      var raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null')
+      authFetch(
+        SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id,
+        { method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                     'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ liste_courses: raw }) }
+      ).catch(function() {})
+    } catch(e) {}
+  }, 1500) // debounce 1.5s pour grouper les sauvegardes rapides
+}
+
+async function chargerListeCoursesSupabase() {
+  if (!profil_id || profil_id === 'new') return
+  try {
+    var r = await authFetch(
+      SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id + '&select=liste_courses&limit=1',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken } }
+    )
+    if (!r.ok) return
+    var rows = await r.json()
+    var remote = rows && rows[0] && rows[0].liste_courses
+    if (!remote) return
+    // Merge : garder les articles manuels locaux, écraser le reste par Supabase
+    var local = null
+    try { local = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    var manuels = local ? (local.ingredients || []).filter(function(i) { return i.manuel }) : []
+    var merged = {
+      date: remote.date || new Date().toISOString(),
+      ingredients: (remote.ingredients || []).concat(manuels.filter(function(m) {
+        return !(remote.ingredients || []).some(function(r) { return r.nom === m.nom })
+      })),
+      recettes: remote.recettes || []
+    }
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify(merged))
+    afficherListeCoursesProfile()
   } catch(e) {}
 }
 
@@ -2313,7 +2376,7 @@ async function chargerFavorisSupabase() {
         nom: row.titre || row.nom,
         titre: row.titre || row.nom,
         ingredients: row.ingredients || [],
-        instructions: row.steps || [],
+        instructions: row.instructions || row.steps || [],
         astuces: row.tip ? [row.tip] : [],
         type_repas: row.moment || '',
         saved_at: row.sauvegardee_le || row.saved_at,
@@ -2334,6 +2397,7 @@ function appliquerProfil(p) {
       var m = el.getAttribute('onclick').match(/'([^']+)'/)
       if (m) el.classList.toggle('selected', selectedSymptoms.includes(m[1]))
     })
+    updateObjectifPrincipalBadge()
   }
   // Sync regimes
   if (p.regimes_alimentaires && p.regimes_alimentaires.length) {
@@ -2727,6 +2791,16 @@ function noterPlan(note) {
   document.querySelectorAll('.feedback-star').forEach(function(s, i) { s.classList.toggle('lit', i < note) })
   var fstars = document.getElementById('feedbackStars'); if (fstars) fstars.style.display = 'none'
   var sent   = document.getElementById('feedbackSent');  if (sent)   sent.classList.add('show')
+  // Sauvegarder la note en base
+  if (profil_id && profil_id !== 'new') {
+    authFetch(
+      SUPABASE_URL + '/rest/v1/plans_generes_cache?profil_id=eq.' + profil_id + '&source=eq.journalier',
+      { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ note_satisfaction: note, feedback_le: new Date().toISOString() }) }
+    ).catch(function() {})
+  }
 }
 
 // ── Generate daily plan ──
@@ -3376,6 +3450,7 @@ function afficherBoutonListeCourses() {
     try { existingRaw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
     var manuels = existingRaw ? (existingRaw.ingredients || []).filter(function(i) { return i.manuel }) : []
     try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste.concat(manuels), recettes: recettes })) } catch(e) {}
+    sauvegarderListeCoursesSupabase()
   }
   // Refresh profil tab shopping list in real-time if it is visible
   afficherListeCoursesProfile()
@@ -3863,6 +3938,7 @@ function chargerProfilUI() {
   document.querySelectorAll('#profilObjectifsChips .chip').forEach(function(el) {
     el.classList.toggle('selected', objectifs.includes(el.dataset.val))
   })
+  updateObjectifPrincipalBadge()
 
   // Allergènes
   profilAllergiesCourantes = (p.allergies || []).slice()
@@ -3872,6 +3948,34 @@ function chargerProfilUI() {
 
   // Sync all shared chips (régimes, temps, budget)
   syncAllPreferencesChips()
+}
+
+// Met à jour le badge "Principal" sur le premier objectif sélectionné
+// Couvre les trois conteneurs : page d'accueil, semaine et profil
+function updateObjectifPrincipalBadge() {
+  var principal = selectedSymptoms.length > 0 ? selectedSymptoms[0] : null
+  var selectors = [
+    { container: '#symptomsChips .chip',       getVal: function(el) { var m = (el.getAttribute('onclick')||'').match(/'(\w+)'\)/); return m && m[1] } },
+    { container: '#semaineSymptomChips .chip', getVal: function(el) { var m = (el.getAttribute('onclick')||'').match(/'(\w+)'\)/); return m && m[1] } },
+    { container: '#profilObjectifsChips .chip', getVal: function(el) { return el.dataset.val } }
+  ]
+  selectors.forEach(function(s) {
+    document.querySelectorAll(s.container).forEach(function(el) {
+      var badge = el.querySelector('.chip-principal-badge')
+      var val   = s.getVal(el)
+      var isPrincipal = principal && val === principal && el.classList.contains('selected')
+      if (isPrincipal) {
+        if (!badge) {
+          badge = document.createElement('span')
+          badge.className = 'chip-principal-badge'
+          badge.textContent = 'Principal'
+          el.appendChild(badge)
+        }
+      } else if (badge) {
+        badge.remove()
+      }
+    })
+  })
 }
 
 // Toggle objectif (mirrors selectedSymptoms + config panel)
@@ -3886,6 +3990,7 @@ function toggleProfilObjectif(el, val) {
     var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
     if (m && m[1] === val) c.classList.toggle('selected', selectedSymptoms.includes(val))
   })
+  updateObjectifPrincipalBadge()
   if (profilUtilisateur) {
     profilUtilisateur.objectifs_generaux = selectedSymptoms.slice()
     localStorage.setItem('vitalia_profil', JSON.stringify(profilUtilisateur))
@@ -4218,6 +4323,7 @@ function ajouterFavoriAuxCourses(idx) {
     }))
   } catch(e) {}
 
+  sauvegarderListeCoursesSupabase()
   afficherListeCoursesProfile()
   afficherToast('Ingrédients ajoutés à la liste de courses !')
 }
@@ -4485,6 +4591,7 @@ function ajouterArticleManuelCourses() {
 
   raw.ingredients.push({ nom: nom, quantite: null, unite: null, manuel: true })
   localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
+  sauvegarderListeCoursesSupabase()
   input.value = ''
   afficherListeCoursesProfile()
   // Re-focus the input for fast multi-add
