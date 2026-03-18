@@ -2313,21 +2313,31 @@ async function chargerRecettesSauvegardeesSupabase() {
 
 // ── Sync liste de courses vers Supabase (multi-appareils) ──
 var _coursesDebounceTimer = null
+function _patchListeCoursesSupabase(raw) {
+  if (!profil_id || profil_id === 'new') return
+  try {
+    authFetch(
+      SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id,
+      { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ liste_courses: raw }) }
+    ).catch(function() {})
+  } catch(e) {}
+}
 function sauvegarderListeCoursesSupabase() {
   if (!profil_id || profil_id === 'new') return
   clearTimeout(_coursesDebounceTimer)
   _coursesDebounceTimer = setTimeout(function() {
-    try {
-      var raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null')
-      authFetch(
-        SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id,
-        { method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
-                     'Authorization': 'Bearer ' + authToken, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ liste_courses: raw }) }
-      ).catch(function() {})
-    } catch(e) {}
+    var raw = null
+    try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    _patchListeCoursesSupabase(raw)
   }, 1500) // debounce 1.5s pour grouper les sauvegardes rapides
+}
+function effacerListeCoursesSupabase() {
+  if (!profil_id || profil_id === 'new') return
+  clearTimeout(_coursesDebounceTimer)
+  _patchListeCoursesSupabase(null)
 }
 
 async function chargerListeCoursesSupabase() {
@@ -4536,7 +4546,7 @@ function afficherListeCoursesProfile() {
   // ── Action buttons ──
   html += '<div style="display:flex;gap:8px;margin-top:12px;">' +
     '<button onclick="localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">↺ Réinitialiser</button>' +
-    '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');sauvegarderListeCoursesSupabase();afficherListeCoursesProfile()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
+    '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');effacerListeCoursesSupabase();afficherListeCoursesProfile()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
     '</div>'
 
   // ── Recipes section ──
