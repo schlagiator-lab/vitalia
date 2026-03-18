@@ -20,6 +20,20 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
 };
 
+// ─── Rate limiting : 10 générations/heure par utilisateur ──────────────────
+const _planRateLimitMap = new Map<string, number[]>();
+const PLAN_RATE_LIMIT_MAX = 10;
+const PLAN_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 heure
+
+function checkPlanRateLimit(profilId: string): boolean {
+  const now = Date.now();
+  const calls = (_planRateLimitMap.get(profilId) || []).filter(t => now - t < PLAN_RATE_LIMIT_WINDOW_MS);
+  if (calls.length >= PLAN_RATE_LIMIT_MAX) return false;
+  calls.push(now);
+  _planRateLimitMap.set(profilId, calls);
+  return true;
+}
+
 const JOURS_SEMAINE = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 const STYLES_CULINAIRES = ['mediterraneen', 'asiatique', 'francais', 'italien', 'mexicain', 'nordique', 'oriental'];
 
@@ -755,10 +769,7 @@ serve(async (req: Request) => {
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ── 1. LECTURE CACHE + RATE LIMITING ──────────────────────────────────
-    // Rate limiting : même avec force_refresh=true, on bloque si le cache
-    // a moins d'1h (protection contre les appels LLM abusifs).
-    const COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+    // ── 1. LECTURE CACHE ──────────────────────────────────────────────────
     try {
       const { data: cachedRow } = await supabase
         .from('plans_generes_cache')
@@ -769,25 +780,24 @@ serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
-      if (cachedRow?.plan_json) {
-        const ageMs = Date.now() - new Date(cachedRow.created_at).getTime();
-        if (!force_refresh) {
-          console.log('[generer-plan-semaine] Retour depuis le cache');
-          return new Response(
-            JSON.stringify({ ...cachedRow.plan_json, _source: 'cache' }),
-            { status: 200, headers: CORS_HEADERS }
-          );
-        }
-        if (ageMs < COOLDOWN_MS) {
-          console.warn(`[RATE LIMIT] force_refresh bloqué — dernier plan il y a ${Math.round(ageMs / 60000)} min`);
-          return new Response(
-            JSON.stringify({ ...cachedRow.plan_json, _source: 'cache', _rate_limited: true }),
-            { status: 200, headers: CORS_HEADERS }
-          );
-        }
+      if (cachedRow?.plan_json && !force_refresh) {
+        console.log('[generer-plan-semaine] Retour depuis le cache');
+        return new Response(
+          JSON.stringify({ ...cachedRow.plan_json, _source: 'cache' }),
+          { status: 200, headers: CORS_HEADERS }
+        );
       }
     } catch (cacheErr) {
       console.warn('[CACHE] Lecture cache semaine échouée (non bloquant):', cacheErr);
+    }
+
+    // ── RATE LIMITING : 10 générations/heure, re-génération immédiate possible ──
+    if (!checkPlanRateLimit(profil_id)) {
+      console.warn(`[RATE LIMIT] profil ${profil_id} a dépassé ${PLAN_RATE_LIMIT_MAX} générations/heure`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Limite atteinte : 10 plans maximum par heure.' }),
+        { status: 429, headers: CORS_HEADERS }
+      );
     }
 
     // ── 2. CHARGEMENT PROFIL ───────────────────────────────────────────────

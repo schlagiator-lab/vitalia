@@ -54,6 +54,20 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
+// ─── Rate limiting : 10 générations/heure par utilisateur ──────────────────
+const _planRateLimitMap = new Map<string, number[]>();
+const PLAN_RATE_LIMIT_MAX = 10;
+const PLAN_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 heure
+
+function checkPlanRateLimit(profilId: string): boolean {
+  const now = Date.now();
+  const calls = (_planRateLimitMap.get(profilId) || []).filter(t => now - t < PLAN_RATE_LIMIT_WINDOW_MS);
+  if (calls.length >= PLAN_RATE_LIMIT_MAX) return false;
+  calls.push(now);
+  _planRateLimitMap.set(profilId, calls);
+  return true;
+}
+
 // ============================================================================
 // HELPERS STATIQUES
 // ============================================================================
@@ -572,8 +586,7 @@ serve(async (req) => {
 
     // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
     // Activé si force_regeneration !== true
-    // Rate limiting : même avec force_regeneration=true, on bloque si le cache
-    // a moins d'1h (protection contre les appels LLM abusifs).
+    // ── Lecture cache ──────────────────────────────────────────────────────
     try {
       const { data: cached } = await supabase
         .from('plans_generes_cache')
@@ -584,26 +597,24 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      if (cached?.plan_json) {
-        const ageMs = Date.now() - new Date(cached.created_at).getTime();
-        const COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
-        if (!force_regeneration) {
-          console.log(`[CACHE] Plan journalier trouvé — généré le ${cached.created_at}`);
-          return new Response(
-            JSON.stringify({ ...cached.plan_json, _source: 'cache' }),
-            { status: 200, headers: CORS_HEADERS }
-          );
-        }
-        if (ageMs < COOLDOWN_MS) {
-          console.warn(`[RATE LIMIT] force_regeneration bloqué — dernier plan il y a ${Math.round(ageMs / 60000)} min`);
-          return new Response(
-            JSON.stringify({ ...cached.plan_json, _source: 'cache', _rate_limited: true }),
-            { status: 200, headers: CORS_HEADERS }
-          );
-        }
+      if (cached?.plan_json && !force_regeneration) {
+        console.log(`[CACHE] Plan journalier trouvé — généré le ${cached.created_at}`);
+        return new Response(
+          JSON.stringify({ ...cached.plan_json, _source: 'cache' }),
+          { status: 200, headers: CORS_HEADERS }
+        );
       }
     } catch (cacheErr) {
       console.warn('[CACHE] Lecture cache journalier échouée (non bloquant):', cacheErr);
+    }
+
+    // ── RATE LIMITING : 10 générations/heure, re-génération immédiate possible ──
+    if (!checkPlanRateLimit(profil_id)) {
+      console.warn(`[RATE LIMIT] profil ${profil_id} a dépassé ${PLAN_RATE_LIMIT_MAX} générations/heure`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Limite atteinte : 10 plans maximum par heure.' }),
+        { status: 429, headers: CORS_HEADERS }
+      );
     }
 
     // ── Charger le profil complet depuis la BDD ─────────────────────────────

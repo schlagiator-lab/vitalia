@@ -2867,6 +2867,7 @@ function syncSemaineChips() {
     var val = el.dataset.val
     el.classList.toggle('selected', selectedSymptoms.includes(val))
   })
+  updateObjectifPrincipalBadge()
 }
 
 // Toggle symptom from Semaine tab (mirrors config panel)
@@ -2882,6 +2883,7 @@ function toggleSemaineSymptom(el, val) {
     var m = c.getAttribute('onclick') && c.getAttribute('onclick').match(/'(\w+)'\)/)
     if (m && m[1] === val) c.classList.toggle('selected', selectedSymptoms.includes(val))
   })
+  updateObjectifPrincipalBadge()
 }
 
 // Toggle a day card open/close
