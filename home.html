@@ -2152,6 +2152,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   chargerFavorisSupabase()
   chargerRecettesSauvegardeesSupabase()
 
+  // Badge "Principal" sur le premier objectif sélectionné (appel initial garanti)
+  updateObjectifPrincipalBadge()
+
   // Date badge
   var db = document.getElementById('dateBadge')
   if (db) db.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' })
