@@ -77,109 +77,7 @@ function estViandePoissonCrustace(cat: string): boolean {
   return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque', 'abats', 'gibier'].some(m => c.includes(m));
 }
 
-// ─── Collation par défaut (sans LLM) ───────────────────────────────────────
 
-const COLLATIONS_POOL: Array<{
-  nom: string;
-  ingredients: { nom: string; quantite: number; unite: string }[];
-  instructions: string[];
-  temps_preparation: number;
-  temps_cuisson: number;
-  portions: number;
-  valeurs_nutritionnelles: { calories: number; proteines: number; glucides: number; lipides: number };
-  astuces: string[];
-  contientLaitier?: boolean;
-}> = [
-  {
-    nom: 'Pomme & Beurre d\'Amande',
-    ingredients: [
-      { nom: 'Pomme', quantite: 1, unite: 'pièce' },
-      { nom: 'Beurre d\'amande', quantite: 20, unite: 'g' },
-    ],
-    instructions: ['Laver la pomme et la couper en quartiers.', 'Tremper chaque quartier dans le beurre d\'amande.'],
-    temps_preparation: 3, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 180, proteines: 4, glucides: 22, lipides: 9 },
-    astuces: ['La pectine de la pomme nourrit le microbiome ; les graisses de l\'amande prolongent la satiété.'],
-  },
-  {
-    nom: 'Carré de Chocolat Noir & Noix du Brésil',
-    ingredients: [
-      { nom: 'Chocolat noir 70%+', quantite: 20, unite: 'g' },
-      { nom: 'Noix du Brésil', quantite: 3, unite: 'pièces' },
-    ],
-    instructions: ['Laisser fondre lentement le chocolat en bouche.', 'Croquer les noix du Brésil.'],
-    temps_preparation: 1, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 145, proteines: 3, glucides: 10, lipides: 11 },
-    astuces: ['3 noix du Brésil couvrent 100% des besoins en sélénium. Le cacao apporte 64mg de magnésium.'],
-  },
-  {
-    nom: 'Banane & Noix de Cajou',
-    ingredients: [
-      { nom: 'Banane', quantite: 1, unite: 'pièce' },
-      { nom: 'Noix de cajou', quantite: 25, unite: 'g' },
-    ],
-    instructions: ['Éplucher la banane et la couper en rondelles.', 'Servir avec les noix de cajou dans un petit bol.'],
-    temps_preparation: 2, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 200, proteines: 5, glucides: 30, lipides: 8 },
-    astuces: ['Le tryptophane de la banane et le magnésium des noix de cajou soutiennent la sérotonine.'],
-  },
-  {
-    nom: 'Kiwi & Amandes Effilées',
-    ingredients: [
-      { nom: 'Kiwi', quantite: 2, unite: 'pièces' },
-      { nom: 'Amandes effilées', quantite: 15, unite: 'g' },
-    ],
-    instructions: ['Éplucher et couper les kiwis en dés.', 'Disposer dans un bol et parsemer d\'amandes effilées.'],
-    temps_preparation: 3, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 150, proteines: 4, glucides: 20, lipides: 6 },
-    astuces: ['2 kiwis par jour améliorent la qualité du sommeil grâce à leur teneur en sérotonine et antioxydants.'],
-  },
-  {
-    nom: 'Dattes Medjool & Noix',
-    ingredients: [
-      { nom: 'Dattes Medjool', quantite: 2, unite: 'pièces' },
-      { nom: 'Noix', quantite: 20, unite: 'g' },
-    ],
-    instructions: ['Dénoyauter les dattes si nécessaire.', 'Déguster avec les noix en mâchant lentement.'],
-    temps_preparation: 1, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 190, proteines: 3, glucides: 28, lipides: 8 },
-    astuces: ['Les dattes offrent un index glycémique modéré et les oméga-3 des noix réduisent l\'inflammation.'],
-  },
-  {
-    nom: 'Yaourt Nature & Myrtilles',
-    ingredients: [
-      { nom: 'Yaourt nature entier', quantite: 125, unite: 'g' },
-      { nom: 'Myrtilles fraîches ou surgelées', quantite: 60, unite: 'g' },
-      { nom: 'Graines de chia', quantite: 5, unite: 'g' },
-    ],
-    instructions: ['Verser le yaourt dans un bol.', 'Ajouter les myrtilles et les graines de chia.'],
-    temps_preparation: 2, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 160, proteines: 7, glucides: 18, lipides: 5 },
-    astuces: ['Les probiotiques du yaourt et les polyphénols des myrtilles forment un duo gagnant pour le microbiome.'],
-    contientLaitier: true,
-  },
-  {
-    nom: 'Crackers Seigle & Houmous',
-    ingredients: [
-      { nom: 'Crackers au seigle', quantite: 3, unite: 'pièces' },
-      { nom: 'Houmous', quantite: 40, unite: 'g' },
-      { nom: 'Rondelles de concombre', quantite: 5, unite: 'pièces' },
-    ],
-    instructions: ['Étaler l\'houmous sur les crackers.', 'Déposer les rondelles de concombre par-dessus.'],
-    temps_preparation: 3, temps_cuisson: 0, portions: 1,
-    valeurs_nutritionnelles: { calories: 170, proteines: 6, glucides: 22, lipides: 6 },
-    astuces: ['Les fibres du seigle et les protéines végétales des pois chiches assurent une satiété durable.'],
-  },
-];
-
-function collationParDefaut(profil: any, jourIndex: number = 0): any {
-  const estSansLactose = profil.estSansLactose;
-  const pool = COLLATIONS_POOL.filter(c => !(estSansLactose && c.contientLaitier));
-  const poolEffectif = pool.length > 0 ? pool : COLLATIONS_POOL;
-  const idx = jourIndex % poolEffectif.length;
-  const { contientLaitier: _, instructions: _inst, ...collation } = poolEffectif[idx];
-  return { ...collation, instructions: [], type_repas: 'collation', style_culinaire: 'maison', genere_par_llm: false };
-}
 
 // ─── Fallback semaine complet ──────────────────────────────────────────────
 
@@ -189,6 +87,20 @@ function recetteFallbackUnitaire(
   styleCulinaire: string,
   jourIndex: number
 ): any {
+  if (typeRepas === 'collation') {
+    const COLLATIONS_FB = [
+      { nom: 'Pomme & Beurre d\'Amande', ingredients: [{ nom: 'Pomme', quantite: 1, unite: 'pièce' }, { nom: 'Beurre d\'amande', quantite: 20, unite: 'g' }], macros: { calories: 180, proteines: 4, glucides: 22, lipides: 9 } },
+      { nom: 'Banane & Noix de Cajou',   ingredients: [{ nom: 'Banane', quantite: 1, unite: 'pièce' }, { nom: 'Noix de cajou', quantite: 25, unite: 'g' }], macros: { calories: 200, proteines: 5, glucides: 30, lipides: 8 } },
+      { nom: 'Kiwi & Amandes Effilées',  ingredients: [{ nom: 'Kiwi', quantite: 2, unite: 'pièces' }, { nom: 'Amandes effilées', quantite: 15, unite: 'g' }], macros: { calories: 150, proteines: 4, glucides: 20, lipides: 6 } },
+      { nom: 'Crackers Seigle & Houmous', ingredients: [{ nom: 'Crackers au seigle', quantite: 3, unite: 'pièces' }, { nom: 'Houmous', quantite: 40, unite: 'g' }], macros: { calories: 170, proteines: 6, glucides: 22, lipides: 6 } },
+    ];
+    const fb = COLLATIONS_FB[jourIndex % COLLATIONS_FB.length];
+    return { nom: fb.nom, type_repas: 'collation', style_culinaire: 'maison', ingredients: fb.ingredients,
+      instructions: [], temps_preparation: 3, temps_cuisson: 0, portions: 1,
+      valeurs_nutritionnelles: { calories: fb.macros.calories, proteines: fb.macros.proteines, glucides: fb.macros.glucides, lipides: fb.macros.lipides },
+      astuces: [], variantes: [], genere_par_llm: false };
+  }
+
   if (typeRepas === 'petit-dejeuner') {
     const PETIT_DEJ_FALLBACKS = [
       { nom: 'Porridge Avoine Banane & Amandes',
@@ -300,9 +212,9 @@ function fallbackSemaine(pairesProteines: [string, string][], stylesJours: strin
     const [protDej, protDin] = pairesProteines[j];
     semaine[jour] = {
       petit_dejeuner: recetteFallbackUnitaire('petit-dejeuner', null, style, j),
-      dejeuner: recetteFallbackUnitaire('dejeuner', protDej, style, j),
-      diner: recetteFallbackUnitaire('diner', protDin, style, j),
-      pause: collationParDefaut(profilNorm, j),
+      dejeuner:       recetteFallbackUnitaire('dejeuner', protDej, style, j),
+      diner:          recetteFallbackUnitaire('diner', protDin, style, j),
+      pause:          recetteFallbackUnitaire('collation', null, style, j),
     };
   }
   return semaine;
@@ -446,9 +358,10 @@ interface RepasSquelette {
 
 interface JourSquelette {
   jour: string;
-  petit_dejeuner: RepasSquelette;
-  dejeuner: RepasSquelette;
-  diner: RepasSquelette;
+  petit_dejeuner?: RepasSquelette;
+  dejeuner?: RepasSquelette;
+  diner?: RepasSquelette;
+  collation?: RepasSquelette;
 }
 
 function validerRepasSquelette(repas: any): repas is RepasSquelette {
@@ -548,12 +461,28 @@ function construirePromptBatch(
         "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
         "temps_preparation": 10,
         "temps_cuisson": 25
+      },` : '';
+
+  const exempleCollation = repasInclus.includes('pause') ? `
+      "collation": {
+        "nom": "Nom court et appétissant",
+        "ingredients": ["1 pomme", "20g de beurre d'amande"],
+        "macros": { "calories": 190, "proteines": 4, "glucides": 24, "lipides": 9 }
       }` : '';
+
+  const sectionCollation = repasInclus.includes('pause') ? `
+## CONTRAINTES COLLATION
+- Simple, sans cuisson ou cuisson minimale (≤ 5 min)
+- Maximum 4 ingrédients
+- Entre 150 et 250 kcal
+- Différente chaque jour
+` : '';
 
   const macrosVisees = [
     repasInclus.includes('petit_dejeuner') ? 'petit-déjeuner ~350 kcal/12g prot' : '',
     repasInclus.includes('dejeuner') ? 'déjeuner ~480 kcal/30g prot' : '',
     repasInclus.includes('diner') ? 'dîner ~440 kcal/28g prot' : '',
+    repasInclus.includes('pause') ? 'collation ~200 kcal/4g prot' : '',
   ].filter(Boolean).join(', ');
 
   return `Tu es un chef nutritionniste expert. Génère un plan alimentaire sur 7 jours.
@@ -564,7 +493,6 @@ function construirePromptBatch(
 - Objectif nutritionnel : ${objectif}
 - Budget repas : ${budgetLabel}
 - Temps de préparation max : ${tempsMax} minutes${consigneProteine}${consigneSansLactose}
-- Repas à générer : ${repasInclus.filter(r => r !== 'pause').join(', ')}
 
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
 Jour      | Style culinaire | Protéines
@@ -573,12 +501,12 @@ ${lignesPlanning}
 
 ## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES)
 ${regleAntiRep}
-${sectionPetitDej}
+${sectionPetitDej}${sectionCollation}
 ## FORMAT DE SORTIE : JSON strict uniquement, sans backticks, sans commentaire
 {
   "jours": [
     {
-      "jour": "lundi",${exemplePetitDej}${exempleDejeuner}${exempleDiner}
+      "jour": "lundi",${exemplePetitDej}${exempleDejeuner}${exempleDiner}${exempleCollation}
     }
     // ... 6 autres jours, même format
   ]
@@ -604,8 +532,7 @@ async function genererPlanBatch(
 ): Promise<JourSquelette[] | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
-  const repasLLM = repasInclus.filter(r => r !== 'pause'); // pause = statique, pas LLM
-  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasLLM);
+  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus);
 
   // 2 tentatives avec backoff sur 429/5xx
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -940,18 +867,22 @@ serve(async (req: Request) => {
         if (dejeuner.genere_par_llm) llmCount++; else fallbackCount++;
         if (diner.genere_par_llm) llmCount++; else fallbackCount++;
 
+        const collation = squelettVersRepas(jourRaw?.collation, 'collation', style, null, j);
+        if (collation.genere_par_llm) llmCount++; else fallbackCount++;
+
         semaine[jour] = {
-          ...(repasInclus.includes('petit_dejeuner') ? { petit_dejeuner: petitDej } : {}),
-          ...(repasInclus.includes('dejeuner')       ? { dejeuner: dejeuner }       : {}),
-          ...(repasInclus.includes('diner')          ? { diner: diner }             : {}),
-          ...(repasInclus.includes('pause')          ? { pause: collationParDefaut(profilNorm, j) } : {}),
+          ...(repasInclus.includes('petit_dejeuner') ? { petit_dejeuner: petitDej }   : {}),
+          ...(repasInclus.includes('dejeuner')       ? { dejeuner }                    : {}),
+          ...(repasInclus.includes('diner')          ? { diner }                       : {}),
+          ...(repasInclus.includes('pause')          ? { pause: collation }            : {}),
         };
       }
-      console.log(`[STATS] LLM=${llmCount}/21 | Fallback=${fallbackCount}/21`);
+      const totalSlots = repasInclus.length * 7;
+      console.log(`[STATS] LLM=${llmCount}/${totalSlots} | Fallback=${fallbackCount}/${totalSlots}`);
     } else {
       console.warn('[generer-plan-semaine] Batch LLM échoué → fallback semaine complet');
       semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm);
-      fallbackCount = 21;
+      fallbackCount = repasInclus.length * 7;
     }
 
     // ── 6. RÉPONSE FINALE ─────────────────────────────────────────────────
