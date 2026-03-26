@@ -281,7 +281,9 @@ function construirePromptRecette(
     'bien-etre-general': 'Équilibré, varié et nutritif'
   };
 
-  const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'Équilibré, varié et nutritif';
+  const objectifTexte = (contexte.symptomes_declares && contexte.symptomes_declares.length > 0)
+    ? contexte.symptomes_declares.map(s => objectifNutri[s]).filter(Boolean).join(' + ') || 'Équilibré, varié et nutritif'
+    : 'Équilibré, varié et nutritif';
 
   // Omnivore = défaut dès qu'il n'y a pas de restriction végétale explicite.
   // L'ancien check includes('omnivore') échouait si le profil avait un tableau vide.
@@ -401,7 +403,9 @@ export async function genererPauseLLM(
     'energie':   'énergisante, à index glycémique modéré',
     'stress':    'anti-stress, riche en magnésium',
   };
-  const objectifTexte = objectifNutri[contexte.objectif_principal || ''] || 'saine et équilibrée';
+  const objectifTexte = (contexte.symptomes_declares && contexte.symptomes_declares.length > 0)
+    ? contexte.symptomes_declares.map(s => objectifNutri[s]).filter(Boolean).join(' + ') || 'saine et équilibrée'
+    : 'saine et équilibrée';
 
   const prompt = `Tu es un chef nutritionniste. Crée une collation de 15h30 originale.
 

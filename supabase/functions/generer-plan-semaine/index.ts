@@ -475,7 +475,7 @@ function construirePromptBatch(
     hormones: 'riche en acides gras et phytoestrogènes',
   };
   const objectif = symptomes.length > 0
-    ? (objectifMap[symptomes[0]] || 'équilibrée et nutritive')
+    ? symptomes.map(s => objectifMap[s]).filter(Boolean).join(' + ') || 'équilibrée et nutritive'
     : 'saine et équilibrée, sans objectif santé spécifique';
 
   const regimes = profilNorm.contraintesRegime.join(', ') || 'Aucune restriction';
