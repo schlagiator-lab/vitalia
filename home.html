@@ -1477,6 +1477,16 @@
         <div id="semaineProfilRecap" style="font-size:12px;color:var(--mid-brown);flex:1;line-height:1.6;"></div>
         <button onclick="ouvrirProfilPanel()" style="flex-shrink:0;background:none;border:1.5px solid rgba(196,113,74,0.3);border-radius:10px;color:var(--terracotta);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;padding:4px 9px;white-space:nowrap;">✏️ Profil</button>
       </div>
+      <!-- Sélection des repas à inclure -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-light);font-weight:600;margin-bottom:8px;">Repas à inclure</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <div class="chip selected" data-repas="petit_dejeuner" onclick="toggleRepasInclus(this,'petit_dejeuner')">🌅 Petit-déjeuner</div>
+          <div class="chip selected" data-repas="dejeuner"       onclick="toggleRepasInclus(this,'dejeuner')">☀️ Déjeuner</div>
+          <div class="chip selected" data-repas="diner"          onclick="toggleRepasInclus(this,'diner')">🌙 Dîner</div>
+          <div class="chip selected" data-repas="pause"          onclick="toggleRepasInclus(this,'pause')">🍎 Collation</div>
+        </div>
+      </div>
       <button class="btn-primary" id="semaineBtnGenerate" onclick="genererSemaine(true)">
         <span id="semaineBtnText">✨ Générer ma semaine</span>
       </button>
@@ -1778,9 +1788,10 @@ var profilUtilisateur = null
 var currentPlan       = null
 var semaineData       = null
 var recetteGeneree    = null
-var selectedSymptoms  = ['vitalite', 'serenite']
-var selectedRegimes   = []
-var selectedBudget    = 'moyen'
+var selectedSymptoms      = ['vitalite', 'serenite']
+var selectedRegimes       = []
+var selectedBudget        = 'moyen'
+var semaineRepasInclus    = ['petit_dejeuner', 'dejeuner', 'diner', 'pause']
 var recipeServings    = { matin: 1, midi: 1, apres_midi: 1, soir: 1 }
 var recipeBaseIng     = {}
 var savedRecipes      = []
@@ -2990,7 +3001,7 @@ async function genererSemaine(forcer) {
         'Authorization': 'Bearer ' + authToken,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ profil_id: profil_id, symptomes: selectedSymptoms, force_refresh: forcer === true }),
+      body: JSON.stringify({ profil_id: profil_id, symptomes: selectedSymptoms, force_refresh: forcer === true, repas_inclus: semaineRepasInclus }),
     })
     var data = await resp.json()
     if (data.success && data.semaine) {
@@ -3282,7 +3293,7 @@ async function autoRegenFallbacks(data) {
     petit_dejeuner: 'petit-dejeuner',
     dejeuner:       'dejeuner',
     diner:          'diner',
-    pause:          'collation',
+    // pause exclue : collation statique, étapes chargées à la demande
   }
 
   // Collect all fallback slots
@@ -3709,6 +3720,18 @@ async function genererRecettePourRepas(jour, mealKey, typeRepas) {
 
 var recetteIngredientsFrigo  = []
 var recetteTypeRepas         = 'dejeuner'
+function toggleRepasInclus(el, val) {
+  if (semaineRepasInclus.includes(val)) {
+    // Ne pas désélectionner si c'est le dernier
+    if (semaineRepasInclus.length <= 1) { afficherToast('Sélectionne au moins un repas.'); return }
+    semaineRepasInclus = semaineRepasInclus.filter(function(v) { return v !== val })
+    el.classList.remove('selected')
+  } else {
+    semaineRepasInclus.push(val)
+    el.classList.add('selected')
+  }
+}
+
 var recetteSelectedSymptoms  = ['vitalite', 'serenite']
 var recetteCourante          = null
 

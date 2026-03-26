@@ -177,8 +177,8 @@ function collationParDefaut(profil: any, jourIndex: number = 0): any {
   const pool = COLLATIONS_POOL.filter(c => !(estSansLactose && c.contientLaitier));
   const poolEffectif = pool.length > 0 ? pool : COLLATIONS_POOL;
   const idx = jourIndex % poolEffectif.length;
-  const { contientLaitier: _, ...collation } = poolEffectif[idx];
-  return { ...collation, type_repas: 'collation', style_culinaire: 'maison', genere_par_llm: false };
+  const { contientLaitier: _, instructions: _inst, ...collation } = poolEffectif[idx];
+  return { ...collation, instructions: [], type_repas: 'collation', style_culinaire: 'maison', genere_par_llm: false };
 }
 
 // ─── Fallback semaine complet ──────────────────────────────────────────────
@@ -464,7 +464,8 @@ function construirePromptBatch(
   pairesProteines: [string, string][],
   stylesJours: string[],
   profilNorm: any,
-  symptomes: string[]
+  symptomes: string[],
+  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner']
 ): string {
   const objectifMap: Record<string, string> = {
     vitalite: 'riche en fer, vitamines B et magnésium',
@@ -494,23 +495,76 @@ function construirePromptBatch(
     return `${jour.padEnd(9)} | ${style.padEnd(14)} | ${proteines}`;
   }).join('\n');
 
-  // Contrainte protéine animale
-  const consigneProteine = omnivore
-    ? `\n**PROTÉINE ANIMALE** : Pour chaque déjeuner et dîner, utiliser EXACTEMENT la protéine indiquée dans le tableau. Elle doit figurer dans la liste d'ingrédients. Jamais 2 poissons le même jour.`
-    : '\n**RÉGIME VÉGÉTAL** : Aucune viande ni poisson. Varier légumineuses, tofu, tempeh, œufs (si végétarien).';
+  const avecDejDin = repasInclus.includes('dejeuner') || repasInclus.includes('diner');
+
+  // Contrainte protéine animale (seulement si déjeuner ou dîner inclus)
+  const consigneProteine = avecDejDin
+    ? (omnivore
+        ? `\n**PROTÉINE ANIMALE** : Pour chaque déjeuner et dîner présents, utiliser EXACTEMENT la protéine indiquée dans le tableau. Elle doit figurer dans la liste d'ingrédients. Jamais 2 poissons le même jour.`
+        : '\n**RÉGIME VÉGÉTAL** : Aucune viande ni poisson. Varier légumineuses, tofu, tempeh, œufs (si végétarien).')
+    : '';
 
   const consigneSansLactose = profilNorm.estSansLactose
     ? '\n**SANS LACTOSE** : Aucun yaourt, fromage, lait animal, ricotta. Lait végétal uniquement.'
     : '';
 
-  return `Tu es un chef nutritionniste expert. Génère un plan alimentaire complet sur 7 jours.
+  // Sections conditionnelles
+  const sectionPetitDej = repasInclus.includes('petit_dejeuner') ? `
+## CONTRAINTES PETIT-DÉJEUNER
+- Saveur SUCRÉE uniquement (fruits, céréales, miel${profilNorm.estSansLactose ? '' : ', yaourt'})
+- PAS de légumes, pas de recette salée
+- Maximum 5 ingrédients
+- Temps ≤ 10 minutes
+` : '';
+
+  const regleAntiRep = [
+    repasInclus.includes('petit_dejeuner') ? '- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, porridge, overnight oats, tartine, crêpe, bol yaourt, granola bowl' : '',
+    avecDejDin ? '- Déjeuner/Dîner : technique de cuisson différente chaque jour (poêlé, rôti, vapeur, mijoté, grillé, papillote, wok)' : '',
+    '- Aucun ingrédient principal répété plus de 2 fois sur la semaine (hors huile d\'olive, sel, poivre)',
+    '- Les noms de plats doivent tous être distincts et créatifs',
+  ].filter(Boolean).join('\n');
+
+  // Format JSON dynamique selon repas inclus
+  const exemplePetitDej = repasInclus.includes('petit_dejeuner') ? `
+      "petit_dejeuner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["200g de flocons d'avoine", "1 banane mûre", "150ml de lait d'amande"],
+        "macros": { "calories": 350, "proteines": 12, "glucides": 45, "lipides": 10 }
+      },` : '';
+
+  const exempleDejeuner = repasInclus.includes('dejeuner') ? `
+      "dejeuner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
+        "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 },
+        "temps_preparation": 10,
+        "temps_cuisson": 6
+      },` : '';
+
+  const exempleDiner = repasInclus.includes('diner') ? `
+      "diner": {
+        "nom": "Nom créatif du plat",
+        "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
+        "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
+        "temps_preparation": 10,
+        "temps_cuisson": 25
+      }` : '';
+
+  const macrosVisees = [
+    repasInclus.includes('petit_dejeuner') ? 'petit-déjeuner ~350 kcal/12g prot' : '',
+    repasInclus.includes('dejeuner') ? 'déjeuner ~480 kcal/30g prot' : '',
+    repasInclus.includes('diner') ? 'dîner ~440 kcal/28g prot' : '',
+  ].filter(Boolean).join(', ');
+
+  return `Tu es un chef nutritionniste expert. Génère un plan alimentaire sur 7 jours.
 
 ## CONTRAINTES GLOBALES (NON NÉGOCIABLES)
 - Régime : ${regimes}
 - Allergènes à éviter absolument : ${allergenes}
 - Objectif nutritionnel : ${objectif}
 - Budget repas : ${budgetLabel}
-- Temps de préparation max : ${tempsMax} minutes (déjeuner/dîner)${consigneProteine}${consigneSansLactose}
+- Temps de préparation max : ${tempsMax} minutes${consigneProteine}${consigneSansLactose}
+- Repas à générer : ${repasInclus.filter(r => r !== 'pause').join(', ')}
 
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
 Jour      | Style culinaire | Protéines
@@ -518,48 +572,20 @@ Jour      | Style culinaire | Protéines
 ${lignesPlanning}
 
 ## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES)
-- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, porridge, overnight oats, tartine, crêpe, bol yaourt, granola bowl
-- Déjeuner/Dîner : technique de cuisson différente chaque jour (poêlé, rôti, vapeur, mijoté, grillé, papillote, wok)
-- Aucun ingrédient principal répété plus de 2 fois sur la semaine (hors huile d'olive, sel, poivre)
-- Les noms de plats doivent tous être distincts et créatifs
-
-## CONTRAINTES PETIT-DÉJEUNER
-- Saveur SUCRÉE uniquement (fruits, céréales, miel${profilNorm.estSansLactose ? '' : ', yaourt'})
-- PAS de légumes, pas de recette salée
-- Maximum 5 ingrédients
-- Temps ≤ 10 minutes
-
+${regleAntiRep}
+${sectionPetitDej}
 ## FORMAT DE SORTIE : JSON strict uniquement, sans backticks, sans commentaire
 {
   "jours": [
     {
-      "jour": "lundi",
-      "petit_dejeuner": {
-        "nom": "Nom créatif du plat",
-        "ingredients": ["200g de flocons d'avoine", "1 banane mûre", "150ml de lait d'amande"],
-        "macros": { "calories": 350, "proteines": 12, "glucides": 45, "lipides": 10 }
-      },
-      "dejeuner": {
-        "nom": "Nom créatif du plat",
-        "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
-        "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 },
-        "temps_preparation": 10,
-        "temps_cuisson": 6
-      },
-      "diner": {
-        "nom": "Nom créatif du plat",
-        "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
-        "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
-        "temps_preparation": 10,
-        "temps_cuisson": 25
-      }
+      "jour": "lundi",${exemplePetitDej}${exempleDejeuner}${exempleDiner}
     }
     // ... 6 autres jours, même format
   ]
 }
 
-Macros visées : petit-déjeuner ~350 kcal/12g prot, déjeuner ~480 kcal/30g prot, dîner ~440 kcal/28g prot.
-Règles temps (cohérence obligatoire pour déjeuner/dîner) :
+Macros visées : ${macrosVisees}.
+Règles temps (cohérence obligatoire) :
 - Poisson poêlé : temps_preparation=8, temps_cuisson=6
 - Poulet rôti : temps_preparation=10, temps_cuisson=30
 - Bœuf sauté wok : temps_preparation=10, temps_cuisson=8
@@ -573,11 +599,13 @@ async function genererPlanBatch(
   pairesProteines: [string, string][],
   stylesJours: string[],
   profilNorm: any,
-  symptomes: string[]
+  symptomes: string[],
+  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner', 'pause']
 ): Promise<JourSquelette[] | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
-  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes);
+  const repasLLM = repasInclus.filter(r => r !== 'pause'); // pause = statique, pas LLM
+  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasLLM);
 
   // 2 tentatives avec backoff sur 429/5xx
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -757,7 +785,10 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, symptomes, force_refresh = false } = body;
+    const { profil_id, symptomes, force_refresh = false, repas_inclus } = body;
+    const repasInclus: string[] = Array.isArray(repas_inclus) && repas_inclus.length > 0
+      ? repas_inclus
+      : ['petit_dejeuner', 'dejeuner', 'diner', 'pause'];
 
     if (!profil_id) {
       return new Response(
@@ -883,7 +914,7 @@ serve(async (req: Request) => {
 
     // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
     const [joursLLM, wellness, motivation] = await Promise.all([
-      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr),
+      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus),
       chargerWellness(supabase, symptomesArr),
       genererMotivation(symptomesArr),
     ]);
@@ -910,10 +941,10 @@ serve(async (req: Request) => {
         if (diner.genere_par_llm) llmCount++; else fallbackCount++;
 
         semaine[jour] = {
-          petit_dejeuner: petitDej,
-          dejeuner: dejeuner,
-          diner: diner,
-          pause: collationParDefaut(profilNorm, j),
+          ...(repasInclus.includes('petit_dejeuner') ? { petit_dejeuner: petitDej } : {}),
+          ...(repasInclus.includes('dejeuner')       ? { dejeuner: dejeuner }       : {}),
+          ...(repasInclus.includes('diner')          ? { diner: diner }             : {}),
+          ...(repasInclus.includes('pause')          ? { pause: collationParDefaut(profilNorm, j) } : {}),
         };
       }
       console.log(`[STATS] LLM=${llmCount}/21 | Fallback=${fallbackCount}/21`);
