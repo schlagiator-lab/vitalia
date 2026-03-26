@@ -666,14 +666,14 @@ serve(async (req) => {
       ? symptomes
       : (profilBDD.objectifs_generaux || []);
 
-    // Fallback si aucun besoin défini
+    // Fallback si aucun besoin défini : utiliser tous les besoins (cohérent avec generer-plan-semaine)
     const besoinsUtilises = besoinsActifs.length > 0
       ? besoinsActifs
-      : ['vitalite', 'serenite'];
+      : ['vitalite', 'serenite', 'sommeil', 'digestion', 'mobilite', 'hormones'];
 
     const contexte: ContexteUtilisateur = {
       symptomes_declares: besoinsUtilises,
-      objectif_principal: besoinsUtilises[0] || 'vitalite',
+      objectif_principal: besoinsActifs.length > 0 ? (besoinsUtilises[0] || 'vitalite') : 'bien-etre-general',
       duree_symptomes:    'quelques-jours'
     };
 

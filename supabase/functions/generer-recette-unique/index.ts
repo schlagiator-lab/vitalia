@@ -308,7 +308,7 @@ function construirePrompt(
 
   const objectif = symptomes.length > 0
     ? (objectifMap[symptomes[0]] || 'Équilibrée et nutritive')
-    : 'Équilibrée et nutritive';
+    : 'Saine et équilibrée, sans objectif santé spécifique';
 
   const tempsMax = profil.temps_preparation || 45;
   const allergenes = profil.allergenes || [];

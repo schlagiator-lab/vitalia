@@ -476,7 +476,7 @@ function construirePromptBatch(
   };
   const objectif = symptomes.length > 0
     ? (objectifMap[symptomes[0]] || 'équilibrée et nutritive')
-    : 'équilibrée et nutritive';
+    : 'saine et équilibrée, sans objectif santé spécifique';
 
   const regimes = profilNorm.contraintesRegime.join(', ') || 'Aucune restriction';
   const allergenes = (profilNorm.allergenes || []).join(', ') || 'Aucun';
