@@ -1152,6 +1152,28 @@
 
   <button onclick="afficherCheckinModal()" style="width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:12px;padding:10px;font-size:13px;color:var(--mid-brown);cursor:pointer;margin-bottom:8px;">📊 Mon ressenti du jour</button>
 
+  <div style="display:flex;align-items:center;justify-content:space-between;
+       padding:12px 0;border-top:1px solid rgba(196,113,74,0.1);">
+    <div>
+      <div style="font-size:13px;font-weight:500;color:var(--deep-brown);">
+        Email récapitulatif quotidien</div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:1px;">
+        Reçois ton plan chaque matin à 7h</div>
+    </div>
+    <label style="position:relative;display:inline-block;width:44px;height:24px;
+                  flex-shrink:0;cursor:pointer;">
+      <input type="checkbox" id="emailDigestToggle" onchange="toggleEmailDigest(this.checked)"
+        style="opacity:0;width:0;height:0;position:absolute;">
+      <span id="emailDigestTrack"
+        style="position:absolute;inset:0;background:rgba(196,113,74,0.2);
+        border-radius:12px;transition:background 0.2s;"></span>
+      <span id="emailDigestThumb"
+        style="position:absolute;top:3px;left:3px;width:18px;height:18px;
+        background:white;border-radius:50%;transition:transform 0.2s;
+        box-shadow:0 1px 4px rgba(0,0,0,0.15);"></span>
+    </label>
+  </div>
+
   <div style="text-align:center;">
     <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
   </div>
@@ -4046,6 +4068,9 @@ function chargerProfilUI() {
 
   // Sync all shared chips (régimes, temps, budget)
   syncAllPreferencesChips()
+
+  // Email digest toggle
+  initialiserEmailDigestToggle(p)
 }
 
 // Met à jour le badge "Principal" sur le premier objectif sélectionné
@@ -5011,6 +5036,39 @@ function verifierCheckinDuJour() {
   if (!profil_id || profil_id === 'new') return
   if (!selectedSymptoms || !selectedSymptoms.length) return
   setTimeout(afficherCheckinModal, 2500)
+}
+
+// ── Email digest toggle ──
+async function toggleEmailDigest(enabled) {
+  var track = document.getElementById('emailDigestTrack')
+  var thumb = document.getElementById('emailDigestThumb')
+  if (track) track.style.background = enabled ? 'var(--terracotta)' : 'rgba(196,113,74,0.2)'
+  if (thumb) thumb.style.transform  = enabled ? 'translateX(20px)' : 'translateX(0)'
+
+  if (!profil_id || profil_id === 'new') return
+  try {
+    await authFetch(
+      SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + profil_id,
+      { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json',
+                   'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ email_digest: enabled }) }
+    )
+    afficherToast(enabled ? 'Digest activé — à demain matin ! 🌅' : 'Digest désactivé')
+  } catch(e) {
+    afficherToast('Erreur lors de la mise à jour')
+  }
+}
+
+function initialiserEmailDigestToggle(profil) {
+  var enabled  = profil && profil.email_digest === true
+  var checkbox = document.getElementById('emailDigestToggle')
+  var track    = document.getElementById('emailDigestTrack')
+  var thumb    = document.getElementById('emailDigestThumb')
+  if (checkbox) checkbox.checked       = enabled
+  if (track)    track.style.background = enabled ? 'var(--terracotta)' : 'rgba(196,113,74,0.2)'
+  if (thumb)    thumb.style.transform  = enabled ? 'translateX(20px)' : 'translateX(0)'
 }
 </script>
 
