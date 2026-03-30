@@ -807,6 +807,16 @@
   .courses-modal-inner { background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px 28px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
   @media (max-width: 600px) { .courses-modal-inner { padding-bottom: calc(var(--tab-bar-height) + 24px); } }
   .courses-modal-handle { width:36px; height:4px; background:var(--peach); border-radius:2px; margin:0 auto 20px; }
+  .checkin-modal { position:fixed; inset:0; background:rgba(61,43,31,0.4); z-index:90; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px); animation:fadeIn 0.2s ease; }
+  .checkin-sheet { background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px 32px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
+  @media (max-width:600px) { .checkin-sheet { padding-bottom:calc(var(--tab-bar-height) + 24px); } }
+  .checkin-handle { width:36px; height:4px; background:var(--peach); border-radius:2px; margin:0 auto 20px; }
+  .checkin-slider-row { margin-bottom:18px; }
+  .checkin-slider-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .checkin-slider-name { font-size:14px; font-weight:600; color:var(--deep-brown); }
+  .checkin-slider-val { font-size:18px; font-weight:700; color:var(--terracotta); min-width:28px; text-align:right; }
+  .checkin-slider { width:100%; accent-color:var(--terracotta); height:4px; }
+  .checkin-emoji-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text-light); margin-top:2px; }
   .courses-item { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--cream); border-radius:12px; border:1px solid rgba(196,113,74,0.1); }
   .courses-item input[type=checkbox] { width:18px; height:18px; accent-color:var(--terracotta); flex-shrink:0; cursor:pointer; }
 
@@ -1139,6 +1149,8 @@
   </button>
 
   <button onclick="modifierProfilComplet()" style="width:100%;background:rgba(196,113,74,0.07);color:var(--terracotta);border:1.5px solid rgba(196,113,74,0.2);border-radius:14px;padding:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;">✏️ Modifier profil complet</button>
+
+  <button onclick="afficherCheckinModal()" style="width:100%;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:12px;padding:10px;font-size:13px;color:var(--mid-brown);cursor:pointer;margin-bottom:8px;">📊 Mon ressenti du jour</button>
 
   <div style="text-align:center;">
     <button onclick="deconnexion()" style="background:none;border:none;color:var(--text-light);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;padding:8px;text-decoration:underline;">Changer de compte</button>
@@ -2217,6 +2229,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           if (ap) ap.style.opacity = '1'
           document.getElementById('generateFab').classList.add('visible')
           afficherPlan(planRestaure)
+          verifierCheckinDuJour()
         }, 600)
       }
     } catch(e) { sessionStorage.removeItem('vitalia_plan_session_home') }
@@ -2885,6 +2898,7 @@ async function genererPlan(forcer) {
     var data = await res.json()
     if (data.success && data.plan) {
       afficherPlan(data.plan)
+      verifierCheckinDuJour()
       var planAvecDate = Object.assign({}, data.plan, { _date: new Date().toISOString().slice(0, 10) })
       sessionStorage.setItem('vitalia_plan_session_home', JSON.stringify(planAvecDate))
       syncBesoinsVersProfil()
@@ -4892,6 +4906,111 @@ async function syncBesoinsVersProfil() {
       body: JSON.stringify({ objectifs_generaux: selectedSymptoms, regimes_alimentaires: selectedRegimes })
     })
   } catch(e) {}
+}
+
+// ── Check-in quotidien symptômes ──
+var SYMPTOM_LABELS_CHECKIN = {
+  vitalite: 'Vitalité & Énergie',
+  serenite: 'Sérénité',
+  digestion: 'Digestion',
+  sommeil: 'Sommeil',
+  mobilite: 'Mobilité',
+  hormones: 'Équilibre hormonal'
+}
+
+function afficherCheckinModal() {
+  var symptomes = (selectedSymptoms || []).filter(function(s) {
+    return SYMPTOM_LABELS_CHECKIN[s]
+  })
+  if (!symptomes.length) return
+  if (document.getElementById('checkinModal')) return
+
+  var slidersHtml = symptomes.map(function(key) {
+    var label = SYMPTOM_LABELS_CHECKIN[key] || key
+    return '<div class="checkin-slider-row">' +
+      '<div class="checkin-slider-label">' +
+        '<span class="checkin-slider-name">' + label + '</span>' +
+        '<span class="checkin-slider-val" id="checkin-val-' + key + '">5</span>' +
+      '</div>' +
+      '<input type="range" class="checkin-slider" min="1" max="10" value="5" ' +
+        'id="checkin-slider-' + key + '" ' +
+        'oninput="document.getElementById(\'checkin-val-' + key + '\').textContent=this.value">' +
+      '<div class="checkin-emoji-row"><span>😔 Difficile</span><span>😊 Excellent</span></div>' +
+    '</div>'
+  }).join('')
+
+  var html = '<div class="checkin-modal" id="checkinModal">' +
+    '<div class="checkin-sheet">' +
+      '<div class="checkin-handle"></div>' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:20px;font-weight:700;' +
+           'color:var(--deep-brown);margin-bottom:4px;">Comment tu te sens ?</div>' +
+      '<div style="font-size:13px;color:var(--text-light);margin-bottom:24px;">' +
+           'Un rapide état des lieux pour affiner tes recommandations</div>' +
+      slidersHtml +
+      '<button onclick="sauvegarderCheckin()" ' +
+        'style="width:100%;background:var(--terracotta);color:white;border:none;' +
+        'border-radius:16px;padding:14px;font-size:15px;font-weight:600;' +
+        'cursor:pointer;font-family:\'DM Sans\',sans-serif;margin-top:8px;">' +
+        'Enregistrer mon ressenti</button>' +
+      '<button onclick="fermerCheckinModal(true)" ' +
+        'style="width:100%;background:none;border:none;color:var(--text-light);' +
+        'font-size:13px;cursor:pointer;margin-top:10px;padding:6px;">' +
+        'Pas maintenant</button>' +
+    '</div>' +
+  '</div>'
+
+  document.body.insertAdjacentHTML('beforeend', html)
+}
+
+function fermerCheckinModal(skipToday) {
+  var modal = document.getElementById('checkinModal')
+  if (modal) modal.remove()
+  if (skipToday) {
+    var today = new Date().toISOString().split('T')[0]
+    localStorage.setItem('vitalia_checkin_date', today)
+  }
+}
+
+async function sauvegarderCheckin() {
+  var symptomes = (selectedSymptoms || []).filter(function(s) {
+    return SYMPTOM_LABELS_CHECKIN[s]
+  })
+  if (!symptomes.length) { fermerCheckinModal(true); return }
+  if (!profil_id || profil_id === 'new') { fermerCheckinModal(true); return }
+
+  var today = new Date().toISOString().split('T')[0]
+  var rows = symptomes.map(function(key) {
+    var slider = document.getElementById('checkin-slider-' + key)
+    var score  = slider ? parseInt(slider.value) : 5
+    return { profil_id: profil_id, date: today, symptome_key: key, score: score }
+  })
+
+  try {
+    await authFetch(
+      SUPABASE_URL + '/rest/v1/checkin_symptomes',
+      { method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+                   'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken,
+                   'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(rows) }
+    )
+    localStorage.setItem('vitalia_checkin_date', today)
+    fermerCheckinModal(false)
+    afficherToast('Ressenti enregistré ! Merci 🌿')
+  } catch(e) {
+    afficherToast('Erreur lors de l\'enregistrement')
+    fermerCheckinModal(true)
+  }
+}
+
+function verifierCheckinDuJour() {
+  var today = new Date().toISOString().split('T')[0]
+  var dernierCheckin = localStorage.getItem('vitalia_checkin_date')
+  if (dernierCheckin === today) return
+  if (!profil_id || profil_id === 'new') return
+  if (!selectedSymptoms || !selectedSymptoms.length) return
+  setTimeout(afficherCheckinModal, 2500)
 }
 </script>
 
