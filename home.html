@@ -1725,6 +1725,25 @@
       <!-- ── DIVIDER ── -->
       <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
 
+      <!-- ── SECTION : MON ÉVOLUTION ── -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    margin-bottom:4px;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
+                       color:var(--text-light);font-weight:600;">Mon évolution</span>
+          <span style="font-size:11px;color:var(--text-light);">14 derniers jours</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-light);margin-bottom:14px;">
+          Basé sur tes check-ins quotidiens</div>
+        <div id="evolutionCharts" style="display:flex;flex-direction:column;gap:14px;">
+          <div style="text-align:center;padding:16px;color:var(--text-light);
+                      font-size:13px;">Chargement...</div>
+        </div>
+      </div>
+
+      <!-- ── DIVIDER ── -->
+      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
+
       <!-- ── SECTION 4 : HISTORIQUE ── -->
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;
@@ -1924,6 +1943,7 @@ function switchTab(name) {
     afficherListeCoursesProfile()
     afficherRecettesSauvegardees()
     afficherFavoris()
+    afficherEvolution()
     afficherHistorique()
   }
 
@@ -4315,6 +4335,163 @@ function filtrerFavoris(query) {
     var text = el.textContent.toLowerCase()
     el.style.display = text.includes(q) ? '' : 'none'
   })
+}
+
+async function afficherEvolution() {
+  var container = document.getElementById('evolutionCharts')
+  if (!container) return
+  if (!profil_id || profil_id === 'new') {
+    container.innerHTML = '<div style="text-align:center;padding:16px;' +
+      'color:var(--text-light);font-size:13px;">Connecte-toi pour voir ton évolution</div>'
+    return
+  }
+
+  try {
+    var since = new Date()
+    since.setDate(since.getDate() - 14)
+    var sinceStr = since.toISOString().split('T')[0]
+
+    var resp = await authFetch(
+      SUPABASE_URL + '/rest/v1/checkin_symptomes' +
+      '?profil_id=eq.' + profil_id +
+      '&date=gte.' + sinceStr +
+      '&order=date.asc&limit=200',
+      { method: 'GET',
+        headers: { 'Content-Type': 'application/json',
+                   'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken } }
+    )
+    var rows = await resp.json()
+    if (!Array.isArray(rows)) rows = []
+
+    // Group by symptome_key
+    var bySymptom = {}
+    rows.forEach(function(r) {
+      if (!bySymptom[r.symptome_key]) bySymptom[r.symptome_key] = []
+      bySymptom[r.symptome_key].push({ date: r.date, score: r.score })
+    })
+
+    var symptomKeys = Object.keys(bySymptom)
+    if (!symptomKeys.length) {
+      container.innerHTML = '<div style="background:rgba(196,113,74,0.04);' +
+        'border:1px dashed rgba(196,113,74,0.2);border-radius:14px;padding:20px;' +
+        'text-align:center;">' +
+        '<div style="font-size:14px;color:var(--deep-brown);margin-bottom:6px;">' +
+        'Ton évolution se construit</div>' +
+        '<div style="font-size:12px;color:var(--text-light);line-height:1.5;">' +
+        'Fais ton check-in quotidien pendant quelques jours<br>pour voir tes tendances apparaître ici</div>' +
+        '</div>'
+      return
+    }
+
+    var LABELS = {
+      vitalite:'Vitalité & Énergie', serenite:'Sérénité',
+      digestion:'Digestion', sommeil:'Sommeil',
+      mobilite:'Mobilité', hormones:'Équilibre hormonal'
+    }
+
+    var avg = function(arr) {
+      return arr.length ? arr.reduce(function(s,d){return s+d.score},0)/arr.length : null
+    }
+
+    var html = ''
+    symptomKeys.forEach(function(key) {
+      var data   = bySymptom[key]
+      var label  = LABELS[key] || key
+      var today  = new Date()
+
+      var week1 = data.filter(function(d) {
+        return Math.floor((today - new Date(d.date)) / 86400000) <= 7
+      })
+      var week2 = data.filter(function(d) {
+        var daysAgo = Math.floor((today - new Date(d.date)) / 86400000)
+        return daysAgo > 7 && daysAgo <= 14
+      })
+
+      var avg1 = avg(week1)
+      var avg2 = avg(week2)
+
+      var trendHtml = ''
+      var lineColor = '#7A5C4A'
+      if (avg1 !== null && avg2 !== null && avg2 > 0) {
+        var delta = Math.round(((avg1 - avg2) / avg2) * 100)
+        if (delta > 0) {
+          trendHtml = '<span style="font-size:12px;font-weight:700;color:#7A9E7E;">+' + delta + '%</span>'
+          lineColor = '#7A9E7E'
+        } else if (delta < 0) {
+          trendHtml = '<span style="font-size:12px;font-weight:700;color:#C4714A;">' + delta + '%</span>'
+          lineColor = '#C4714A'
+        } else {
+          trendHtml = '<span style="font-size:12px;color:var(--text-light);">Stable</span>'
+        }
+      } else if (data.length < 3) {
+        trendHtml = '<span style="font-size:11px;color:var(--text-light);">En cours...</span>'
+      }
+
+      // Sparkline SVG
+      var scores = data.map(function(d){return d.score})
+      var minS   = Math.min.apply(null, scores)
+      var maxS   = Math.max.apply(null, scores)
+      var range  = Math.max(maxS - minS, 1)
+      var W = 260; var H = 36; var pad = 4
+
+      var sparkSvg
+      if (scores.length === 1) {
+        // Single dot — no line
+        var cx = (W / 2).toFixed(1)
+        var cy = (H / 2).toFixed(1)
+        sparkSvg = '<svg viewBox="0 0 ' + W + ' ' + H + '" ' +
+          'style="width:100%;height:40px;display:block;">' +
+          '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="' + lineColor + '"/>' +
+          '</svg>'
+      } else {
+        var points = scores.map(function(s, i) {
+          var x = pad + (i / Math.max(scores.length - 1, 1)) * (W - pad * 2)
+          var y = pad + (1 - (s - minS) / range) * (H - pad * 2)
+          return x.toFixed(1) + ',' + y.toFixed(1)
+        }).join(' ')
+
+        var lastIdx = scores.length - 1
+        var lastX   = pad + (lastIdx / Math.max(scores.length - 1, 1)) * (W - pad * 2)
+        var lastY   = pad + (1 - (scores[lastIdx] - minS) / range) * (H - pad * 2)
+
+        sparkSvg = '<svg viewBox="0 0 ' + W + ' ' + H + '" ' +
+          'style="width:100%;height:40px;display:block;">' +
+          '<polyline points="' + points + '" fill="none" stroke="' + lineColor + '" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>' +
+          '<circle cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="3" ' +
+            'fill="' + lineColor + '"/>' +
+          '</svg>'
+      }
+
+      var latestScore = scores[scores.length - 1]
+      var latestLabel = latestScore <= 3 ? 'Difficile'
+                      : latestScore <= 5 ? 'Moyen'
+                      : latestScore <= 7 ? 'Bien'
+                      : 'Excellent'
+
+      html += '<div style="background:var(--card-bg);border-radius:16px;' +
+        'border:1px solid var(--card-border);padding:14px 16px;box-shadow:var(--card-shadow);">'
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      html += '<span style="font-size:13px;font-weight:600;color:var(--deep-brown);">' + label + '</span>'
+      html += '<div style="display:flex;align-items:center;gap:8px;">' + trendHtml +
+              '<span style="font-size:12px;color:var(--text-light);">' +
+              latestScore + '/10 — ' + latestLabel + '</span></div>'
+      html += '</div>'
+      html += sparkSvg
+      html += '<div style="display:flex;justify-content:space-between;margin-top:4px;">'
+      html += '<span style="font-size:10px;color:var(--text-light);">Il y a 14j</span>'
+      html += '<span style="font-size:10px;color:var(--text-light);">Aujourd\'hui</span>'
+      html += '</div>'
+      html += '</div>'
+    })
+
+    container.innerHTML = html
+
+  } catch(e) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light);' +
+      'font-size:13px;">Impossible de charger l\'évolution</div>'
+  }
 }
 
 async function afficherHistorique() {
