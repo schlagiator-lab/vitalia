@@ -188,13 +188,13 @@ serve(async (req: Request) => {
       // Fetch most recent journalier plan
       const { data: plans } = await supabase
         .from('plans_generes_cache')
-        .select('plan_data, created_at')
+        .select('plan_json, created_at')
         .eq('profil_id', profile.id)
         .eq('source', 'journalier')
         .order('created_at', { ascending: false })
         .limit(1)
 
-      const planData = plans?.[0]?.plan_data || null
+      const planData = plans?.[0]?.plan_json || null
 
       // Normalize keys: matin/midi/soir OR petit_dejeuner/dejeuner/diner
       const matonObj = planData?.matin       || planData?.petit_dejeuner || null

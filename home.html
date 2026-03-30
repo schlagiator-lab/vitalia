@@ -1503,11 +1503,11 @@
       </div>
     </div>
 
-    <!-- Jours précédents — historique compact -->
+    <!-- Plan récent — historique compact -->
     <div class="plan-section" id="historiqueCompactSection" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;
                   margin-bottom:12px;">
-        <div class="section-label" style="margin-bottom:0;">Jours précédents</div>
+        <div class="section-label" style="margin-bottom:0;">Mon plan récent</div>
         <button onclick="switchTab('atfaire')"
           style="background:none;border:none;font-size:12px;color:var(--terracotta);
                  font-weight:600;cursor:pointer;padding:0;">Voir tout ›</button>
@@ -4683,16 +4683,13 @@ async function afficherHistoriqueCompact() {
                    'Authorization': 'Bearer ' + authToken } }
     )
     var plans = await resp.json()
-    if (!Array.isArray(plans) || plans.length < 2) return
-
-    var previous = plans.slice(1)
-    if (!previous.length) return
+    if (!Array.isArray(plans) || !plans.length) return
 
     var JOURS_COURT = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']
     var html = ''
 
-    previous.forEach(function(row) {
-      var plan    = row.plan_data || {}
+    plans.forEach(function(row) {
+      var plan    = row.plan_json || {}
       var matin   = plan.matin || plan.petit_dejeuner
       var midi    = plan.midi  || plan.dejeuner
       var soir    = plan.soir  || plan.diner
@@ -4716,7 +4713,7 @@ async function afficherHistoriqueCompact() {
     content.innerHTML = html
     section.style.display = ''
 
-    injecterScoresHistorique(previous)
+    injecterScoresHistorique(plans)
 
   } catch(e) {
     // Silent fail
@@ -4793,7 +4790,7 @@ async function afficherHistorique() {
 
     var html = ''
     plans.forEach(function(row) {
-      var plan = row.plan_data || {}
+      var plan = row.plan_json || {}
       var matin = plan.matin || plan.petit_dejeuner || null
       var midi  = plan.midi  || plan.dejeuner      || null
       var soir  = plan.soir  || plan.diner         || null
