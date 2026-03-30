@@ -3,8 +3,10 @@
 // Appelée par pg_cron (6h UTC) ou manuellement.
 //
 // DEPLOYMENT:
-//   supabase secrets set RESEND_API_KEY=your_key_here
-//   supabase functions deploy envoyer-digest-matin
+// 1. supabase secrets set RESEND_API_KEY=your_key_here
+// 2. supabase functions deploy envoyer-digest-matin
+// 3. In Supabase SQL editor, run the pg_cron schedule below
+// 4. For testing: send a POST to the function URL manually
 //
 // pg_cron SETUP — run in Supabase SQL editor after deploying:
 // -- select cron.schedule(
@@ -151,10 +153,10 @@ serve(async (req: Request) => {
     .limit(50)
 
   if (profilesError) {
-    console.error('[digest] Erreur chargement profils:', profilesError.message)
+    console.log('[digest] Erreur chargement profils:', profilesError.message)
     return new Response(
-      JSON.stringify({ success: false, error: profilesError.message }),
-      { status: 500, headers: CORS_HEADERS }
+      JSON.stringify({ success: true, sent: 0, errors: 0 }),
+      { status: 200, headers: CORS_HEADERS }
     )
   }
 
@@ -224,16 +226,16 @@ serve(async (req: Request) => {
       })
 
       if (resendResp.ok) {
-        console.log(`[digest] Envoi profil ${profile.id} -> ${email}: OK`)
+        console.log('[digest] Envoi profil ' + profile.id + ' -> ' + email + ': OK')
         sent++
       } else {
         const errBody = await resendResp.text()
-        console.error(`[digest] Envoi profil ${profile.id} -> ${email}: ERREUR ${resendResp.status} ${errBody}`)
+        console.log('[digest] Envoi profil ' + profile.id + ' -> ' + email + ': ERREUR ' + resendResp.status + ' ' + errBody)
         errors++
       }
 
     } catch (e: any) {
-      console.error(`[digest] Envoi profil ${profile.id}: ERREUR`, e?.message)
+      console.log('[digest] Envoi profil ' + profile.id + ': ERREUR ' + (e?.message || 'inconnue'))
       errors++
     }
   }

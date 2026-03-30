@@ -606,6 +606,42 @@
   .routine-detail-chip       { background: rgba(122,158,126,0.1); border: 1px solid rgba(122,158,126,0.25); border-radius: 20px; padding: 3px 10px; font-size: 11.5px; color: var(--sage); font-weight: 500; }
   .routine-detail-chip-warn  { background: rgba(196,113,74,0.08); border-color: rgba(196,113,74,0.25); color: var(--terracotta); }
 
+  /* ── Evolution & Historique compact (Aujourd'hui tab) ── */
+  .evolution-card { background:var(--card-bg); border-radius:18px;
+    border:1px solid var(--card-border); padding:16px 18px;
+    box-shadow:var(--card-shadow); }
+  .evolution-symptom { margin-bottom:16px; }
+  .evolution-symptom:last-child { margin-bottom:0; }
+  .evolution-symptom-header { display:flex; align-items:center;
+    justify-content:space-between; margin-bottom:8px; }
+  .evolution-symptom-name { font-size:13px; font-weight:600;
+    color:var(--deep-brown); }
+  .evolution-badge-pos { background:rgba(122,158,126,0.15);
+    border-radius:20px; padding:2px 8px; font-size:11px;
+    font-weight:700; color:#3B6D11; }
+  .evolution-badge-neg { background:rgba(196,113,74,0.12);
+    border-radius:20px; padding:2px 8px; font-size:11px;
+    font-weight:700; color:var(--terracotta); }
+  .evolution-badge-neu { background:rgba(158,128,112,0.1);
+    border-radius:20px; padding:2px 8px; font-size:11px;
+    color:var(--text-light); }
+  .evolution-score { font-size:11px; color:var(--text-light); }
+  .evolution-divider { height:1px; background:rgba(196,113,74,0.1);
+    margin:12px 0; }
+  .histo-compact-row { display:flex; align-items:center; gap:10px;
+    padding:9px 14px; background:var(--card-bg); border-radius:12px;
+    border:1px solid var(--card-border); }
+  .histo-compact-date { font-size:11px; color:var(--text-light);
+    width:36px; flex-shrink:0; font-weight:500; }
+  .histo-compact-meals { flex:1; display:flex; gap:5px;
+    overflow:hidden; min-width:0; }
+  .histo-compact-pill { font-size:10px; color:var(--mid-brown);
+    background:rgba(196,113,74,0.08); border-radius:8px;
+    padding:2px 7px; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; max-width:88px; flex-shrink:0; }
+  .histo-compact-score { font-size:11px; font-weight:600;
+    flex-shrink:0; }
+
   /* ── Conseil section ── */
   .conseil-section { position: relative; z-index: 5; padding: 0 24px 24px; }
   .conseil-card { background: linear-gradient(135deg, #FDF4E7 0%, #FBF0E0 100%); border-radius: 20px; padding: 20px; border: 1px solid rgba(232,184,75,0.28); position: relative; overflow: hidden; box-shadow: 0 2px 12px rgba(180,120,30,0.08); }
@@ -817,6 +853,14 @@
   .checkin-slider-val { font-size:18px; font-weight:700; color:var(--terracotta); min-width:28px; text-align:right; }
   .checkin-slider { width:100%; accent-color:var(--terracotta); height:4px; }
   .checkin-emoji-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text-light); margin-top:2px; }
+  .checkin-banner { display:flex; align-items:center; gap:12px; padding:12px 16px;
+    background:linear-gradient(135deg,rgba(232,184,75,0.12),rgba(196,113,74,0.08));
+    border:1px solid rgba(232,184,75,0.3); border-radius:16px;
+    cursor:pointer; margin:0 20px 0; }
+  .checkin-banner-icon { width:36px; height:36px; background:rgba(232,184,75,0.2);
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:18px; flex-shrink:0; }
+  .checkin-banner-arrow { font-size:18px; color:var(--terracotta); flex-shrink:0; }
   .courses-item { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--cream); border-radius:12px; border:1px solid rgba(196,113,74,0.1); }
   .courses-item input[type=checkbox] { width:18px; height:18px; accent-color:var(--terracotta); flex-shrink:0; cursor:pointer; }
 
@@ -1170,7 +1214,7 @@
       <span id="emailDigestThumb"
         style="position:absolute;top:3px;left:3px;width:18px;height:18px;
         background:white;border-radius:50%;transition:transform 0.2s;
-        box-shadow:0 1px 4px rgba(0,0,0,0.15);"></span>
+        box-shadow:0 1px 4px rgba(0,0,0,0.15);pointer-events:none;"></span>
     </label>
   </div>
 
@@ -1233,6 +1277,27 @@
       </div>
     </div>
     </div><!-- /aujourdhui-top -->
+
+    <!-- Check-in quotidien banner — hidden by default, shown by JS -->
+    <div id="checkinBanner" class="checkin-banner" style="display:none;"
+         onclick="afficherCheckinModal()">
+      <div class="checkin-banner-icon">📊</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--deep-brown);
+                    margin-bottom:1px;">Comment tu te sens aujourd'hui ?</div>
+        <div style="font-size:11px;color:var(--text-light);">
+          Check-in quotidien · 30 secondes</div>
+      </div>
+      <div class="checkin-banner-arrow">›</div>
+    </div>
+
+    <!-- Mon évolution — section Aujourd'hui -->
+    <div class="plan-section" id="evolutionSection" style="display:none;">
+      <div class="section-label">Mon évolution · 14 jours</div>
+      <div class="evolution-card" id="evolutionContent">
+        <!-- Populated by afficherEvolution() -->
+      </div>
+    </div>
 
     <!-- Companions -->
     <div class="companions-section">
@@ -1435,6 +1500,21 @@
       <div class="conseil-card">
         <div class="conseil-title">💡 Le saviez-vous ?</div>
         <div class="conseil-text" id="conseilText">Le curcuma et le magnésium sont de précieux alliés contre la fatigue et le stress. Le curcuma module l'inflammation, tandis que le magnésium participe à plus de 300 réactions enzymatiques dont la production d'énergie.</div>
+      </div>
+    </div>
+
+    <!-- Jours précédents — historique compact -->
+    <div class="plan-section" id="historiqueCompactSection" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  margin-bottom:12px;">
+        <div class="section-label" style="margin-bottom:0;">Jours précédents</div>
+        <button onclick="switchTab('atfaire')"
+          style="background:none;border:none;font-size:12px;color:var(--terracotta);
+                 font-weight:600;cursor:pointer;padding:0;">Voir tout ›</button>
+      </div>
+      <div id="historiqueCompactContent"
+           style="display:flex;flex-direction:column;gap:6px;">
+        <!-- Populated by afficherHistoriqueCompact() -->
       </div>
     </div>
 
@@ -2764,6 +2844,9 @@ function afficherPlan(plan) {
     var sent = document.getElementById('feedbackSent'); if (sent) sent.classList.remove('show')
     var fstars = document.getElementById('feedbackStars'); if (fstars) fstars.style.display = 'flex'
   }
+
+  afficherEvolution()
+  afficherHistoriqueCompact()
 }
 
 // ── Highlight allies present in plan ──
@@ -4488,10 +4571,193 @@ async function afficherEvolution() {
 
     container.innerHTML = html
 
+    // Also populate Aujourd'hui evolution section using CSS classes
+    var evoSection  = document.getElementById('evolutionSection')
+    var evoContent  = document.getElementById('evolutionContent')
+    if (evoSection && evoContent && symptomKeys.length) {
+      var htmlAujourd = ''
+      symptomKeys.forEach(function(key, idx) {
+        var data   = bySymptom[key]
+        var label  = LABELS[key] || key
+        var today2 = new Date()
+
+        var week1b = data.filter(function(d) {
+          return Math.floor((today2 - new Date(d.date)) / 86400000) <= 7
+        })
+        var week2b = data.filter(function(d) {
+          var n = Math.floor((today2 - new Date(d.date)) / 86400000)
+          return n > 7 && n <= 14
+        })
+        var avg1b = avg(week1b)
+        var avg2b = avg(week2b)
+
+        var badgeHtml = ''
+        var lineColor = '#9E8070'
+        if (avg1b !== null && avg2b !== null && avg2b > 0) {
+          var delta2 = Math.round(((avg1b - avg2b) / avg2b) * 100)
+          if (delta2 > 2) {
+            badgeHtml = '<span class="evolution-badge-pos">+' + delta2 + '%</span>'
+            lineColor = '#7A9E7E'
+          } else if (delta2 < -2) {
+            badgeHtml = '<span class="evolution-badge-neg">' + delta2 + '%</span>'
+            lineColor = '#C4714A'
+          } else {
+            badgeHtml = '<span class="evolution-badge-neu">Stable</span>'
+          }
+        } else {
+          badgeHtml = '<span class="evolution-badge-neu">En cours...</span>'
+        }
+
+        var scores2   = data.map(function(d) { return d.score })
+        var latestS   = scores2[scores2.length - 1]
+        var latestLbl = latestS <= 3 ? 'Difficile' : latestS <= 5 ? 'Moyen'
+                      : latestS <= 7 ? 'Bien' : 'Excellent'
+        var minS2 = Math.min.apply(null, scores2)
+        var maxS2 = Math.max.apply(null, scores2)
+        var range2 = Math.max(maxS2 - minS2, 1)
+        var W2 = 260; var H2 = 36; var pad2 = 4
+
+        var sparkHtml2
+        if (scores2.length === 1) {
+          sparkHtml2 = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" ' +
+            'style="width:100%;height:40px;display:block;" xmlns="http://www.w3.org/2000/svg">' +
+            '<circle cx="' + (W2/2).toFixed(1) + '" cy="' + (H2/2).toFixed(1) + '" ' +
+            'r="3.5" fill="' + lineColor + '"/></svg>'
+        } else {
+          var pts2 = scores2.map(function(s, i) {
+            var x = pad2 + (i / Math.max(scores2.length - 1, 1)) * (W2 - pad2 * 2)
+            var y = pad2 + (1 - (s - minS2) / range2) * (H2 - pad2 * 2)
+            return x.toFixed(1) + ',' + y.toFixed(1)
+          }).join(' ')
+          var li2 = scores2.length - 1
+          var lx2 = (pad2 + (li2 / Math.max(scores2.length - 1, 1)) * (W2 - pad2 * 2)).toFixed(1)
+          var ly2 = (pad2 + (1 - (scores2[li2] - minS2) / range2) * (H2 - pad2 * 2)).toFixed(1)
+          sparkHtml2 = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" ' +
+            'style="width:100%;height:40px;display:block;" xmlns="http://www.w3.org/2000/svg" ' +
+            'preserveAspectRatio="none">' +
+            '<polyline points="' + pts2 + '" fill="none" stroke="' + lineColor + '" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>' +
+            '<circle cx="' + lx2 + '" cy="' + ly2 + '" r="3.5" fill="' + lineColor + '"/>' +
+            '</svg>'
+        }
+
+        if (idx > 0) htmlAujourd += '<div class="evolution-divider"></div>'
+        htmlAujourd += '<div class="evolution-symptom">'
+        htmlAujourd += '<div class="evolution-symptom-header">'
+        htmlAujourd += '<span class="evolution-symptom-name">' + label + '</span>'
+        htmlAujourd += '<div style="display:flex;align-items:center;gap:8px;">' + badgeHtml +
+          '<span class="evolution-score">' + latestS + '/10 · ' + latestLbl + '</span></div>'
+        htmlAujourd += '</div>'
+        htmlAujourd += sparkHtml2
+        htmlAujourd += '<div style="display:flex;justify-content:space-between;margin-top:2px;">'
+        htmlAujourd += '<span style="font-size:9px;color:var(--text-light);">Il y a 14j</span>'
+        htmlAujourd += '<span style="font-size:9px;color:var(--text-light);">Aujourd\'hui</span>'
+        htmlAujourd += '</div>'
+        htmlAujourd += '</div>'
+      })
+      evoContent.innerHTML = htmlAujourd
+      evoSection.style.display = ''
+    }
+
   } catch(e) {
     container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light);' +
       'font-size:13px;">Impossible de charger l\'évolution</div>'
   }
+}
+
+async function afficherHistoriqueCompact() {
+  var section = document.getElementById('historiqueCompactSection')
+  var content = document.getElementById('historiqueCompactContent')
+  if (!section || !content) return
+  if (!profil_id || profil_id === 'new') return
+
+  try {
+    var resp = await authFetch(
+      SUPABASE_URL + '/rest/v1/plans_generes_cache' +
+      '?profil_id=eq.' + profil_id +
+      '&source=eq.journalier' +
+      '&order=created_at.desc&limit=4',
+      { method: 'GET',
+        headers: { 'Content-Type': 'application/json',
+                   'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken } }
+    )
+    var plans = await resp.json()
+    if (!Array.isArray(plans) || plans.length < 2) return
+
+    var previous = plans.slice(1)
+    if (!previous.length) return
+
+    var JOURS_COURT = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']
+    var html = ''
+
+    previous.forEach(function(row) {
+      var plan    = row.plan_data || {}
+      var matin   = plan.matin || plan.petit_dejeuner
+      var midi    = plan.midi  || plan.dejeuner
+      var soir    = plan.soir  || plan.diner
+      var dateObj = new Date(row.created_at || row.updated_at)
+      var diffD   = Math.floor((new Date() - dateObj) / 86400000)
+      var dateLabel = diffD === 1 ? 'Hier' : diffD === 0 ? 'Auj.' : JOURS_COURT[dateObj.getDay()]
+      var dateStr = dateObj.toISOString().split('T')[0]
+
+      html += '<div class="histo-compact-row" data-date="' + dateStr + '">'
+      html += '<span class="histo-compact-date">' + dateLabel + '</span>'
+      html += '<div class="histo-compact-meals">'
+      if (matin && matin.nom) html += '<span class="histo-compact-pill">' + matin.nom + '</span>'
+      if (midi  && midi.nom)  html += '<span class="histo-compact-pill">' + midi.nom  + '</span>'
+      if (soir  && soir.nom)  html += '<span class="histo-compact-pill">' + soir.nom  + '</span>'
+      html += '</div>'
+      html += '<span class="histo-compact-score" id="histo-score-' + dateStr +
+              '" style="color:var(--text-light);">—</span>'
+      html += '</div>'
+    })
+
+    content.innerHTML = html
+    section.style.display = ''
+
+    injecterScoresHistorique(previous)
+
+  } catch(e) {
+    // Silent fail
+  }
+}
+
+async function injecterScoresHistorique(plans) {
+  if (!profil_id || profil_id === 'new') return
+  var dates = plans.map(function(r) {
+    return new Date(r.created_at || r.updated_at).toISOString().split('T')[0]
+  })
+  var minDate = dates[dates.length - 1]
+  try {
+    var resp = await authFetch(
+      SUPABASE_URL + '/rest/v1/checkin_symptomes' +
+      '?profil_id=eq.' + profil_id +
+      '&date=gte.' + minDate +
+      '&select=date,score',
+      { method: 'GET',
+        headers: { 'Content-Type': 'application/json',
+                   'apikey': SUPABASE_ANON_KEY,
+                   'Authorization': 'Bearer ' + authToken } }
+    )
+    var rows = await resp.json()
+    if (!Array.isArray(rows)) return
+
+    var byDate = {}
+    rows.forEach(function(r) {
+      if (!byDate[r.date]) byDate[r.date] = []
+      byDate[r.date].push(r.score)
+    })
+
+    Object.keys(byDate).forEach(function(date) {
+      var scores = byDate[date]
+      var avg = Math.round(scores.reduce(function(s, v) { return s + v }, 0) / scores.length)
+      var el  = document.getElementById('histo-score-' + date)
+      if (!el) return
+      el.textContent = avg + '/10'
+      el.style.color = avg >= 7 ? '#7A9E7E' : avg >= 5 ? 'var(--mid-brown)' : 'var(--terracotta)'
+    })
+  } catch(e) {}
 }
 
 async function afficherHistorique() {
@@ -5170,6 +5436,8 @@ function fermerCheckinModal(skipToday) {
   if (skipToday) {
     var today = new Date().toISOString().split('T')[0]
     localStorage.setItem('vitalia_checkin_date', today)
+    var banner = document.getElementById('checkinBanner')
+    if (banner) banner.style.display = 'none'
   }
 }
 
@@ -5199,7 +5467,10 @@ async function sauvegarderCheckin() {
     )
     localStorage.setItem('vitalia_checkin_date', today)
     fermerCheckinModal(false)
-    afficherToast('Ressenti enregistré ! Merci 🌿')
+    var banner = document.getElementById('checkinBanner')
+    if (banner) banner.style.display = 'none'
+    afficherToast('Ressenti enregistré ! Merci')
+    afficherEvolution()
   } catch(e) {
     afficherToast('Erreur lors de l\'enregistrement')
     fermerCheckinModal(true)
@@ -5211,8 +5482,12 @@ function verifierCheckinDuJour() {
   var dernierCheckin = localStorage.getItem('vitalia_checkin_date')
   if (dernierCheckin === today) return
   if (!profil_id || profil_id === 'new') return
-  if (!selectedSymptoms || !selectedSymptoms.length) return
-  setTimeout(afficherCheckinModal, 2500)
+  var symptomes = (selectedSymptoms || []).filter(function(s) {
+    return SYMPTOM_LABELS_CHECKIN[s]
+  })
+  if (!symptomes.length) return
+  var banner = document.getElementById('checkinBanner')
+  if (banner) banner.style.display = 'flex'
 }
 
 // ── Email digest toggle ──
