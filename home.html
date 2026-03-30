@@ -1630,44 +1630,61 @@
   <!-- ════════════════════════════════════ -->
   <div id="tab-atfaire" class="tab-content">
 
-    <!-- Sticky header -->
-    <div style="position:sticky;top:0;z-index:10;background:var(--cream);padding:20px 24px 16px;border-bottom:1px solid rgba(196,113,74,0.08);">
-      <div class="tab-header-title">À faire</div>
-      <div class="tab-header-sub">Courses, recettes et favoris</div>
-      <!-- Section tabs -->
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button id="atfaire-tab-liste" onclick="switchAtfaireSection('liste')"
-          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--terracotta);color:white;border:none;">🛒 Courses</button>
-        <button id="atfaire-tab-recettes" onclick="switchAtfaireSection('recettes')"
-          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--warm-white);color:var(--mid-brown);border:1.5px solid rgba(196,113,74,0.18);">📋 Recettes</button>
-        <button id="atfaire-tab-favoris" onclick="switchAtfaireSection('favoris')"
-          style="flex:1;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;background:var(--warm-white);color:var(--mid-brown);border:1.5px solid rgba(196,113,74,0.18);">⭐ Favoris</button>
-      </div>
+    <!-- Sticky header — no sub-tabs -->
+    <div style="position:sticky;top:0;z-index:10;background:var(--cream);
+                padding:20px 24px 14px;border-bottom:1px solid rgba(196,113,74,0.08);">
+      <div class="tab-header-title">Ma cuisine</div>
+      <div class="tab-header-sub">Courses · recettes sauvegardées · favoris</div>
     </div>
 
-    <!-- Scrollable content -->
-    <div style="padding:20px 24px;padding-bottom:calc(var(--tab-bar-height) + 32px);display:flex;flex-direction:column;gap:16px;">
+    <!-- Single scrollable content -->
+    <div style="padding:20px 20px;padding-bottom:calc(var(--tab-bar-height) + 40px);
+                display:flex;flex-direction:column;gap:28px;">
 
-      <!-- Section Liste de courses -->
-      <div id="atfaire-section-liste">
+      <!-- ── SECTION 1 : LISTE DE COURSES ── -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
+                       color:var(--text-light);font-weight:600;">Liste de courses</span>
+        </div>
         <div id="listeCoursesProfile" style="display:flex;flex-direction:column;gap:8px;">
-          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Sélectionnez des recettes pour générer votre liste de courses</div>
+          <!-- Populated by afficherListeCoursesProfile() -->
         </div>
       </div>
 
-      <!-- Section Mes recettes -->
-      <div id="atfaire-section-recettes" style="display:none;">
-        <input type="search" id="recettes-search" class="list-search" placeholder="🔍 Rechercher une recette…" oninput="filtrerRecettesSauvegardees(this.value)" />
+      <!-- ── DIVIDER ── -->
+      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
+
+      <!-- ── SECTION 2 : MES RECETTES SAUVEGARDÉES ── -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
+                       color:var(--text-light);font-weight:600;">Mes recettes</span>
+        </div>
+        <input type="search" id="recettes-search" class="list-search"
+               placeholder="🔍 Rechercher une recette…"
+               oninput="filtrerRecettesSauvegardees(this.value)"
+               style="margin-bottom:12px;" />
         <div id="recettesSauvegardeesListe" style="display:flex;flex-direction:column;gap:10px;">
-          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Aucune recette sauvegardée</div>
+          <!-- Populated by afficherRecettesSauvegardees() -->
         </div>
       </div>
 
-      <!-- Section Favoris -->
-      <div id="atfaire-section-favoris" style="display:none;">
-        <input type="search" id="favoris-search" class="list-search" style="border-color:rgba(232,184,75,0.35);" placeholder="🔍 Rechercher un favori…" oninput="filtrerFavoris(this.value)" />
+      <!-- ── DIVIDER ── -->
+      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
+
+      <!-- ── SECTION 3 : FAVORIS ── -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
+                       color:var(--golden);font-weight:600;">Favoris ★★★★+</span>
+        </div>
+        <input type="search" id="favoris-search" class="list-search"
+               style="border-color:rgba(232,184,75,0.35);margin-bottom:12px;"
+               placeholder="🔍 Rechercher un favori…"
+               oninput="filtrerFavoris(this.value)" />
         <div id="favorisListe" style="display:flex;flex-direction:column;gap:10px;">
-          <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ pour l'ajouter ici</div>
+          <!-- Populated by afficherFavoris() -->
         </div>
       </div>
 
@@ -1704,8 +1721,8 @@
       <span class="tab-label">Recette</span>
     </button>
     <button class="tab-btn" id="tab-btn-atfaire" onclick="switchTab('atfaire')">
-      <span class="tab-icon">✅</span>
-      <span class="tab-label">À faire</span>
+      <span class="tab-icon">🥘</span>
+      <span class="tab-label">Ma cuisine</span>
     </button>
   </nav>
 
@@ -1852,7 +1869,11 @@ function switchTab(name) {
       }, 100)
     }
   }
-  if (name === 'atfaire') { afficherRecettesSauvegardees(); afficherListeCoursesProfile() }
+  if (name === 'atfaire') {
+    afficherListeCoursesProfile()
+    afficherRecettesSauvegardees()
+    afficherFavoris()
+  }
 
   fermerConfig()
 }
@@ -1878,22 +1899,6 @@ function fermerProfilPanel() {
 }
 
 function switchAtfaireSection(name) {
-  ;['liste','recettes','favoris'].forEach(function(s) {
-    var section = document.getElementById('atfaire-section-' + s)
-    var btn     = document.getElementById('atfaire-tab-' + s)
-    if (section) section.style.display = (s === name) ? '' : 'none'
-    if (btn) {
-      if (s === name) {
-        btn.style.background = 'var(--terracotta)'
-        btn.style.color      = 'white'
-        btn.style.border     = 'none'
-      } else {
-        btn.style.background = 'var(--warm-white)'
-        btn.style.color      = 'var(--mid-brown)'
-        btn.style.border     = '1.5px solid rgba(196,113,74,0.18)'
-      }
-    }
-  })
   if (name === 'favoris')  afficherFavoris()
   if (name === 'recettes') afficherRecettesSauvegardees()
   if (name === 'liste')    afficherListeCoursesProfile()
@@ -4447,9 +4452,7 @@ async function noterRecetteSauvegardee(idx, note) {
     localStorage.setItem('vitalia_favoris', JSON.stringify(favs))
   } catch(e) {}
 
-  // Rafraîchir favoris si section visible
-  var favSection = document.getElementById('atfaire-section-favoris')
-  if (favSection && favSection.style.display !== 'none') afficherFavoris()
+  afficherFavoris()
 
   // Supabase PATCH note sur recettes_sauvegardees
   if (profil_id && profil_id !== 'new' && (r.titre || r.nom)) {
