@@ -1,3 +1,8 @@
 supabase/config.toml
 .supabase/
 supabase/.temp/
+
+# Vite
+app/node_modules/
+dist/
+home.html.bak
