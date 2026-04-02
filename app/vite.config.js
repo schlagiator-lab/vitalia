@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   root: resolve(__dirname, '..'),
+  base: process.env.VITE_BASE_URL || '/',
   publicDir: resolve(__dirname, '../public'),
   plugins: [
     VitePWA({
@@ -33,8 +34,8 @@ export default defineConfig({
         background_color: '#FAF7F2',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/home.html',
-        scope: '/',
+        start_url: (process.env.VITE_BASE_URL || '/') + 'home.html',
+        scope: process.env.VITE_BASE_URL || '/',
         lang: 'fr',
         icons: [
           { src: '/icons/icon-144.png', sizes: '144x144', type: 'image/png' },
