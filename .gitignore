@@ -5,4 +5,5 @@ supabase/.temp/
 # Vite
 app/node_modules/
 dist/
+.vite/
 home.html.bak
