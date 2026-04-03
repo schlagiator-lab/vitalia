@@ -87,11 +87,7 @@ export function renderInstructions(moment, recette) {
     stepsHtml = '<ol class="steps-list">' +
       instructions.map(function(s) { return '<li>' + s + '</li>' }).join('') + '</ol>'
   }
-  if (Array.isArray(astuces) && astuces.length) {
-    tipHtml = '<div class="recipe-tip">💡 ' + astuces[0] + '</div>'
-  }
-
-  el.innerHTML = timingHtml + ingHtml + stepsHtml + tipHtml + buildActionsBar(moment)
+  el.innerHTML = timingHtml + ingHtml + stepsHtml + buildActionsBar(moment)
 }
 
 // ── Rendu du panneau détail d'une routine ──
