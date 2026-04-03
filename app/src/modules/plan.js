@@ -54,17 +54,16 @@ export function buildActionsBar(m) {
 // ── Rendu des instructions dans une carte repas ──
 export function renderInstructions(moment, recette) {
   var el = document.getElementById('instructions-' + moment); if (!el) return
-  var ingHtml = '', stepsHtml = '', tipHtml = '', timingHtml = ''
-  var instructions, ingredients, astuces, tempsPrep, tempsCuisson
+  var ingHtml = '', stepsHtml = '', timingHtml = ''
+  var instructions, ingredients, tempsPrep, tempsCuisson
 
   if (recette && recette.nom !== undefined) {
     instructions = recette.instructions    || []
     ingredients  = recette.ingredients    || []
-    astuces      = recette.astuces        || []
     tempsPrep    = recette.temps_preparation
     tempsCuisson = recette.temps_cuisson
   } else {
-    instructions = recette; ingredients = []; astuces = []
+    instructions = recette; ingredients = []
   }
 
   if (Array.isArray(ingredients) && ingredients.length) {
