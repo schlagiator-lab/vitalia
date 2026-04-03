@@ -35,6 +35,7 @@ export const st = {
   semaineRepasInclus:       ['petit_dejeuner', 'dejeuner', 'diner', 'pause'],
   semaineServings:          {},
   semaineBaseIng:           {},
+  semaineBasePortions:      2,
   semaineRatings:           {},
   semaineSelected:          {},
   semaineJourOuvert:        'lundi',

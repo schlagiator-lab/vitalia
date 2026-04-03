@@ -76,6 +76,7 @@ export async function genererRecetteUnique() {
         ingredients_frigo: st.recetteIngredientsFrigo,
         symptomes:         st.recetteSelectedSymptoms,
         directive_chef:    (document.getElementById('directiveChefInput') || {}).value || '',
+        nb_personnes:      st.defaultPortions,
       }),
     })
     if (!resp.ok) {

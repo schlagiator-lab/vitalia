@@ -494,7 +494,7 @@ export async function genererSemaine(forcer) {
     var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus }),
+      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions }),
     })
     var data = await resp.json()
     if (data.success && data.semaine) {
@@ -625,8 +625,24 @@ export function afficherSemaine(data) {
 
   var cards = document.getElementById('dayCards')
   var empty = document.getElementById('semaineEmpty')
+  st.semaineBasePortions = 2
   if (cards) { cards.innerHTML = html; cards.style.display = 'flex' }
   if (empty) empty.style.display = 'none'
+
+  // Appliquer le scaling initial si defaultPortions != base API (2)
+  if (st.defaultPortions !== 2) {
+    var initRatio = st.defaultPortions / 2
+    Object.keys(st.semaineBaseIng).forEach(function(id) {
+      var ingEl = document.getElementById('ing-' + id)
+      if (ingEl && st.semaineBaseIng[id]) {
+        ingEl.innerHTML = st.semaineBaseIng[id].map(function(ing) {
+          var q   = ing.quantite ? Math.round(ing.quantite * initRatio * 10) / 10 : null
+          var lbl = ing.nom + (q ? ' ' + q + '\u202f' + (ing.unite || 'g') : '')
+          return '<span class="day-meal-tag">' + lbl + '</span>'
+        }).join('')
+      }
+    })
+  }
 
   var conseilEl = document.getElementById('semaineConseil')
   if (conseilEl) {
@@ -678,11 +694,12 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + st.authToken },
       body: JSON.stringify({
-        recette_nom: recette.nom || recette.titre,
-        ingredients: recette.ingredients || [],
-        type_repas:  typeRepas,
-        macros:      recette.macros,
-        symptomes:   st.selectedSymptoms || [],
+        recette_nom:  recette.nom || recette.titre,
+        ingredients:  recette.ingredients || [],
+        type_repas:   typeRepas,
+        macros:       recette.macros,
+        symptomes:    st.selectedSymptoms || [],
+        nb_personnes: st.defaultPortions,
       })
     })
     var data = await resp.json()
@@ -732,7 +749,7 @@ async function autoRegenFallbacks(data) {
         var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms }),
+          body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms, nb_personnes: st.defaultPortions }),
         })
         var d = await resp.json()
         if (d.success && d.recette && st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[f.jour]) {
@@ -816,9 +833,9 @@ function renderWellnessSemaine(data) {
 
 // ── Portions semaine ──
 export function changerPortionsSemaine(id, delta) {
-  var p = Math.max(1, Math.min(8, (st.semaineServings[id] || 2) + delta))
+  var p = Math.max(1, Math.min(8, (st.semaineServings[id] || st.defaultPortions) + delta))
   st.semaineServings[id] = p
-  var ratio = p / 2
+  var ratio = p / (st.semaineBasePortions || 2)
   var ingEl = document.getElementById('ing-' + id)
   if (ingEl && st.semaineBaseIng[id]) {
     ingEl.innerHTML = st.semaineBaseIng[id].map(function(ing) {
@@ -1054,7 +1071,7 @@ export async function genererRecettePourRepas(jour, mealKey, typeRepas) {
     var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ profil_id:st.profil_id, type_repas:typeRepas, ingredients_frigo:[], symptomes:st.selectedSymptoms }),
+      body: JSON.stringify({ profil_id:st.profil_id, type_repas:typeRepas, ingredients_frigo:[], symptomes:st.selectedSymptoms, nb_personnes:st.defaultPortions }),
     })
     if (!resp.ok) {
       if (resp.status !== 401) afficherToast('Erreur serveur ' + resp.status)
