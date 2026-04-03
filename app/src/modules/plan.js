@@ -91,7 +91,7 @@ export function renderInstructions(moment, recette) {
     tipHtml = '<div class="recipe-tip">💡 ' + astuces[0] + '</div>'
   }
 
-  el.innerHTML = timingHtml + ingHtml + buildActionsBar(moment) + stepsHtml + tipHtml
+  el.innerHTML = timingHtml + ingHtml + stepsHtml + tipHtml + buildActionsBar(moment)
 }
 
 // ── Rendu du panneau détail d'une routine ──

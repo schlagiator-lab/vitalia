@@ -544,6 +544,12 @@
   .ingredient-tag              { background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
   .recipe-timing               { display: flex; gap: 10px; margin-bottom: 12px; }
   .recipe-timing-chip          { display: flex; align-items: center; gap: 4px; background: var(--cream); border: 1px solid rgba(196,113,74,0.18); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--mid-brown); }
+  .timing-chips                { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .timing-chip                 { display: inline-flex; align-items: center; gap: 3px; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 500; }
+  .timing-prep                 { background: rgba(196,113,74,0.08); border: 1px solid rgba(196,113,74,0.18); color: var(--terracotta); }
+  .timing-cook                 { background: rgba(232,184,75,0.10); border: 1px solid rgba(232,184,75,0.25); color: var(--mid-brown); }
+  .steps-list                  { padding-left: 20px; margin: 8px 0; display: flex; flex-direction: column; gap: 8px; }
+  .steps-list li               { font-size: 13px; color: var(--mid-brown); line-height: 1.55; }
 
   /* ── Recipe actions bar ── */
   .recipe-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed rgba(196,113,74,0.2); }
