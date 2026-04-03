@@ -44,7 +44,7 @@ export function buildActionsBar(m) {
     '<div class="servings-stepper">' +
       '<span class="servings-label">Portions</span>' +
       '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',-1)">&#8722;</button>' +
-      '<span class="stepper-count" id="count-' + m + '">1</span>' +
+      '<span class="stepper-count" id="count-' + m + '">' + st.defaultPortions + '</span>' +
       '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',1)">+</button>' +
     '</div>' +
     '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">✅ À faire</button>' +
@@ -147,7 +147,7 @@ export function afficherPlan(plan) {
     var cal = (d.valeurs_nutritionnelles && d.valeurs_nutritionnelles.calories) || d.calories_estimees
     setText(m + '-cal',      cal ? cal + ' kcal' : '—')
     renderInstructions(m, d)
-    st.recipeServings[m] = 1
+    st.recipeServings[m] = st.defaultPortions
   })
 
   var pause = plan.pause || plan.collation || plan.apres_midi || null
@@ -546,7 +546,7 @@ export function afficherSemaine(data) {
       var cal        = nv.calories ? nv.calories + ' kcal' : ''
       var isFallback = recette.genere_par_llm === false
 
-      st.semaineServings[id] = 2
+      st.semaineServings[id] = st.defaultPortions
       st.semaineBaseIng[id]  = (recette.ingredients || []).map(function(i) { return Object.assign({}, i) })
       st.semaineRatings[id]  = 0
 
@@ -599,7 +599,7 @@ export function afficherSemaine(data) {
       if (m.key !== 'pause') {
         html += '<div class="stepper-mini">'
         html += '<button onclick="changerPortionsSemaine(\'' + id + '\',-1);event.stopPropagation();">−</button>'
-        html += '<span id="portions-' + id + '">2 pers.</span>'
+        html += '<span id="portions-' + id + '">' + st.defaultPortions + ' pers.</span>'
         html += '<button onclick="changerPortionsSemaine(\'' + id + '\',1);event.stopPropagation();">+</button>'
         html += '</div>'
       }

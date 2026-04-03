@@ -145,6 +145,14 @@ export function toggleSharedRegime(el, val) {
   autoSauvegarderPreferences()
 }
 
+// ── Nombre de personnes par défaut ──
+export function changerDefaultPortions(delta) {
+  st.defaultPortions = Math.max(1, Math.min(8, (st.defaultPortions || 2) + delta))
+  var el = document.getElementById('defaultPortionsCount')
+  if (el) el.textContent = st.defaultPortions + ' pers.'
+  autoSauvegarderPreferences()
+}
+
 // ── Chips partagés : Temps cuisine ──
 export function selectSharedTemps(el, val) {
   st.profilTempsCuisineCourant = val
@@ -178,6 +186,7 @@ export function autoSauvegarderPreferences() {
     st.profilUtilisateur.regimes_alimentaires = st.selectedRegimes.slice()
     st.profilUtilisateur.temps_cuisine_max    = st.profilTempsCuisineCourant
     st.profilUtilisateur.budget_complements   = st.selectedBudget
+    st.profilUtilisateur.nb_personnes         = st.defaultPortions
     localStorage.setItem('vitalia_profil', JSON.stringify(st.profilUtilisateur))
   }
   clearTimeout(_prefTimer)
@@ -189,6 +198,7 @@ export function autoSauvegarderPreferences() {
       temps_max:            st.profilTempsCuisineCourant,
       budget_complements:   st.selectedBudget,
       budget_max:           _budgetMaxMap[st.selectedBudget] || 15,
+      nb_personnes:         st.defaultPortions,
     }).eq('id', st.profil_id)
   }, 1500)
 }
@@ -205,6 +215,7 @@ export function autoSauvegarderProfilComplet() {
       temps_max:            st.profilTempsCuisineCourant,
       budget_complements:   st.selectedBudget,
       budget_max:           _budgetMaxMap[st.selectedBudget] || 15,
+      nb_personnes:         st.defaultPortions,
     }).eq('id', st.profil_id)
   }, 1500)
 }
@@ -284,6 +295,7 @@ export function appliquerProfil(p) {
   if (p.regimes_alimentaires && p.regimes_alimentaires.length) st.selectedRegimes = p.regimes_alimentaires
   if (p.budget_complements)  st.selectedBudget = p.budget_complements
   if (p.temps_cuisine_max)   st.profilTempsCuisineCourant = p.temps_cuisine_max
+  if (p.nb_personnes)        st.defaultPortions = p.nb_personnes
   syncAllPreferencesChips()
 
   var initial = p.prenom ? p.prenom.charAt(0).toUpperCase() : '?'
@@ -333,6 +345,8 @@ export function chargerProfilUI() {
   })
 
   syncAllPreferencesChips()
+  var dpEl = document.getElementById('defaultPortionsCount')
+  if (dpEl) dpEl.textContent = (st.defaultPortions || 2) + ' pers.'
   initialiserEmailDigestToggle(p)
 }
 

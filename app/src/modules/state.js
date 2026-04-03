@@ -22,6 +22,7 @@ export const st = {
   profilTempsCuisineCourant: 30,
   profilAllergiesCourantes: [],
   currentActiveAllies:      [],
+  defaultPortions:          2,
 
   // Plan du jour
   currentPlan:     null,

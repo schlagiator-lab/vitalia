@@ -13,7 +13,7 @@ import {
   updateProfilRecaps, updateObjectifPrincipalBadge, appliquerProfil,
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
-  ouvrirAlly, fermerAlly, setText
+  ouvrirAlly, fermerAlly, setText, changerDefaultPortions
 } from './modules/ui.js'
 import {
   toggleInstructions, toggleRoutineItem,
@@ -56,7 +56,7 @@ Object.assign(window, {
   updateProfilRecaps, updateObjectifPrincipalBadge,
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
-  ouvrirAlly, fermerAlly, setText,
+  ouvrirAlly, fermerAlly, setText, changerDefaultPortions,
   // plan
   toggleInstructions, toggleRoutineItem,
   changerPortions, noterRecette, sauvegarderRecette,
