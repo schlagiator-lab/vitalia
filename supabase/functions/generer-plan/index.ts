@@ -565,7 +565,7 @@ serve(async (req) => {
     // → On charge le profil complet depuis Supabase via profil_id
     // =========================================================================
     const body = await req.json();
-    const { profil_id, symptomes, force_regeneration, meme_theme, preferences_moment } = body;
+    const { profil_id, symptomes, force_regeneration, meme_theme, preferences_moment, nb_personnes } = body;
 
     // Helper : convertit un budget numérique (CHF) en catégorie 'faible'/'moyen'/'eleve'
     function budgetNumeriquesVersCategorie(budgetChf: number | null | undefined): 'faible' | 'moyen' | 'eleve' {
@@ -656,7 +656,8 @@ serve(async (req) => {
       temps_preparation:       preferences_moment?.temps_max ?? profilBDD.temps_cuisine_max ?? 45,
       styles_cuisines_favoris: profilBDD.styles_cuisines_favoris|| [],
       styles_cuisines_exclus:  profilBDD.styles_cuisines_exclus || [],
-      niveau_variete:          profilBDD.niveau_variete         || 'moyenne'
+      niveau_variete:          profilBDD.niveau_variete         || 'moyenne',
+      nb_personnes:            nb_personnes || profilBDD.nb_personnes || 2,
     };
 
     // ── Construire le contexte ───────────────────────────────────────────────

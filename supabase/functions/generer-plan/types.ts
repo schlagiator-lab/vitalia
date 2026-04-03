@@ -21,6 +21,7 @@ export interface ProfilUtilisateur {
   // Préférences
   budget?: 'faible' | 'moyen' | 'eleve';
   temps_preparation?: number; // minutes
+  nb_personnes?: number;
   styles_cuisines_favoris?: string[];
   styles_cuisines_exclus?: string[];
   niveau_variete?: 'faible' | 'moyenne' | 'elevee';

@@ -345,7 +345,7 @@ ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes (préparation + cuisson combinés)
 **Budget** : ${budget}
 **Objectif nutritionnel** : ${objectifTexte}
-**Portions** : 2
+**Portions** : ${profil.nb_personnes || 2} personne${(profil.nb_personnes || 2) > 1 ? 's' : ''}
 ${contraintesPetitDej}
 **QUALITÉ OBLIGATOIRE** :
 - Minimum 5 ingrédients avec quantités précises en grammes/ml/pièces

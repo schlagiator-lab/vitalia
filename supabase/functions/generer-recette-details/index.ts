@@ -88,7 +88,8 @@ function construirePrompt(
   ingredients: any[],
   typeRepas: string,
   macros: any,
-  symptomes: string[]
+  symptomes: string[],
+  nbPersonnes: number = 2
 ): string {
   const estPetitDej = typeRepas === 'petit-dejeuner';
 
@@ -127,6 +128,7 @@ function construirePrompt(
 
 ## RECETTE : "${nom}"
 **Type** : ${typeRepas}
+**Portions** : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''}
 **Ingrédients** :
 ${listeIngredients}
 **Valeurs nutritionnelles** : ${macrosTxt}
@@ -148,7 +150,8 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { recette_nom, ingredients, type_repas, macros, symptomes } = body;
+    const { recette_nom, ingredients, type_repas, macros, symptomes, nb_personnes } = body;
+    const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
 
     if (!recette_nom || !type_repas) {
       return new Response(
@@ -167,7 +170,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr);
+    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr, nbPersonnes);
 
     // 2 tentatives avec backoff
     for (let attempt = 0; attempt < 2; attempt++) {

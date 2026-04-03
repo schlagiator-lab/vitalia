@@ -378,7 +378,8 @@ function construirePromptBatch(
   stylesJours: string[],
   profilNorm: any,
   symptomes: string[],
-  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner']
+  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner'],
+  nbPersonnes: number = 2
 ): string {
   const objectifMap: Record<string, string> = {
     vitalite: 'riche en fer, vitamines B et magnésium',
@@ -492,7 +493,8 @@ function construirePromptBatch(
 - Allergènes à éviter absolument : ${allergenes}
 - Objectif nutritionnel : ${objectif}
 - Budget repas : ${budgetLabel}
-- Temps de préparation max : ${tempsMax} minutes${consigneProteine}${consigneSansLactose}
+- Temps de préparation max : ${tempsMax} minutes
+- Portions : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''} (adapter les quantités en conséquence)${consigneProteine}${consigneSansLactose}
 
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
 Jour      | Style culinaire | Protéines
@@ -528,11 +530,12 @@ async function genererPlanBatch(
   stylesJours: string[],
   profilNorm: any,
   symptomes: string[],
-  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner', 'pause']
+  repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner', 'pause'],
+  nbPersonnes: number = 2
 ): Promise<JourSquelette[] | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
-  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus);
+  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus, nbPersonnes);
 
   // 2 tentatives avec backoff sur 429/5xx
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -712,7 +715,8 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, symptomes, force_refresh = false, repas_inclus } = body;
+    const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes } = body;
+    const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
     const repasInclus: string[] = Array.isArray(repas_inclus) && repas_inclus.length > 0
       ? repas_inclus
       : ['petit_dejeuner', 'dejeuner', 'diner', 'pause'];
@@ -841,7 +845,7 @@ serve(async (req: Request) => {
 
     // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
     const [joursLLM, wellness, motivation] = await Promise.all([
-      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus),
+      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes),
       chargerWellness(supabase, symptomesArr),
       genererMotivation(symptomesArr),
     ]);

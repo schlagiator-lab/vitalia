@@ -275,7 +275,8 @@ function construirePrompt(
   ingredientsFrigo: string[],
   symptomes: string[],
   profil: any,
-  directiveChef: string = ''
+  directiveChef: string = '',
+  nbPersonnes: number = 2
 ): string {
 
   const estPetitDej = typeRepas === 'petit-dejeuner' || typeRepas === 'collation';
@@ -384,7 +385,7 @@ function construirePrompt(
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
 **Budget** : ${budgetLabel}
 **Objectif nutritionnel** : ${estPatisserie ? 'Dessert gourmand avec ingrédients de qualité nutritionnelle (chocolat noir, fruits, oléagineux)' : objectif}
-**Portions** : 2 personnes
+**Portions** : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''}
 ${directiveSection}
 ${frigoSection}
 ${contraintesPetitDej}
@@ -401,7 +402,7 @@ ${contraintesPatisserie}
   "instructions": ["Étape 1 détaillée", "Étape 2 détaillée", "Étape 3 détaillée"],
   "temps_preparation": 15,
   "temps_cuisson": 20,
-  "portions": 2,
+  "portions": ${nbPersonnes},
   "valeurs_nutritionnelles": {"calories": 450, "proteines": 18, "glucides": 55, "lipides": 12},
   "astuces": ["Astuce nutritionnelle sur : ${symptomes.join(', ') || 'bien-être général'}"],
   "variantes": ["Variante 1"]
@@ -502,7 +503,8 @@ async function genererRecetteIA(
   ingredientsFrigo: string[],
   symptomes: string[],
   profil: any,
-  directiveChef: string = ''
+  directiveChef: string = '',
+  nbPersonnes: number = 2
 ): Promise<any | null> {
 
   if (!ANTHROPIC_API_KEY) {
@@ -510,7 +512,7 @@ async function genererRecetteIA(
     return null;
   }
 
-  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil, directiveChef);
+  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil, directiveChef, nbPersonnes);
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -584,7 +586,8 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, type_repas, ingredients_frigo, symptomes, directive_chef } = body;
+    const { profil_id, type_repas, ingredients_frigo, symptomes, directive_chef, nb_personnes } = body;
+    const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
 
     if (!profil_id || !type_repas) {
       return new Response(
@@ -633,7 +636,7 @@ serve(async (req: Request) => {
     console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}, directive="${directiveChef}"`);
 
     // Générer la recette via Claude
-    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef);
+    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef, nbPersonnes);
 
     // Fallback si la génération échoue
     if (!recette) {
