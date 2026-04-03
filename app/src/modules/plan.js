@@ -87,6 +87,17 @@ export function renderInstructions(moment, recette) {
       instructions.map(function(s) { return '<li>' + s + '</li>' }).join('') + '</ol>'
   }
   el.innerHTML = timingHtml + ingHtml + stepsHtml + buildActionsBar(moment)
+
+  // Appliquer immédiatement la multiplication pour les portions par défaut
+  var portions = st.recipeServings[moment] || 1
+  if (portions !== 1 && ingHtml) {
+    var ingEl = el.querySelector('.instructions-ingredients')
+    if (ingEl) {
+      ingEl.querySelectorAll('.ingredient-tag').forEach(function(tag) {
+        tag.textContent = ajusterQuantite(tag.textContent, portions)
+      })
+    }
+  }
 }
 
 // ── Rendu du panneau détail d'une routine ──
@@ -347,7 +358,8 @@ export async function genererPlan(forcer) {
       symptomes: st.selectedSymptoms,
       preferences_moment: { temps_max: st.profilTempsCuisineCourant, budget_max: budgetMap[st.selectedBudget] || 25 },
       force_regeneration: forcer === true,
-      meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false
+      meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false,
+      nb_personnes: st.defaultPortions,
     }
     var res = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan', {
       method: 'POST',
