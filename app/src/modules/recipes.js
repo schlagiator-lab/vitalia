@@ -253,9 +253,11 @@ export function afficherRecettesSauvegardees() {
         return '<span onclick="noterRecetteSauvegardee(' + idx + ',' + n + ');event.stopPropagation();" style="cursor:pointer;font-size:18px;color:' + (n <= (r.note || 0) ? 'var(--golden,#e8b84b)' : 'rgba(196,113,74,0.25)') + ';">★</span>'
       }).join('') + '</div>'
 
+    var basePortions = r.portions || r.nb_personnes || 2
+    st.savedServings[idx] = basePortions
     var portionsHtml = '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--text-light);">Portions</span>' +
       '<button onclick="changerPortionsSaved(' + idx + ',-1);event.stopPropagation();" style="width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(196,113,74,0.3);background:var(--cream);color:var(--terracotta);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>' +
-      '<span id="saved-portions-' + idx + '" style="font-size:13px;font-weight:600;color:var(--deep-brown);min-width:20px;text-align:center;">2</span>' +
+      '<span id="saved-portions-' + idx + '" style="font-size:13px;font-weight:600;color:var(--deep-brown);min-width:20px;text-align:center;">' + basePortions + '</span>' +
       '<button onclick="changerPortionsSaved(' + idx + ',1);event.stopPropagation();" style="width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(196,113,74,0.3);background:var(--cream);color:var(--terracotta);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>' +
       '</div>'
 
@@ -521,7 +523,14 @@ export function toggleSelectSaved(idx) {
 }
 
 export function changerPortionsSaved(idx, delta) {
-  st.savedServings[idx] = Math.max(1, Math.min(8, (st.savedServings[idx] || 2) + delta))
+  if (st.savedServings[idx] == null) {
+    try {
+      var _list = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
+      var _r = _list[idx]
+      st.savedServings[idx] = (_r && (_r.portions || _r.nb_personnes)) || 2
+    } catch(e) { st.savedServings[idx] = 2 }
+  }
+  st.savedServings[idx] = Math.max(1, Math.min(8, st.savedServings[idx] + delta))
   var el = document.getElementById('saved-portions-' + idx)
   if (el) el.textContent = st.savedServings[idx]
   var ingContainer = document.getElementById('saved-ingredients-' + idx)
