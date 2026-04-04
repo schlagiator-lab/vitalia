@@ -881,100 +881,117 @@
   <!-- ════════════════════════════════════ -->
   <div id="tab-atfaire" class="tab-content">
 
-    <!-- Sticky header — no sub-tabs -->
+    <!-- Sticky header -->
     <div style="position:sticky;top:0;z-index:10;background:var(--cream);
                 padding:20px 24px 14px;border-bottom:1px solid rgba(196,113,74,0.08);">
       <div class="tab-header-title">Ma cuisine</div>
-      <div class="tab-header-sub">Courses · recettes · favoris · historique</div>
+      <div class="tab-header-sub">Courses · recettes · suivi</div>
     </div>
 
-    <!-- Single scrollable content -->
-    <div style="padding:20px 20px;padding-bottom:calc(var(--tab-bar-height) + 40px);
-                display:flex;flex-direction:column;gap:28px;">
+    <!-- Dashboard 2×2 -->
+    <div class="atfaire-dashboard">
 
-      <!-- ── SECTION 1 : LISTE DE COURSES ── -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
-                       color:var(--text-light);font-weight:600;">Liste de courses</span>
-        </div>
-        <div id="listeCoursesProfile" style="display:flex;flex-direction:column;gap:8px;">
-          <!-- Populated by afficherListeCoursesProfile() -->
-        </div>
+      <div class="atfaire-card atfaire-card-courses" onclick="ouvrirSheet('courses')">
+        <span class="atfaire-card-icon">🛒</span>
+        <div class="atfaire-card-title">Liste de courses</div>
+        <div class="atfaire-card-sub" id="dash-courses-sub">—</div>
+        <span class="atfaire-card-arrow">›</span>
       </div>
 
-      <!-- ── DIVIDER ── -->
-      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
-
-      <!-- ── SECTION 2 : MES RECETTES SAUVEGARDÉES ── -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
-                       color:var(--text-light);font-weight:600;">Mes recettes</span>
-        </div>
-        <input type="search" id="recettes-search" class="list-search"
-               placeholder="🔍 Rechercher une recette…"
-               oninput="filtrerRecettesSauvegardees(this.value)"
-               style="margin-bottom:12px;" />
-        <div id="recettesSauvegardeesListe" style="display:flex;flex-direction:column;gap:10px;">
-          <!-- Populated by afficherRecettesSauvegardees() -->
-        </div>
+      <div class="atfaire-card atfaire-card-recettes" onclick="ouvrirSheet('recettes')">
+        <span class="atfaire-card-icon">🍴</span>
+        <div class="atfaire-card-title">Mes recettes</div>
+        <div class="atfaire-card-sub" id="dash-recettes-sub">—</div>
+        <span class="atfaire-card-arrow">›</span>
       </div>
 
-      <!-- ── DIVIDER ── -->
-      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
-
-      <!-- ── SECTION 3 : FAVORIS ── -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
-                       color:var(--golden);font-weight:600;">Favoris ★★★★+</span>
-        </div>
-        <input type="search" id="favoris-search" class="list-search"
-               style="border-color:rgba(232,184,75,0.35);margin-bottom:12px;"
-               placeholder="🔍 Rechercher un favori…"
-               oninput="filtrerFavoris(this.value)" />
-        <div id="favorisListe" style="display:flex;flex-direction:column;gap:10px;">
-          <!-- Populated by afficherFavoris() -->
-        </div>
+      <div class="atfaire-card atfaire-card-evolution" onclick="ouvrirSheet('evolution')">
+        <span class="atfaire-card-icon">📊</span>
+        <div class="atfaire-card-title">Mon évolution</div>
+        <div class="atfaire-card-sub" id="dash-evolution-sub">14 derniers jours</div>
+        <span class="atfaire-card-arrow">›</span>
       </div>
 
-      <!-- ── DIVIDER ── -->
-      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
-
-      <!-- ── SECTION : MON ÉVOLUTION ── -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    margin-bottom:4px;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
-                       color:var(--text-light);font-weight:600;">Mon évolution</span>
-          <span style="font-size:11px;color:var(--text-light);">14 derniers jours</span>
-        </div>
-        <div style="font-size:11px;color:var(--text-light);margin-bottom:14px;">
-          Basé sur tes check-ins quotidiens</div>
-        <div id="evolutionCharts" style="display:flex;flex-direction:column;gap:14px;">
-          <div style="text-align:center;padding:16px;color:var(--text-light);
-                      font-size:13px;">Chargement...</div>
-        </div>
+      <div class="atfaire-card atfaire-card-historique" onclick="ouvrirSheet('historique')">
+        <span class="atfaire-card-icon">🗓</span>
+        <div class="atfaire-card-title">Historique</div>
+        <div class="atfaire-card-sub" id="dash-historique-sub">7 derniers jours</div>
+        <span class="atfaire-card-arrow">›</span>
       </div>
 
-      <!-- ── DIVIDER ── -->
-      <div style="height:1px;background:rgba(196,113,74,0.1);"></div>
+    </div>
 
-      <!-- ── SECTION 4 : HISTORIQUE ── -->
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    margin-bottom:12px;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:1.8px;
-                       color:var(--text-light);font-weight:600;">Historique</span>
-          <span style="font-size:11px;color:var(--text-light);">7 derniers jours</span>
-        </div>
-        <div id="historiqueListe" style="display:flex;flex-direction:column;gap:8px;">
-          <div style="text-align:center;padding:16px;color:var(--text-light);
-                      font-size:13px;">Chargement...</div>
-        </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       BOTTOM SHEETS — Ma cuisine
+  ══════════════════════════════════════════════════════════ -->
+
+  <!-- Backdrop commun -->
+  <div class="sheet-backdrop" id="sheetBackdrop" onclick="fermerSheet()"></div>
+
+  <!-- ── Sheet : Courses ── -->
+  <div class="bottom-sheet" id="sheet-courses">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🛒 Liste de courses</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="listeCoursesProfile" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ── Sheet : Recettes & Favoris ── -->
+  <div class="bottom-sheet" id="sheet-recettes">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🍴 Mes recettes</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="recettes-view-toggle">
+        <button class="recettes-view-btn active" id="btn-view-saved" onclick="switchRecettesView('saved')">À faire</button>
+        <button class="recettes-view-btn" id="btn-view-fav" onclick="switchRecettesView('fav')">★ Favoris</button>
       </div>
+      <input type="search" id="recettes-search" class="list-search"
+             placeholder="🔍 Rechercher…"
+             oninput="filtrerRecettesOuFavoris(this.value)"
+             style="margin-bottom:12px;" />
+      <div id="recettesSauvegardeesListe" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="favorisListe" style="display:none;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
 
+  <!-- ── Sheet : Évolution ── -->
+  <div class="bottom-sheet" id="sheet-evolution">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">📊 Mon évolution</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;">
+        Basé sur tes check-ins quotidiens · 14 derniers jours</div>
+      <div id="evolutionCharts" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Chargement…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sheet : Historique ── -->
+  <div class="bottom-sheet" id="sheet-historique">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🗓 Historique</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;">
+        Tes 7 derniers plans générés</div>
+      <div id="historiqueListe" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Chargement…</div>
+      </div>
     </div>
   </div>
 

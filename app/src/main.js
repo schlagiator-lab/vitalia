@@ -13,7 +13,8 @@ import {
   updateProfilRecaps, updateObjectifPrincipalBadge, appliquerProfil,
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
-  ouvrirAlly, fermerAlly, setText, changerDefaultPortions
+  ouvrirAlly, fermerAlly, setText, changerDefaultPortions,
+  ouvrirSheet, fermerSheet
 } from './modules/ui.js'
 import {
   toggleInstructions, toggleRoutineItem,
@@ -35,7 +36,8 @@ import {
   toggleSelectSaved, changerPortionsSaved,
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
-  supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses
+  supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
+  mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris
 } from './modules/recipes.js'
 import {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin, verifierCheckinDuJour,
@@ -58,6 +60,7 @@ Object.assign(window, {
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
   ouvrirAlly, fermerAlly, setText, changerDefaultPortions,
+  ouvrirSheet, fermerSheet,
   // plan
   toggleInstructions, toggleRoutineItem,
   changerPortions, noterRecette, sauvegarderRecette,
@@ -78,6 +81,7 @@ Object.assign(window, {
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
   supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
+  mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris,
   // checkin
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique,

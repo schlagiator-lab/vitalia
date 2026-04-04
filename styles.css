@@ -942,3 +942,131 @@
     .date-badge { display: none; }
     .recette-nutrition { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* ══════════════════════════════════════
+     DASHBOARD MA CUISINE
+  ══════════════════════════════════════ */
+  .atfaire-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 20px 20px 0;
+  }
+
+  .atfaire-card {
+    background: var(--warm-white);
+    border-radius: 20px;
+    padding: 18px 16px 32px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: transform 0.14s, box-shadow 0.14s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 120px;
+  }
+  .atfaire-card:active { transform: scale(0.96); }
+
+  .atfaire-card-icon  { font-size: 26px; display: block; margin-bottom: 9px; }
+  .atfaire-card-title { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 700; color: var(--deep-brown); margin-bottom: 5px; line-height: 1.25; }
+  .atfaire-card-sub   { font-size: 11px; color: var(--text-light); line-height: 1.4; }
+  .atfaire-card-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 18px; color: rgba(196,113,74,0.3); font-weight: 300; }
+
+  .atfaire-card-courses   { border-color: rgba(196,113,74,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(196,113,74,0.07)); }
+  .atfaire-card-recettes  { border-color: rgba(122,158,126,0.18); background: linear-gradient(140deg, var(--warm-white) 55%, rgba(122,158,126,0.07)); }
+  .atfaire-card-evolution { border-color: rgba(139,92,246,0.14);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(139,92,246,0.06)); }
+  .atfaire-card-historique{ border-color: rgba(232,184,75,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(232,184,75,0.08)); }
+
+  /* ══════════════════════════════════════
+     BOTTOM SHEETS
+  ══════════════════════════════════════ */
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(61,43,31,0.45);
+    z-index: 150;
+    opacity: 0;
+    display: none;
+    transition: opacity 0.28s ease;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .sheet-backdrop.visible { opacity: 1; }
+
+  .bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 88vh;
+    max-height: 88vh;
+    background: var(--cream);
+    border-radius: 24px 24px 0 0;
+    z-index: 151;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+  .bottom-sheet.open { transform: translateY(0); }
+
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: rgba(196,113,74,0.22);
+    border-radius: 2px;
+    margin: 12px auto 4px;
+    flex-shrink: 0;
+  }
+  .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px 14px;
+    border-bottom: 1px solid rgba(196,113,74,0.1);
+    flex-shrink: 0;
+  }
+  .sheet-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--deep-brown); }
+  .sheet-close {
+    width: 32px; height: 32px;
+    background: var(--warm-white);
+    border: none; border-radius: 10px;
+    cursor: pointer; font-size: 16px;
+    color: var(--mid-brown);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 20px calc(var(--tab-bar-height) + 28px);
+  }
+
+  /* Toggle Recettes / Favoris */
+  .recettes-view-toggle {
+    display: flex;
+    background: var(--warm-white);
+    border-radius: 12px;
+    padding: 3px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(196,113,74,0.12);
+  }
+  .recettes-view-btn {
+    flex: 1;
+    background: none; border: none;
+    border-radius: 9px;
+    padding: 7px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: background 0.17s, color 0.17s;
+  }
+  .recettes-view-btn.active {
+    background: var(--cream);
+    color: var(--deep-brown);
+    font-weight: 600;
+  }

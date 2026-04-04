@@ -90,13 +90,7 @@ export function switchTab(name) {
 
   if (name === 'atfaire') {
     import('./recipes.js').then(function(m) {
-      m.afficherListeCoursesProfile()
-      m.afficherRecettesSauvegardees()
-      m.afficherFavoris()
-    })
-    import('./checkin.js').then(function(m) {
-      m.afficherEvolution()
-      m.afficherHistorique()
+      m.mettreAJourDashboardCuisine()
     })
   }
 
@@ -109,6 +103,53 @@ export function switchAtfaireSection(name) {
     if (name === 'recettes') m.afficherRecettesSauvegardees()
     if (name === 'liste')    m.afficherListeCoursesProfile()
   })
+}
+
+// ── Bottom sheets "Ma cuisine" ──
+var _sheetCourant = null
+export function ouvrirSheet(name) {
+  _sheetCourant = name
+  var backdrop = document.getElementById('sheetBackdrop')
+  var sheet = document.getElementById('sheet-' + name)
+  if (!sheet) return
+  if (backdrop) {
+    backdrop.style.display = 'block'
+    requestAnimationFrame(function() { backdrop.classList.add('visible') })
+  }
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() { sheet.classList.add('open') })
+  })
+  if (name === 'courses') {
+    import('./recipes.js').then(function(m) { m.afficherListeCoursesProfile() })
+  } else if (name === 'recettes') {
+    import('./recipes.js').then(function(m) {
+      var btnSaved = document.getElementById('btn-view-saved')
+      var btnFavs  = document.getElementById('btn-view-fav')
+      if (btnSaved) btnSaved.classList.add('active')
+      if (btnFavs)  btnFavs.classList.remove('active')
+      var listSaved = document.getElementById('recettesSauvegardeesListe')
+      var listFavs  = document.getElementById('favorisListe')
+      if (listSaved) listSaved.style.display = 'flex'
+      if (listFavs)  listFavs.style.display  = 'none'
+      m.afficherRecettesSauvegardees()
+    })
+  } else if (name === 'evolution') {
+    import('./checkin.js').then(function(m) { m.afficherEvolution() })
+  } else if (name === 'historique') {
+    import('./checkin.js').then(function(m) { m.afficherHistorique() })
+  }
+}
+export function fermerSheet() {
+  var backdrop = document.getElementById('sheetBackdrop')
+  if (_sheetCourant) {
+    var sheet = document.getElementById('sheet-' + _sheetCourant)
+    if (sheet) sheet.classList.remove('open')
+    _sheetCourant = null
+  }
+  if (backdrop) {
+    backdrop.classList.remove('visible')
+    setTimeout(function() { backdrop.style.display = 'none' }, 300)
+  }
 }
 
 // ── setText helper ──

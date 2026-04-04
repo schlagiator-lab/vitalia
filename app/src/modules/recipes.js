@@ -723,6 +723,49 @@ export function changerPortionsListeProfile(type, id, delta) {
   })
 }
 
+// ── Dashboard "Ma cuisine" ──
+export function mettreAJourDashboardCuisine() {
+  // Sous-texte liste de courses
+  var sub1 = document.getElementById('dash-courses-sub')
+  if (sub1) {
+    var raw = null
+    try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    var nbArticles = raw && raw.ingredients ? raw.ingredients.length : 0
+    sub1.textContent = nbArticles > 0 ? nbArticles + ' article' + (nbArticles > 1 ? 's' : '') : 'Vide'
+  }
+  // Sous-texte recettes
+  var sub2 = document.getElementById('dash-recettes-sub')
+  if (sub2) {
+    var saved = []
+    try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+    var favs = []
+    try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
+    var nbSaved = Array.isArray(saved) ? saved.length : 0
+    var nbFavs  = Array.isArray(favs)  ? favs.length  : 0
+    sub2.textContent = nbSaved + ' à faire · ' + nbFavs + ' favoris'
+  }
+}
+
+var _recettesViewCourante = 'saved'
+export function switchRecettesView(view) {
+  _recettesViewCourante = view
+  var btnSaved = document.getElementById('btn-view-saved')
+  var btnFavs  = document.getElementById('btn-view-fav')
+  if (btnSaved) btnSaved.classList.toggle('active', view === 'saved')
+  if (btnFavs)  btnFavs.classList.toggle('active', view === 'fav')
+  var listSaved = document.getElementById('recettesSauvegardeesListe')
+  var listFavs  = document.getElementById('favorisListe')
+  if (listSaved) listSaved.style.display = view === 'saved' ? 'flex' : 'none'
+  if (listFavs)  listFavs.style.display  = view === 'fav'  ? 'flex' : 'none'
+  if (view === 'saved') afficherRecettesSauvegardees()
+  if (view === 'fav')   afficherFavoris()
+}
+
+export function filtrerRecettesOuFavoris(query) {
+  if (_recettesViewCourante === 'saved') filtrerRecettesSauvegardees(query)
+  else filtrerFavoris(query)
+}
+
 // ── Effacer complètement la liste (localement + Supabase + sélections en mémoire) ──
 export function viderListeCourses() {
   localStorage.removeItem('vitalia_liste_courses')
