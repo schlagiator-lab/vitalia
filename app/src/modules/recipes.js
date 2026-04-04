@@ -2,6 +2,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
 import { authFetch } from './auth.js'
 import { afficherToast } from './ui.js'
 import { sauvegarderListeCoursesSupabase } from './api.js'
+import { afficherPhotoRecette, chargerMeilleurePhoto } from './photos.js'
 
 // ══════════════════════════════════════════════════════
 // ONGLET RECETTE
@@ -123,6 +124,7 @@ export function afficherRecetteUnique(recette) {
   if (recette.portions)          html += '<span class="recette-meta-chip">🍽 ' + recette.portions + ' pers.</span>'
   html += '  </div></div></div>'
   html += '<div class="recette-card-body">'
+  html += '<div id="recette-unique-photo-container"></div>'
 
   if (nv.calories) {
     html += '<div><div class="recette-section-label">Valeurs nutritionnelles</div><div class="recette-nutrition">'
@@ -159,13 +161,25 @@ export function afficherRecetteUnique(recette) {
     html += '</div></div>'
   }
 
-  html += '<button onclick="sauvegarderRecetteUnique()" style="width:100%;background:var(--sage);color:white;border:none;border-radius:16px;padding:14px;font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;">✅ Ajouter à faire</button>'
+  html += '<div style="display:flex;gap:10px;margin-top:4px;">'
+  html += '<button id="photo-btn-recette-unique" class="photo-btn" onclick="prendrePhotoRecetteUnique()" title="Prendre une photo du plat" style="flex-shrink:0;height:48px;min-width:48px;border-radius:14px;">📸</button>'
+  html += '<button onclick="sauvegarderRecetteUnique()" style="flex:1;background:var(--sage);color:white;border:none;border-radius:16px;padding:14px;font-family:\'DM Sans\',sans-serif;font-size:15px;font-weight:600;cursor:pointer;">✅ Ajouter à faire</button>'
+  html += '</div>'
   html += '</div></div>'
 
   var resultEl = document.getElementById('recetteResult')
   var emptyEl  = document.getElementById('recetteEmpty')
   if (resultEl) { resultEl.innerHTML = html; resultEl.style.display = 'block' }
   if (emptyEl)  emptyEl.style.display = 'none'
+
+  var recetteNom = recette.nom || recette.titre
+  if (recette.photo_url) {
+    afficherPhotoRecette('recette-unique-photo-container', recette.photo_url, false)
+  } else if (recetteNom) {
+    chargerMeilleurePhoto(recetteNom).then(function(res) {
+      if (res) afficherPhotoRecette('recette-unique-photo-container', res.url, res.isCommunaute)
+    })
+  }
 }
 
 export async function sauvegarderRecetteUnique() {
@@ -255,9 +269,11 @@ export function afficherRecettesSauvegardees() {
            '    <span id="arrow-' + rid + '" style="font-size:14px;color:var(--text-light);transition:transform 0.2s;flex-shrink:0;">▼</span>' +
            '  </div>' +
            '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           '<div id="saved-photo-' + idx + '"></div>' +
            (ingredients ? '<div id="saved-ingredients-' + idx + '" data-portions="' + (r.portions || 2) + '" style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions + astuces + starsHtml + portionsHtml +
            '    <div style="display:flex;gap:8px;margin-top:12px;">' +
+           '      <button id="saved-photo-btn-' + idx + '" onclick="prendrePhotoSauvegardee(' + idx + ',\'saved\');event.stopPropagation();" style="background:rgba(196,113,74,0.06);border:1.5px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--terracotta);cursor:pointer;">📸</button>' +
            '      <button onclick="toggleSelectSaved(' + idx + ');event.stopPropagation();" id="saved-select-btn-' + idx + '" style="flex:1;background:rgba(196,113,74,0.08);border:1.5px solid rgba(196,113,74,0.25);border-radius:10px;padding:8px;font-size:12px;color:var(--terracotta);font-weight:600;cursor:pointer;">🛒 Sélectionner pour la liste</button>' +
            '      <button onclick="supprimerRecetteSauvegardee(' + idx + ');event.stopPropagation();" style="background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑</button>' +
            '    </div>' +
@@ -266,6 +282,19 @@ export function afficherRecettesSauvegardees() {
   }).join('')
 
   if (activeQuery) filtrerRecettesSauvegardees(activeQuery)
+
+  // Chargement asynchrone des photos (propre puis communauté en fallback)
+  saved.slice(0, 20).forEach(function(r, idx) {
+    var titre = r.nom || r.titre || ''
+    if (!titre) return
+    if (r.photo_url) {
+      afficherPhotoRecette('saved-photo-' + idx, r.photo_url, false)
+    } else {
+      chargerMeilleurePhoto(titre).then(function(res) {
+        if (res) afficherPhotoRecette('saved-photo-' + idx, res.url, res.isCommunaute)
+      })
+    }
+  })
 }
 
 export function filtrerRecettesSauvegardees(query) {
@@ -320,6 +349,7 @@ export function afficherFavoris() {
            '    </div>' +
            '  </div>' +
            '  <div id="' + rid + '" style="display:none;padding:0 16px 14px;">' +
+           '<div id="fav-photo-' + i + '"></div>' +
            ((prep > 0 || cook > 0) ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
              (prep > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--terracotta);font-weight:500;">⏱ ' + prep + ' min prép.</span>' : '') +
              (cook > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(232,184,75,0.1);border:1px solid rgba(232,184,75,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--mid-brown);font-weight:500;">🔥 ' + cook + ' min cuisson</span>' : '') +
@@ -327,13 +357,27 @@ export function afficherFavoris() {
            (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
            instructions +
            '    <div style="display:flex;gap:8px;margin-top:12px;">' +
+           '      <button id="fav-photo-btn-' + i + '" onclick="prendrePhotoSauvegardee(' + i + ',\'fav\');event.stopPropagation();" style="background:rgba(232,184,75,0.1);border:1.5px solid rgba(232,184,75,0.3);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--mid-brown,#b8942a);cursor:pointer;">📸</button>' +
            '      <button onclick="ajouterFavoriAuxCourses(' + i + ');event.stopPropagation();" style="flex:1;background:rgba(122,158,126,0.1);border:1.5px solid rgba(122,158,126,0.35);border-radius:10px;padding:8px;font-size:12px;color:var(--sage,#7a9e7e);font-weight:600;cursor:pointer;">🛒 Ajouter aux courses</button>' +
-           '      <button onclick="supprimerFavori(' + i + ');event.stopPropagation();" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Retirer des favoris</button>' +
+           '      <button onclick="supprimerFavori(' + i + ');event.stopPropagation();" style="background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑</button>' +
            '    </div>' +
            '  </div>' +
            '</div>'
   }).join('')
   if (activeQuery) filtrerFavoris(activeQuery)
+
+  // Chargement asynchrone des photos (propre puis communauté en fallback)
+  favs.forEach(function(r, i) {
+    var titre = r.nom || r.titre || ''
+    if (!titre) return
+    if (r.photo_url) {
+      afficherPhotoRecette('fav-photo-' + i, r.photo_url, false)
+    } else {
+      chargerMeilleurePhoto(titre).then(function(res) {
+        if (res) afficherPhotoRecette('fav-photo-' + i, res.url, res.isCommunaute)
+      })
+    }
+  })
 }
 
 export function filtrerFavoris(query) {

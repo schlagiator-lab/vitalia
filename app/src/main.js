@@ -41,7 +41,7 @@ import {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin, verifierCheckinDuJour,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique
 } from './modules/checkin.js'
-import { prendrePhoto } from './modules/photos.js'
+import { prendrePhoto, prendrePhotoSemaine, prendrePhotoRecetteUnique, prendrePhotoSauvegardee } from './modules/photos.js'
 
 // ── Exposition globale pour les onclick inline du HTML ──
 Object.assign(window, {
@@ -82,7 +82,7 @@ Object.assign(window, {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique,
   // photos
-  prendrePhoto,
+  prendrePhoto, prendrePhotoSemaine, prendrePhotoRecetteUnique, prendrePhotoSauvegardee,
 })
 
 // ── Initialisation ──

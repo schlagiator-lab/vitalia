@@ -2,7 +2,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
 import { authFetch } from './auth.js'
 import { afficherToast, setText, fermerConfig, updateObjectifPrincipalBadge, syncAllPreferencesChips } from './ui.js'
 import { syncBesoinsVersProfil, sauvegarderListeCoursesSupabase } from './api.js'
-import { afficherPhotoRecette, chargerPhotoCommunaute } from './photos.js'
+import { afficherPhotoRecette, chargerMeilleurePhoto } from './photos.js'
 
 // ── Étoiles (plan du jour) ──
 export function afficherEtoiles(score) {
@@ -91,13 +91,13 @@ export function renderInstructions(moment, recette) {
   }
   el.innerHTML = timingHtml + ingHtml + stepsHtml + buildActionsBar(moment)
 
-  // Photo du plat : afficher immédiatement si déjà disponible, sinon chercher en communauté
+  // Photo du plat : propre d'abord, communauté en fallback
   var recetteNom = (recette && (recette.nom || recette.titre)) || null
   if (recette && recette.photo_url) {
-    afficherPhotoRecette(moment, recette.photo_url, false)
+    afficherPhotoRecette('instructions-' + moment, recette.photo_url, false)
   } else if (recetteNom) {
-    chargerPhotoCommunaute(recetteNom).then(function(url) {
-      if (url) afficherPhotoRecette(moment, url, true)
+    chargerMeilleurePhoto(recetteNom).then(function(res) {
+      if (res) afficherPhotoRecette('instructions-' + moment, res.url, res.isCommunaute)
     })
   }
 }
@@ -329,13 +329,12 @@ export function sauvegarderRecette(m) {
   if (!st.currentPlan || !st.currentPlan[m]) { afficherToast('Génère un plan d\'abord !'); return }
   var r     = st.currentPlan[m]
   var titre = r.nom || r.titre || ''
-  if (st.savedRecipes.some(function(s){ return s.titre === titre && s.moment === m })) {
-    afficherToast('Déjà sauvegardée !'); return
-  }
-  st.savedRecipes.push({ id: Date.now(), titre: titre, moment: m,
-    ingredients: r.ingredients, steps: r.instructions,
-    tip: r.astuces && r.astuces[0], note: 0 })
-  localStorage.setItem('vitalia_saved_home', JSON.stringify(st.savedRecipes))
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  if (saved.some(function(s){ return s.titre === titre })) { afficherToast('Déjà sauvegardée !'); return }
+  var entry = Object.assign({}, r, { id: 'recette_' + Date.now(), saved_at: new Date().toISOString(), note: 0 })
+  saved.unshift(entry)
+  try { localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0, 50))) } catch(e) {}
   var btn = document.getElementById('save-btn-' + m)
   if (btn) { btn.textContent = '✓ Ajoutée'; btn.classList.add('saved') }
   afficherToast('Recette ajoutée à faire ! ✅')
@@ -459,8 +458,26 @@ export function toggleDay(jour) {
 }
 
 export function toggleDayMeal(jour, meal) {
-  var detail = document.getElementById('day-detail-' + jour + '_' + meal)
-  if (detail) detail.classList.toggle('open')
+  var id     = jour + '_' + meal
+  var detail = document.getElementById('day-detail-' + id)
+  if (!detail) return
+  var wasOpen = detail.classList.contains('open')
+  detail.classList.toggle('open')
+  if (!wasOpen) {
+    var recette = st.semainePlanData && st.semainePlanData.semaine &&
+                  st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][meal]
+    if (recette) {
+      var cid = 'semaine-inner-' + id
+      if (recette.photo_url) {
+        afficherPhotoRecette(cid, recette.photo_url, false)
+      } else {
+        var titre = recette.nom || recette.titre
+        if (titre) chargerMeilleurePhoto(titre).then(function(res) {
+          if (res) afficherPhotoRecette(cid, res.url, res.isCommunaute)
+        })
+      }
+    }
+  }
 }
 
 export async function genererSemaine(forcer) {
@@ -606,7 +623,7 @@ export function afficherSemaine(data) {
       if (cal) html += '  <div class="day-meal-cal">' + cal + '</div>'
       html += '</div>'
       html += '<div class="day-meal-detail" id="day-detail-' + id + '" onclick="event.stopPropagation()">'
-      html += '<div class="day-meal-inner">'
+      html += '<div class="day-meal-inner" id="semaine-inner-' + id + '">'
 
       var tPrep = recette.temps_preparation || 0
       var tCook = recette.temps_cuisson || 0
@@ -649,6 +666,7 @@ export function afficherSemaine(data) {
         html += '<button onclick="changerPortionsSemaine(\'' + id + '\',1);event.stopPropagation();">+</button>'
         html += '</div>'
       }
+      html += '<button class="photo-btn" id="photo-semaine-btn-' + id + '" onclick="prendrePhotoSemaine(\'' + id + '\');event.stopPropagation();" title="Prendre une photo du plat">📸</button>'
       html += '<button class="save-mini" onclick="sauvegarderRecetteSemaine(\'' + id + '\');event.stopPropagation();">✅ À faire</button>'
       html += '</div>'
       html += '</div></div></div>'
