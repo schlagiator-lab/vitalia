@@ -24,7 +24,7 @@ CREATE POLICY "recipe_photos_read"
 CREATE POLICY "recipe_photos_delete"
   ON storage.objects FOR DELETE
   TO authenticated
-  USING (bucket_id = 'recette-photos' AND owner = auth.uid()::text);
+  USING (bucket_id = 'recette-photos' AND owner = auth.uid());
 
 -- ── Table recette_photos ──
 CREATE TABLE IF NOT EXISTS recette_photos (
