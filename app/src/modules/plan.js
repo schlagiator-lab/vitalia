@@ -83,21 +83,11 @@ export function renderInstructions(moment, recette) {
   }
 
   if (Array.isArray(instructions) && instructions.length) {
+    st.recipeBaseSteps[moment] = instructions.slice()
     stepsHtml = '<ol class="steps-list">' +
       instructions.map(function(s) { return '<li>' + s + '</li>' }).join('') + '</ol>'
   }
   el.innerHTML = timingHtml + ingHtml + stepsHtml + buildActionsBar(moment)
-
-  // Appliquer immédiatement la multiplication pour les portions par défaut
-  var portions = st.recipeServings[moment] || 1
-  if (portions !== 1 && ingHtml) {
-    var ingEl = el.querySelector('.instructions-ingredients')
-    if (ingEl) {
-      ingEl.querySelectorAll('.ingredient-tag').forEach(function(tag) {
-        tag.textContent = ajusterQuantite(tag.textContent, portions)
-      })
-    }
-  }
 }
 
 // ── Rendu du panneau détail d'une routine ──
@@ -263,24 +253,56 @@ export function updateAlliesFromPlan(plan) {
   })
 }
 
+// ── Helpers quantités ──
+var _QTY_UNITS = 'g|kg|ml|cl|dl|l|c\\.a\\.s|c\\.a\\.c|càs|càc|tbsp|tsp' +
+  '|pièce[sx]?|tranche[sx]?|oeuf[sx]?|œuf[sx]?|gousse[sx]?|feuille[sx]?' +
+  '|bouquet[sx]?|brin[sx]?|cube[sx]?|filet[sx]?|portion[sx]?|escalope[sx]?' +
+  '|steak[sx]?|sachet[sx]?|bo[iî]te[sx]?'
+
+function _fmtQty(val, unit) {
+  var isPiece = /pièce|tranche|oeuf|œuf|gousse|feuille|bouquet|brin|cube|filet|portion|escalope|steak|sachet|boite|boîte/i.test(unit)
+  if (isPiece) {
+    var r = Math.round(val * 2) / 2
+    return String(r < 0.5 ? 0.5 : r)
+  }
+  return String(Math.round(val * 10) / 10)
+}
+
+export function ajusterQuantite(text, ratio) {
+  // Fractions en premier : "1/2 c.a.s", "3/4 pièces"
+  text = text.replace(
+    new RegExp('(\\d+)\\/(\\d+)[\\s\\u202f]*(' + _QTY_UNITS + ')', 'gi'),
+    function(_, n, d, unit) { return _fmtQty(parseInt(n) / parseInt(d) * ratio, unit) + '\u202f' + unit }
+  )
+  // Entiers et décimaux : "150 g", "2 œufs", "30\u202fml"
+  text = text.replace(
+    new RegExp('(\\d+(?:[.,]\\d+)?)[\\s\\u202f]*(' + _QTY_UNITS + ')', 'gi'),
+    function(_, num, unit) { return _fmtQty(parseFloat(num.replace(',', '.')) * ratio, unit) + '\u202f' + unit }
+  )
+  return text
+}
+
 // ── Stepper de portions (plan du jour) ──
 export function changerPortions(m, delta) {
   st.recipeServings[m] = Math.max(1, Math.min(8, (st.recipeServings[m] || 1) + delta))
   var c = document.getElementById('count-' + m); if (c) c.textContent = st.recipeServings[m]
+  var ratio = st.recipeServings[m] / (st.defaultPortions || 1)
+
   var ingEl = document.querySelector('#instructions-' + m + ' .instructions-ingredients')
   if (ingEl && st.recipeBaseIng[m]) {
     var tmp = document.createElement('div'); tmp.innerHTML = st.recipeBaseIng[m]
     tmp.querySelectorAll('.ingredient-tag').forEach(function(tag) {
-      tag.textContent = ajusterQuantite(tag.textContent, st.recipeServings[m])
+      tag.textContent = ajusterQuantite(tag.textContent, ratio)
     })
     ingEl.innerHTML = tmp.innerHTML
   }
-}
 
-export function ajusterQuantite(text, portions) {
-  return text.replace(/(\d+(?:[.,]\d+)?)\s*(g|kg|ml|cl|l|c\.a\.s|c\.a\.c|tbsp|tsp)/gi, function(_, num, unit) {
-    return (Math.round(parseFloat(num.replace(',', '.')) * portions * 10) / 10) + ' ' + unit
-  })
+  var stepsEl = document.querySelector('#instructions-' + m + ' .steps-list')
+  if (stepsEl && st.recipeBaseSteps[m]) {
+    stepsEl.innerHTML = st.recipeBaseSteps[m].map(function(s) {
+      return '<li>' + ajusterQuantite(s, ratio) + '</li>'
+    }).join('')
+  }
 }
 
 // ── Note d'une recette ──
@@ -625,24 +647,9 @@ export function afficherSemaine(data) {
 
   var cards = document.getElementById('dayCards')
   var empty = document.getElementById('semaineEmpty')
-  st.semaineBasePortions = 2
+  st.semaineBasePortions = st.defaultPortions || 1
   if (cards) { cards.innerHTML = html; cards.style.display = 'flex' }
   if (empty) empty.style.display = 'none'
-
-  // Appliquer le scaling initial si defaultPortions != base API (2)
-  if (st.defaultPortions !== 2) {
-    var initRatio = st.defaultPortions / 2
-    Object.keys(st.semaineBaseIng).forEach(function(id) {
-      var ingEl = document.getElementById('ing-' + id)
-      if (ingEl && st.semaineBaseIng[id]) {
-        ingEl.innerHTML = st.semaineBaseIng[id].map(function(ing) {
-          var q   = ing.quantite ? Math.round(ing.quantite * initRatio * 10) / 10 : null
-          var lbl = ing.nom + (q ? ' ' + q + '\u202f' + (ing.unite || 'g') : '')
-          return '<span class="day-meal-tag">' + lbl + '</span>'
-        }).join('')
-      }
-    })
-  }
 
   var conseilEl = document.getElementById('semaineConseil')
   if (conseilEl) {
@@ -839,7 +846,7 @@ export function changerPortionsSemaine(id, delta) {
   var ingEl = document.getElementById('ing-' + id)
   if (ingEl && st.semaineBaseIng[id]) {
     ingEl.innerHTML = st.semaineBaseIng[id].map(function(ing) {
-      var q   = ing.quantite ? Math.round(ing.quantite * ratio) : null
+      var q = ing.quantite ? _fmtQty(ing.quantite * ratio, ing.unite || 'g') : null
       var lbl = ing.nom + (q ? ' ' + q + '\u202f' + (ing.unite || 'g') : '')
       return '<span class="day-meal-tag">' + lbl + '</span>'
     }).join('')
@@ -916,7 +923,7 @@ function construireListeRecettes() {
     if (!recette) return
     result.push({ type: 'semaine', id: id,
       nom: recette.nom || ((MEAL_LABEL[mealKey] || mealKey) + ' ' + (JOUR_LABEL[jour] || jour)),
-      portions: st.semaineServings[id] || 2, basePortions: 2, ingredients: recette.ingredients || [] })
+      portions: st.semaineServings[id] || st.defaultPortions, basePortions: st.semaineBasePortions || st.defaultPortions || 1, ingredients: recette.ingredients || [] })
   })
 
   var savedList = []
@@ -965,7 +972,7 @@ function aggregerIngredients() {
     var parts   = id.split('_'), jour = parts[0], mealKey = parts.slice(1).join('_')
     var recette = st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][mealKey]
     if (!recette || !recette.ingredients) return
-    ajouterIngredients(recette.ingredients, (st.semaineServings[id] || 2) / 2)
+    ajouterIngredients(recette.ingredients, (st.semaineServings[id] || st.defaultPortions) / (st.semaineBasePortions || st.defaultPortions || 1))
   })
   var savedList = []
   try { savedList = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}

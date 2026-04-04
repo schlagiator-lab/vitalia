@@ -28,6 +28,7 @@ export const st = {
   currentPlan:     null,
   recipeServings:  { matin: 1, midi: 1, apres_midi: 1, soir: 1 },
   recipeBaseIng:   {},
+  recipeBaseSteps: {},
 
   // Semaine
   semainePlanData:          null,
