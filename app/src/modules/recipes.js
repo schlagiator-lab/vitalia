@@ -276,7 +276,7 @@ export function afficherRecettesSauvegardees() {
            instructions + astuces + starsHtml + portionsHtml +
            '    <div style="display:flex;gap:8px;margin-top:12px;">' +
            '      <button id="saved-photo-btn-' + idx + '" onclick="prendrePhotoSauvegardee(' + idx + ',\'saved\');event.stopPropagation();" style="background:rgba(196,113,74,0.06);border:1.5px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--terracotta);cursor:pointer;">📸</button>' +
-           '      <button onclick="toggleSelectSaved(' + idx + ');event.stopPropagation();" id="saved-select-btn-' + idx + '" style="flex:1;background:rgba(196,113,74,0.08);border:1.5px solid rgba(196,113,74,0.25);border-radius:10px;padding:8px;font-size:12px;color:var(--terracotta);font-weight:600;cursor:pointer;">🛒 Sélectionner pour la liste</button>' +
+           '      <button onclick="toggleSelectSaved(' + idx + ');event.stopPropagation();" id="saved-select-btn-' + idx + '" style="flex:1;background:' + (st.savedSelected[idx] ? 'rgba(122,158,126,0.15)' : 'rgba(196,113,74,0.08)') + ';border:1.5px solid ' + (st.savedSelected[idx] ? 'var(--sage)' : 'rgba(196,113,74,0.25)') + ';border-radius:10px;padding:8px;font-size:12px;color:' + (st.savedSelected[idx] ? 'var(--sage)' : 'var(--terracotta)') + ';font-weight:600;cursor:pointer;">' + (st.savedSelected[idx] ? '✓ Dans la liste' : '🛒 Ajouter à la liste') + '</button>' +
            '      <button onclick="supprimerRecetteSauvegardee(' + idx + ');event.stopPropagation();" style="background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑</button>' +
            '    </div>' +
            '  </div>' +
@@ -509,17 +509,68 @@ export async function noterRecetteSauvegardee(idx, note) {
 }
 
 export function toggleSelectSaved(idx) {
-  st.savedSelected[idx] = !st.savedSelected[idx]
-  if (!st.savedServings[idx]) st.savedServings[idx] = 2
-  var btn = document.getElementById('saved-select-btn-' + idx)
-  if (btn) {
-    if (st.savedSelected[idx]) {
-      btn.textContent = '✓ Sélectionné'; btn.style.background = 'rgba(122,158,126,0.15)'; btn.style.borderColor = 'var(--sage)'; btn.style.color = 'var(--sage)'
-    } else {
-      btn.textContent = '🛒 Sélectionner pour la liste'; btn.style.background = 'rgba(196,113,74,0.08)'; btn.style.borderColor = 'rgba(196,113,74,0.25)'; btn.style.color = 'var(--terracotta)'
-    }
+  var saved = []
+  try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
+  var r = saved[idx]
+  if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) {
+    afficherToast('Pas d\'ingrédients à ajouter')
+    return
   }
-  import('./plan.js').then(function(m) { m.afficherBoutonListeCourses && m.afficherBoutonListeCourses() })
+
+  st.savedSelected[idx] = !st.savedSelected[idx]
+  var isSelected = st.savedSelected[idx]
+  var portions   = st.savedServings[idx] || r.portions || r.nb_personnes || 2
+
+  var btn = document.getElementById('saved-select-btn-' + idx)
+
+  if (isSelected) {
+    // Ajouter immédiatement à la liste
+    var existing = null
+    try { existing = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    var liste    = (existing && Array.isArray(existing.ingredients)) ? existing.ingredients : []
+    var recettes = (existing && existing.recettes) ? existing.recettes : []
+    var basePortions = r.portions || r.nb_personnes || 2
+    var ratio        = portions / Math.max(basePortions, 1)
+    var nouveaux = r.ingredients.map(function(ing) {
+      if (typeof ing === 'string') return { nom: ing, quantite: null, unite: 'g' }
+      return { nom: ing.nom || ing.name || String(ing), quantite: ing.quantite ? Math.round(ing.quantite * ratio) : null, unite: ing.unite || 'g' }
+    }).filter(function(ing) { return ing.nom })
+    nouveaux.forEach(function(ing) {
+      var key   = ing.nom.toLowerCase().trim()
+      var found = liste.find(function(e) { return e.nom.toLowerCase().trim() === key })
+      if (found) { if (ing.quantite && found.unite === ing.unite) found.quantite = Math.round((found.quantite || 0) + ing.quantite) }
+      else liste.push({ nom: ing.nom, quantite: ing.quantite, unite: ing.unite })
+    })
+    var nomRecette = r.nom || r.titre || ''
+    if (nomRecette && !recettes.find(function(x) { return (x.nom || '').toLowerCase() === nomRecette.toLowerCase() })) {
+      recettes.push({ nom: nomRecette, type: 'saved', id: idx, portions: portions, basePortions: basePortions, ingredients: nouveaux })
+    }
+    localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: new Date().toISOString(), ingredients: liste, recettes: recettes }))
+    sauvegarderListeCoursesSupabase()
+    afficherListeCoursesProfile()
+    mettreAJourDashboardCuisine()
+    afficherToast('Ingrédients ajoutés à la liste !')
+    if (btn) { btn.textContent = '✓ Dans la liste'; btn.style.background = 'rgba(122,158,126,0.15)'; btn.style.borderColor = 'var(--sage)'; btn.style.color = 'var(--sage)' }
+  } else {
+    // Retirer de la liste
+    var existing2 = null
+    try { existing2 = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
+    if (existing2 && existing2.recettes) {
+      var nomR = (r.nom || r.titre || '').toLowerCase()
+      existing2.recettes = existing2.recettes.filter(function(x) { return (x.nom || '').toLowerCase() !== nomR })
+      import('./plan.js').then(function(m) {
+        var manuels = (existing2.ingredients || []).filter(function(i) { return i.manuel })
+        existing2.ingredients = m.reagregerDepuisRecettes(existing2.recettes).concat(manuels)
+        existing2.date = new Date().toISOString()
+        localStorage.setItem('vitalia_liste_courses', JSON.stringify(existing2))
+        sauvegarderListeCoursesSupabase()
+        afficherListeCoursesProfile()
+        mettreAJourDashboardCuisine()
+      })
+    }
+    afficherToast('Recette retirée de la liste')
+    if (btn) { btn.textContent = '🛒 Ajouter à la liste'; btn.style.background = 'rgba(196,113,74,0.08)'; btn.style.borderColor = 'rgba(196,113,74,0.25)'; btn.style.color = 'var(--terracotta)' }
+  }
 }
 
 export function changerPortionsSaved(idx, delta) {

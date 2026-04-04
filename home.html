@@ -912,12 +912,6 @@
         <span class="atfaire-card-arrow">›</span>
       </div>
 
-      <div class="atfaire-card atfaire-card-historique" onclick="ouvrirSheet('historique')">
-        <span class="atfaire-card-icon">🗓</span>
-        <div class="atfaire-card-title">Historique</div>
-        <div class="atfaire-card-sub" id="dash-historique-sub">7 derniers jours</div>
-        <span class="atfaire-card-arrow">›</span>
-      </div>
 
     </div>
 
@@ -979,21 +973,6 @@
     </div>
   </div>
 
-  <!-- ── Sheet : Historique ── -->
-  <div class="bottom-sheet" id="sheet-historique">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <div class="sheet-title">🗓 Historique</div>
-      <button class="sheet-close" onclick="fermerSheet()">✕</button>
-    </div>
-    <div class="sheet-body">
-      <div style="font-size:12px;color:var(--text-light);margin-bottom:16px;">
-        Tes 7 derniers plans générés</div>
-      <div id="historiqueListe" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Chargement…</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ── Floating shopping list bar (outside tabs so it's always visible) ── -->
   <div class="courses-bar" id="coursesBar" style="display:none;">

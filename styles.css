@@ -856,11 +856,11 @@
   .semaine-tab-icon { display:flex; flex-direction:column; align-items:center; justify-content:center; height:26px; }
 
   /* ── Shopping list bar & modal ── */
-  .courses-bar { position:fixed; bottom:calc(var(--tab-bar-height) + 12px); left:50%; transform:translateX(-50%); background:var(--deep-brown); color:white; border-radius:20px; padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:30; box-shadow:0 8px 32px rgba(61,43,31,0.3); white-space:nowrap; animation:slideUp 0.25s ease; }
+  .courses-bar { position:fixed; bottom:calc(var(--tab-bar-height) + 12px); left:50%; transform:translateX(-50%); background:var(--deep-brown); color:white; border-radius:20px; padding:12px 20px; display:flex; align-items:center; gap:12px; z-index:160; box-shadow:0 8px 32px rgba(61,43,31,0.3); white-space:nowrap; animation:slideUp 0.25s ease; }
   @keyframes slideUp { from { transform:translateX(-50%) translateY(20px); opacity:0; } to { transform:translateX(-50%) translateY(0); opacity:1; } }
   .courses-bar-count { font-size:13px; }
   .courses-bar-btn { background:white; color:var(--deep-brown); border:none; border-radius:14px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; }
-  .courses-modal { position:fixed; inset:0; background:rgba(61,43,31,0.4); z-index:90; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px); }
+  .courses-modal { position:fixed; inset:0; background:rgba(61,43,31,0.4); z-index:160; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(3px); }
   .courses-modal-inner { background:var(--warm-white); border-radius:28px 28px 0 0; padding:20px 24px 28px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; animation:slideUpModal 0.3s ease; }
   @media (max-width: 600px) { .courses-modal-inner { padding-bottom: calc(var(--tab-bar-height) + 24px); } }
   .courses-modal-handle { width:36px; height:4px; background:var(--peach); border-radius:2px; margin:0 auto 20px; }
@@ -973,10 +973,9 @@
   .atfaire-card-sub   { font-size: 11px; color: var(--text-light); line-height: 1.4; }
   .atfaire-card-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 18px; color: rgba(196,113,74,0.3); font-weight: 300; }
 
-  .atfaire-card-courses   { border-color: rgba(196,113,74,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(196,113,74,0.07)); }
+  .atfaire-card-courses   { border-color: rgba(196,113,74,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(196,113,74,0.07)); grid-column: 1 / -1; min-height: 100px; }
   .atfaire-card-recettes  { border-color: rgba(122,158,126,0.18); background: linear-gradient(140deg, var(--warm-white) 55%, rgba(122,158,126,0.07)); }
   .atfaire-card-evolution { border-color: rgba(139,92,246,0.14);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(139,92,246,0.06)); }
-  .atfaire-card-historique{ border-color: rgba(232,184,75,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(232,184,75,0.08)); }
 
   /* ══════════════════════════════════════
      BOTTOM SHEETS
