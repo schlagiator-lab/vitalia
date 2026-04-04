@@ -972,6 +972,9 @@
   .atfaire-card-title { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 700; color: var(--deep-brown); margin-bottom: 5px; line-height: 1.25; }
   .atfaire-card-sub   { font-size: 11px; color: var(--text-light); line-height: 1.4; }
   .atfaire-card-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 18px; color: rgba(196,113,74,0.3); font-weight: 300; }
+  .atfaire-card-courses-stats { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  .atfaire-card-courses-stats span { font-size: 11px; color: var(--text-light); line-height: 1.5; }
+  .atfaire-card-courses-stats span:not(:last-child)::after { content: '·'; margin-left: 10px; color: rgba(196,113,74,0.3); }
 
   .atfaire-card-courses   { border-color: rgba(196,113,74,0.18);  background: linear-gradient(140deg, var(--warm-white) 55%, rgba(196,113,74,0.07)); grid-column: 1 / -1; min-height: 100px; }
   .atfaire-card-recettes  { border-color: rgba(122,158,126,0.18); background: linear-gradient(140deg, var(--warm-white) 55%, rgba(122,158,126,0.07)); }

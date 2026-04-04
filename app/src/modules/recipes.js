@@ -435,6 +435,7 @@ export function ajouterFavoriAuxCourses(idx) {
   try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: existing && existing.date ? existing.date : new Date().toISOString(), ingredients: liste, recettes: recettes })) } catch(e) {}
   sauvegarderListeCoursesSupabase()
   afficherListeCoursesProfile()
+  mettreAJourDashboardCuisine()
   afficherToast('Ingrédients ajoutés à la liste de courses !')
 }
 
@@ -679,6 +680,7 @@ export function toggleCoursesVuByIdx(idx) {
   if (vu[nom]) delete vu[nom]; else vu[nom] = true
   localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
   afficherListeCoursesProfile()
+  mettreAJourDashboardCuisine()
 }
 
 export function ajouterArticleManuelCourses() {
@@ -720,6 +722,7 @@ export function toggleCoursesVu(encodedNom) {
   if (vu[nom]) delete vu[nom]; else vu[nom] = true
   localStorage.setItem('vitalia_courses_vu', JSON.stringify(vu))
   afficherListeCoursesProfile()
+  mettreAJourDashboardCuisine()
 }
 
 export function supprimerRecetteDeListeProfile(type, id) {
@@ -776,13 +779,21 @@ export function changerPortionsListeProfile(type, id, delta) {
 
 // ── Dashboard "Ma cuisine" ──
 export function mettreAJourDashboardCuisine() {
-  // Sous-texte liste de courses
-  var sub1 = document.getElementById('dash-courses-sub')
-  if (sub1) {
+  // Stats liste de courses
+  var elRecettes = document.getElementById('dash-courses-recettes')
+  var elTotal    = document.getElementById('dash-courses-total')
+  var elRestants = document.getElementById('dash-courses-restants')
+  if (elRecettes || elTotal || elRestants) {
     var raw = null
     try { raw = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
-    var nbArticles = raw && raw.ingredients ? raw.ingredients.length : 0
-    sub1.textContent = nbArticles > 0 ? nbArticles + ' article' + (nbArticles > 1 ? 's' : '') : 'Vide'
+    var vu = {}
+    try { vu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+    var nbRecettes  = (raw && raw.recettes) ? raw.recettes.length : 0
+    var nbTotal     = (raw && raw.ingredients) ? raw.ingredients.length : 0
+    var nbRestants  = (raw && raw.ingredients) ? raw.ingredients.filter(function(i) { return !vu[i.nom] }).length : 0
+    if (elRecettes) elRecettes.textContent = nbRecettes > 0 ? nbRecettes + ' recette' + (nbRecettes > 1 ? 's' : '') : 'Aucune recette'
+    if (elTotal)    elTotal.textContent    = nbTotal > 0 ? nbTotal + ' ingrédient' + (nbTotal > 1 ? 's' : '') : 'Liste vide'
+    if (elRestants) elRestants.textContent = nbTotal > 0 ? nbRestants + ' restant' + (nbRestants > 1 ? 's' : '') : ''
   }
   // Sous-texte recettes
   var sub2 = document.getElementById('dash-recettes-sub')
@@ -832,7 +843,8 @@ export function viderListeCourses() {
   })
   document.querySelectorAll('[id^="saved-select-btn-"]').forEach(function(btn) {
     btn.classList.remove('selected')
-    btn.textContent = '🛒 Sélectionner pour la liste'
+    btn.textContent = '🛒 Ajouter à la liste'
   })
   afficherListeCoursesProfile()
+  mettreAJourDashboardCuisine()
 }
