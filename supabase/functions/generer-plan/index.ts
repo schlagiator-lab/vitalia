@@ -999,6 +999,28 @@ serve(async (req) => {
       conseil_du_jour: conseilDuJour,
       conseils_generaux: [conseilDuJour],
 
+      score_nutritionnel: (() => {
+        const ingUniques = new Set<string>();
+        ([recettePetitDejFinal, recetteDejeunerFinal, recetteDinerFinal, recettePauseFinal] as any[])
+          .filter(Boolean)
+          .forEach(m => ((m.ingredients || []) as any[]).forEach((i: any) => {
+            const k = ((i.nom as string) || '').toLowerCase().slice(0, 15);
+            if (k) ingUniques.add(k);
+          }));
+        const nbRepas   = ([recettePetitDejFinal, recetteDejeunerFinal, recetteDinerFinal] as any[]).filter(Boolean).length;
+        const nbNutri   = ([recettePetitDejFinal, recetteDejeunerFinal, recetteDinerFinal] as any[])
+          .filter(Boolean).filter((m: any) => { const nv = m.valeurs_nutritionnelles; return nv && nv.calories && nv.proteines; }).length;
+        let s = 5;
+        s += nbRepas  * 0.5;
+        s += nbNutri  * 0.3;
+        if (recettePauseFinal)                             s += 0.4;
+        if (nutraceutiquesSelectionnes.length >= 2)        s += 0.6;
+        else if (nutraceutiquesSelectionnes.length === 1)  s += 0.3;
+        if (aromatherapieSelectionnee.length > 0)          s += 0.4;
+        s += Math.min(ingUniques.size / 20, 0.7);
+        return Math.min(parseFloat(s.toFixed(1)), 10);
+      })(),
+
       genere_le: new Date().toISOString(),
       expire_le: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     };

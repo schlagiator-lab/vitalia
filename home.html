@@ -94,6 +94,46 @@
       <circle cx="37" cy="46" r="1" fill="white"/><circle cx="45" cy="46" r="1" fill="white"/>
       <path d="M34 54 Q40 59 46 54" stroke="#78350F" stroke-width="2" fill="none" stroke-linecap="round"/>
     </symbol>
+    <symbol id="mascot-patate" viewBox="0 0 80 80">
+      <!-- corps patate douce -->
+      <ellipse cx="40" cy="50" rx="24" ry="18" fill="#C2410C"/>
+      <ellipse cx="40" cy="49" rx="22" ry="16" fill="#EA580C"/>
+      <ellipse cx="40" cy="49" rx="18" ry="13" fill="#FB923C"/>
+      <!-- reflet -->
+      <ellipse cx="33" cy="42" rx="6" ry="3" fill="rgba(255,255,255,0.25)" transform="rotate(-20 33 42)"/>
+      <!-- feuilles -->
+      <ellipse cx="28" cy="30" rx="9" ry="4" fill="#15803D" transform="rotate(-40 28 30)"/>
+      <ellipse cx="40" cy="27" rx="9" ry="4" fill="#16A34A" transform="rotate(-10 40 27)"/>
+      <ellipse cx="52" cy="30" rx="9" ry="4" fill="#15803D" transform="rotate(35 52 30)"/>
+      <rect x="38" y="28" width="4" height="10" rx="2" fill="#92400E"/>
+      <!-- yeux -->
+      <circle cx="35" cy="48" r="3" fill="#000" opacity="0.7"/><circle cx="45" cy="48" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="47" r="1" fill="white"/><circle cx="46" cy="47" r="1" fill="white"/>
+      <!-- sourire -->
+      <path d="M34 55 Q40 61 46 55" stroke="#7C2D12" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- joues -->
+      <circle cx="28" cy="52" r="4" fill="rgba(251,146,60,0.4)"/><circle cx="52" cy="52" r="4" fill="rgba(251,146,60,0.4)"/>
+    </symbol>
+    <symbol id="mascot-epinards" viewBox="0 0 80 80">
+      <!-- tige -->
+      <rect x="38" y="55" width="4" height="14" rx="2" fill="#166534"/>
+      <!-- feuilles principales -->
+      <ellipse cx="40" cy="44" rx="18" ry="22" fill="#15803D"/>
+      <ellipse cx="40" cy="44" rx="16" ry="20" fill="#16A34A"/>
+      <!-- nervures -->
+      <line x1="40" y1="26" x2="40" y2="64" stroke="#14532D" stroke-width="1.5" opacity="0.5"/>
+      <line x1="40" y1="34" x2="28" y2="44" stroke="#14532D" stroke-width="1" opacity="0.4"/>
+      <line x1="40" y1="34" x2="52" y2="44" stroke="#14532D" stroke-width="1" opacity="0.4"/>
+      <line x1="40" y1="44" x2="30" y2="52" stroke="#14532D" stroke-width="1" opacity="0.3"/>
+      <line x1="40" y1="44" x2="50" y2="52" stroke="#14532D" stroke-width="1" opacity="0.3"/>
+      <!-- reflet -->
+      <ellipse cx="33" cy="36" rx="5" ry="8" fill="rgba(255,255,255,0.2)" transform="rotate(-15 33 36)"/>
+      <!-- yeux -->
+      <circle cx="35" cy="44" r="3" fill="#000" opacity="0.7"/><circle cx="45" cy="44" r="3" fill="#000" opacity="0.7"/>
+      <circle cx="36" cy="43" r="1" fill="white"/><circle cx="46" cy="43" r="1" fill="white"/>
+      <!-- sourire -->
+      <path d="M34 51 Q40 57 46 51" stroke="#14532D" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </symbol>
     <symbol id="mascot-miel" viewBox="0 0 80 80">
       <!-- pot -->
       <path d="M26 38 Q24 62 40 64 Q56 62 54 38 Z" fill="#D97706"/>
@@ -395,14 +435,6 @@
       <div class="checkin-banner-arrow">›</div>
     </div>
 
-    <!-- Mon évolution — section Aujourd'hui -->
-    <div class="plan-section" id="evolutionSection" style="display:none;">
-      <div class="section-label">Mon évolution · 14 jours</div>
-      <div class="evolution-card" id="evolutionContent">
-        <!-- Populated by afficherEvolution() -->
-      </div>
-    </div>
-
     <!-- Companions -->
     <div class="companions-section">
       <div class="section-label">Tes alliés du jour</div>
@@ -438,6 +470,14 @@
         <div class="companion-chip" onclick="ouvrirAlly('miel')">
           <div class="companion-avatar" id="ally-miel" style="background:linear-gradient(135deg,#FEF3C7,#FCD34D)"><svg width="40" height="40"><use href="#mascot-miel"/></svg></div>
           <div class="companion-name">Miel</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('patate')">
+          <div class="companion-avatar" id="ally-patate" style="background:linear-gradient(135deg,#FED7AA,#FB923C)"><svg width="40" height="40"><use href="#mascot-patate"/></svg></div>
+          <div class="companion-name">Patate douce</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('epinards')">
+          <div class="companion-avatar" id="ally-epinards" style="background:linear-gradient(135deg,#DCFCE7,#86EFAC)"><svg width="40" height="40"><use href="#mascot-epinards"/></svg></div>
+          <div class="companion-name">Épinards</div>
         </div>
       </div>
     </div>
@@ -607,18 +647,11 @@
       </div>
     </div>
 
-    <!-- Plan récent — historique compact -->
-    <div class="plan-section" id="historiqueCompactSection" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;
-                  margin-bottom:12px;">
-        <div class="section-label" style="margin-bottom:0;">Mon plan récent</div>
-        <button onclick="switchTab('atfaire')"
-          style="background:none;border:none;font-size:12px;color:var(--terracotta);
-                 font-weight:600;cursor:pointer;padding:0;">Voir tout ›</button>
-      </div>
-      <div id="historiqueCompactContent"
-           style="display:flex;flex-direction:column;gap:6px;">
-        <!-- Populated by afficherHistoriqueCompact() -->
+    <!-- Mon évolution — en bas de page -->
+    <div class="plan-section" id="evolutionSection" style="display:none;">
+      <div class="section-label">Mon évolution · 14 jours</div>
+      <div class="evolution-card" id="evolutionContent">
+        <!-- Populated by afficherEvolution() -->
       </div>
     </div>
 

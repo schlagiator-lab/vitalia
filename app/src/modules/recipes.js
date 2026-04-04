@@ -1,7 +1,7 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
 import { authFetch } from './auth.js'
 import { afficherToast } from './ui.js'
-import { sauvegarderListeCoursesSupabase } from './api.js'
+import { sauvegarderListeCoursesSupabase, effacerListeCoursesSupabase } from './api.js'
 import { afficherPhotoRecette, chargerMeilleurePhoto } from './photos.js'
 
 // ══════════════════════════════════════════════════════
@@ -593,7 +593,7 @@ export function afficherListeCoursesProfile() {
   html += '</div>'
   html += '<div style="display:flex;gap:8px;margin-top:12px;">' +
     '<button onclick="localStorage.removeItem(\'vitalia_courses_vu\');afficherListeCoursesProfile()" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">↺ Réinitialiser</button>' +
-    '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){localStorage.removeItem(\'vitalia_liste_courses\');localStorage.removeItem(\'vitalia_courses_vu\');effacerListeCoursesSupabase();afficherListeCoursesProfile()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
+    '<button onclick="if(confirm(\'Effacer la liste de courses ?\')){viderListeCourses()}" style="flex:1;background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:9px;font-size:12px;color:var(--text-light);cursor:pointer;">🗑 Effacer la liste</button>' +
     '</div>'
 
   var recettes = raw.recettes || []
@@ -721,4 +721,24 @@ export function changerPortionsListeProfile(type, id, delta) {
     localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
     afficherListeCoursesProfile()
   })
+}
+
+// ── Effacer complètement la liste (localement + Supabase + sélections en mémoire) ──
+export function viderListeCourses() {
+  localStorage.removeItem('vitalia_liste_courses')
+  localStorage.removeItem('vitalia_courses_vu')
+  effacerListeCoursesSupabase()
+  // Réinitialiser les sélections pour éviter la régénération automatique
+  Object.keys(st.semaineSelected).forEach(function(k) { st.semaineSelected[k] = false })
+  Object.keys(st.savedSelected).forEach(function(k) { st.savedSelected[k] = false })
+  // Mettre à jour visuellement les boutons de sélection visibles
+  document.querySelectorAll('[id^="select-btn-"]').forEach(function(btn) {
+    btn.classList.remove('selected')
+    btn.textContent = '🛒 Sélectionner'
+  })
+  document.querySelectorAll('[id^="saved-select-btn-"]').forEach(function(btn) {
+    btn.classList.remove('selected')
+    btn.textContent = '🛒 Sélectionner pour la liste'
+  })
+  afficherListeCoursesProfile()
 }

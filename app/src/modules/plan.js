@@ -144,9 +144,13 @@ export function afficherPlan(plan) {
   plan.apres_midi = plan.pause || plan.collation || plan.apres_midi
 
   setText('heroMessage', plan.message_motivation || plan.message_personnalise || 'Ton plan est prêt ! 🌿')
-  var score = plan.score_nutritionnel || 7
-  setText('scoreValue', score + '/10')
-  afficherEtoiles(score)
+  var score = plan.score_nutritionnel
+  if (score) {
+    setText('scoreValue', score + '/10')
+    afficherEtoiles(score)
+  } else {
+    setText('scoreValue', '—')
+  }
 
   var heures = { matin: '7h30', midi: '12h30', soir: '19h30' }
   ;['matin', 'midi', 'soir'].forEach(function(m) {
@@ -208,10 +212,7 @@ export function afficherPlan(plan) {
   }
 
   // Imports dynamiques pour éviter circularité
-  import('./checkin.js').then(function(m) {
-    m.afficherEvolution()
-    m.afficherHistoriqueCompact()
-  })
+  import('./checkin.js').then(function(m) { m.afficherEvolution() })
 }
 
 // ── Mise en évidence des alliés présents dans le plan ──
@@ -219,11 +220,13 @@ export function updateAlliesFromPlan(plan) {
   st.currentActiveAllies = []
   var keywords = {
     goji:'goji', curcuma:'curcuma', gingembre:'gingembre', myrtille:'myrtille',
-    avocat:'avocat', banane:'banane', miel:'miel', amandes:'amande'
+    avocat:'avocat', banane:'banane', miel:'miel', amandes:'amande',
+    patate:'patate douce', epinards:'épinard'
   }
   var allyNames = {
     goji:'Goji', curcuma:'Curcuma', gingembre:'Gingembre', myrtille:'Myrtille',
-    avocat:'Avocat', banane:'Banane', miel:'Miel', amandes:'Amandes'
+    avocat:'Avocat', banane:'Banane', miel:'Miel', amandes:'Amandes',
+    patate:'Patate douce', epinards:'Épinards'
   }
   var ingredientNames = []
   var mealKeys = ['matin','petit_dejeuner','midi','dejeuner','soir','diner','pause','collation','apres_midi']

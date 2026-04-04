@@ -98,7 +98,8 @@ export interface PlanGenere {
   message_motivation?: string;
   conseil_du_jour?: string;
   conseils_generaux?: string[];
-  
+  score_nutritionnel?: number;
+
   genere_le: string;
   expire_le?: string;
 }

@@ -35,7 +35,7 @@ import {
   toggleSelectSaved, changerPortionsSaved,
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
-  supprimerRecetteDeListeProfile, changerPortionsListeProfile
+  supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses
 } from './modules/recipes.js'
 import {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin, verifierCheckinDuJour,
@@ -77,7 +77,7 @@ Object.assign(window, {
   toggleSelectSaved, changerPortionsSaved,
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
-  supprimerRecetteDeListeProfile, changerPortionsListeProfile,
+  supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
   // checkin
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique,
