@@ -2,6 +2,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
 import { authFetch } from './auth.js'
 import { afficherToast, setText, fermerConfig, updateObjectifPrincipalBadge, syncAllPreferencesChips } from './ui.js'
 import { syncBesoinsVersProfil, sauvegarderListeCoursesSupabase } from './api.js'
+import { afficherPhotoRecette, chargerPhotoCommunaute } from './photos.js'
 
 // ── Étoiles (plan du jour) ──
 export function afficherEtoiles(score) {
@@ -18,7 +19,7 @@ export function afficherEtoiles(score) {
 export function toggleInstructions(moment, event) {
   if (event) {
     var t = event.target
-    if (t.closest && (t.closest('.recipe-actions') || t.closest('.stepper-btn') || t.closest('.recipe-stars') || t.closest('.save-recipe-btn'))) return
+    if (t.closest && (t.closest('.recipe-actions') || t.closest('.stepper-btn') || t.closest('.recipe-stars') || t.closest('.save-recipe-btn') || t.closest('.photo-btn') || t.closest('.recipe-photo-container'))) return
   }
   var el  = document.getElementById('instructions-' + moment)
   var btn = document.getElementById('btn-' + moment)
@@ -47,6 +48,7 @@ export function buildActionsBar(m) {
       '<span class="stepper-count" id="count-' + m + '">' + st.defaultPortions + '</span>' +
       '<button class="stepper-btn" onclick="changerPortions(\'' + m + '\',1)">+</button>' +
     '</div>' +
+    '<button class="photo-btn" id="photo-btn-' + m + '" onclick="prendrePhoto(\'' + m + '\')" title="Prendre une photo du plat">📸</button>' +
     '<button class="save-recipe-btn" id="save-btn-' + m + '" onclick="sauvegarderRecette(\'' + m + '\')">✅ À faire</button>' +
   '</div>'
 }
@@ -88,6 +90,16 @@ export function renderInstructions(moment, recette) {
       instructions.map(function(s) { return '<li>' + s + '</li>' }).join('') + '</ol>'
   }
   el.innerHTML = timingHtml + ingHtml + stepsHtml + buildActionsBar(moment)
+
+  // Photo du plat : afficher immédiatement si déjà disponible, sinon chercher en communauté
+  var recetteNom = (recette && (recette.nom || recette.titre)) || null
+  if (recette && recette.photo_url) {
+    afficherPhotoRecette(moment, recette.photo_url, false)
+  } else if (recetteNom) {
+    chargerPhotoCommunaute(recetteNom).then(function(url) {
+      if (url) afficherPhotoRecette(moment, url, true)
+    })
+  }
 }
 
 // ── Rendu du panneau détail d'une routine ──
