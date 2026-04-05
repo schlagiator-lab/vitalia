@@ -39,6 +39,10 @@ import {
   formaterReponseAPI,
   formaterErreurAPI
 } from './utils.ts';
+import {
+  verifierRateLimitJournalier,
+  verifierBudgetJournalier,
+} from '../_shared/llm-guard.ts';
 
 // ============================================================================
 // CONFIGURATION
@@ -584,6 +588,27 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // ── PROTECTION COÛTS : rate limit + budget cap ──────────────────────────
+    const [rateLimit, budget] = await Promise.all([
+      verifierRateLimitJournalier(supabase, profil_id),
+      verifierBudgetJournalier(supabase),
+    ]);
+
+    if (!rateLimit.autorise) {
+      console.warn(`[GUARD] Rate limit profil ${profil_id} : ${rateLimit.raison}`);
+      return new Response(
+        JSON.stringify(formaterErreurAPI(rateLimit.raison || 'Limite journalière atteinte', 'RATE_LIMIT')),
+        { status: 429, headers: CORS_HEADERS }
+      );
+    }
+    if (!budget.sousLimite) {
+      console.error(`[GUARD] Budget journalier dépassé : $${budget.coutJour.toFixed(4)}`);
+      return new Response(
+        JSON.stringify(formaterErreurAPI('Service temporairement indisponible, réessayez demain', 'BUDGET_CAP')),
+        { status: 503, headers: CORS_HEADERS }
+      );
+    }
+
     // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
     // Activé si force_regeneration !== true
     // ── Lecture cache ──────────────────────────────────────────────────────
@@ -875,8 +900,8 @@ serve(async (req) => {
     // Lancer pause + motivation + conseil en parallèle (indépendants des recettes)
     const [recettePause, messageMotivation, conseilDuJour] = await Promise.all([
       genererPauseAvecFallback(profil, contexte),
-      genererMessageMotivation(contexte, {}),
-      genererConseilDuJour(contexte)
+      genererMessageMotivation(contexte, {}, profil_id),
+      genererConseilDuJour(contexte, profil_id)
     ]);
 
     // Générer les 3 repas séquentiellement pour passer les noms précédents au LLM

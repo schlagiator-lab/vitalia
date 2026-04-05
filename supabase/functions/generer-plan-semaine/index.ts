@@ -6,6 +6,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifierRateLimitSemaine, verifierBudgetJournalier, loggerAppelLLM } from '../_shared/llm-guard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -332,6 +333,19 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
     if (!response.ok) return { message: fallbackMessage, conseil: fallbackConseil };
 
     const data = await response.json();
+
+    if (data.usage) {
+      const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      loggerAppelLLM(_supaLog, {
+        fonction:  'generer-plan-semaine',
+        appel:     'motivation',
+        model:     ANTHROPIC_MODEL,
+        tokensIn:  data.usage.input_tokens,
+        tokensOut: data.usage.output_tokens,
+        succes:    true,
+      });
+    }
+
     const text = data.content?.[0]?.text || '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -569,6 +583,19 @@ async function genererPlanBatch(
       }
 
       const data = await response.json();
+
+      if (data.usage) {
+        const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        loggerAppelLLM(_supaLog, {
+          fonction:  'generer-plan-semaine',
+          appel:     'batch-7-jours',
+          model:     ANTHROPIC_MODEL,
+          tokensIn:  data.usage.input_tokens,
+          tokensOut: data.usage.output_tokens,
+          succes:    true,
+        });
+      }
+
       const text = data.content?.[0]?.text || '';
 
       // Extraction JSON : chercher le premier { ... } valide
@@ -753,7 +780,28 @@ serve(async (req: Request) => {
       console.warn('[CACHE] Lecture cache semaine échouée (non bloquant):', cacheErr);
     }
 
-    // ── RATE LIMITING : 10 générations/heure, re-génération immédiate possible ──
+    // ── PROTECTION COÛTS : rate limit persistant + budget cap ───────────────
+    const [rateLimit, budget] = await Promise.all([
+      verifierRateLimitSemaine(supabase, profil_id),
+      verifierBudgetJournalier(supabase),
+    ]);
+
+    if (!rateLimit.autorise) {
+      console.warn(`[GUARD] Rate limit semaine profil ${profil_id} : ${rateLimit.raison}`);
+      return new Response(
+        JSON.stringify({ success: false, error: rateLimit.raison || 'Limite hebdomadaire atteinte.' }),
+        { status: 429, headers: CORS_HEADERS }
+      );
+    }
+    if (!budget.sousLimite) {
+      console.error(`[GUARD] Budget journalier dépassé : $${budget.coutJour.toFixed(4)}`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Service temporairement indisponible, réessayez demain.' }),
+        { status: 503, headers: CORS_HEADERS }
+      );
+    }
+
+    // ── RATE LIMITING en mémoire (garde-fou secondaire sur burst) ────────────
     if (!checkPlanRateLimit(profil_id)) {
       console.warn(`[RATE LIMIT] profil ${profil_id} a dépassé ${PLAN_RATE_LIMIT_MAX} générations/heure`);
       return new Response(

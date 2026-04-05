@@ -11,6 +11,7 @@ import {
   ContexteUtilisateur
 } from './types.ts';
 import { calculerNutritionReelle } from './utils.ts';
+import { loggerAppelLLM } from '../_shared/llm-guard.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -165,6 +166,21 @@ export async function genererRecetteLLM(
       }
 
       const data = await response.json();
+
+      // Log tokens (fire-and-forget)
+      if (data.usage) {
+        const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        loggerAppelLLM(_supaLog, {
+          profilId:  profil.id,
+          fonction:  'generer-plan',
+          appel:     'recette-' + typeRepas,
+          model:     ANTHROPIC_MODEL,
+          tokensIn:  data.usage.input_tokens,
+          tokensOut: data.usage.output_tokens,
+          succes:    true,
+        });
+      }
+
       // tool_use : l'API garantit un JSON valide — pas de regex fragile
       const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
       const recetteJSON = toolUse?.input;
@@ -453,6 +469,21 @@ export async function genererPauseLLM(
     }
 
     const data = await response.json();
+
+    // Log tokens (fire-and-forget)
+    if (data.usage) {
+      const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      loggerAppelLLM(_supaLog, {
+        profilId:  profil.id,
+        fonction:  'generer-plan',
+        appel:     'pause',
+        model:     ANTHROPIC_MODEL,
+        tokensIn:  data.usage.input_tokens,
+        tokensOut: data.usage.output_tokens,
+        succes:    true,
+      });
+    }
+
     const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
     const pauseJSON = toolUse?.input;
 
@@ -476,7 +507,8 @@ export async function genererPauseLLM(
 
 export async function genererMessageMotivation(
   contexte: ContexteUtilisateur,
-  planGenere: any
+  planGenere: any,
+  profilId?: string
 ): Promise<string> {
   
   console.log('[NIVEAU 3] Génération message motivation...');
@@ -519,8 +551,22 @@ Règles :
     }
     
     const data = await response.json();
+
+    if (data.usage) {
+      const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      loggerAppelLLM(_supaLog, {
+        profilId,
+        fonction:  'generer-plan',
+        appel:     'motivation',
+        model:     ANTHROPIC_MODEL,
+        tokensIn:  data.usage.input_tokens,
+        tokensOut: data.usage.output_tokens,
+        succes:    true,
+      });
+    }
+
     const message = data.content?.[0]?.text?.trim() || "Prends soin de toi ! 🌿";
-    
+
     console.log(`[NIVEAU 3] Message : ${message}`);
     return message;
     
@@ -535,7 +581,8 @@ Règles :
 // ============================================================================
 
 export async function genererConseilDuJour(
-  contexte: ContexteUtilisateur
+  contexte: ContexteUtilisateur,
+  profilId?: string
 ): Promise<string> {
 
   console.log('[NIVEAU 3] Génération conseil du jour...');
@@ -596,6 +643,20 @@ Règles STRICTES :
     if (!response.ok) return fallback;
 
     const data = await response.json();
+
+    if (data.usage) {
+      const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      loggerAppelLLM(_supaLog, {
+        profilId,
+        fonction:  'generer-plan',
+        appel:     'conseil-du-jour',
+        model:     ANTHROPIC_MODEL,
+        tokensIn:  data.usage.input_tokens,
+        tokensOut: data.usage.output_tokens,
+        succes:    true,
+      });
+    }
+
     const conseil = data.content?.[0]?.text?.trim() || fallback;
     console.log(`[NIVEAU 3] Conseil du jour : ${conseil}`);
     return conseil;
