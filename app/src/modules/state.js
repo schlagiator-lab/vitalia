@@ -60,6 +60,9 @@ export const st = {
   savedSelected:  {},
   savedServings:  {},
 
+  // Favoris — portions
+  favoriServings: {},
+
   // Liste de courses (modale semaine)
   coursesChecked:       {},
   _coursesIngredients:  [],

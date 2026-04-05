@@ -338,6 +338,14 @@ export function afficherFavoris() {
       return '<div style="display:flex;gap:10px;margin-bottom:8px;"><span style="flex-shrink:0;width:20px;height:20px;background:var(--terracotta);color:white;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (si+1) + '</span><span style="font-size:13px;color:var(--deep-brown);line-height:1.5;">' + step + '</span></div>'
     }).join('')
 
+    var basePortions = r.portions || r.nb_personnes || 2
+    st.favoriServings[i] = basePortions
+    var portionsHtml = '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--text-light);">Portions</span>' +
+      '<button onclick="changerPortionsFavori(' + i + ',-1);event.stopPropagation();" style="width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(232,184,75,0.4);background:var(--cream);color:var(--mid-brown,#b8942a);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>' +
+      '<span id="fav-portions-' + i + '" style="font-size:13px;font-weight:600;color:var(--deep-brown);min-width:20px;text-align:center;">' + basePortions + '</span>' +
+      '<button onclick="changerPortionsFavori(' + i + ',1);event.stopPropagation();" style="width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(232,184,75,0.4);background:var(--cream);color:var(--mid-brown,#b8942a);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>' +
+      '</div>'
+
     return '<div style="background:var(--warm-white);border-radius:16px;border:1.5px solid rgba(232,184,75,0.3);overflow:hidden;">' +
            '  <div onclick="toggleSavedRecette(\'' + rid + '\')" style="padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
            '    <div style="flex:1;min-width:0;">' +
@@ -356,8 +364,8 @@ export function afficherFavoris() {
              (prep > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(196,113,74,0.08);border:1px solid rgba(196,113,74,0.18);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--terracotta);font-weight:500;">⏱ ' + prep + ' min prép.</span>' : '') +
              (cook > 0 ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(232,184,75,0.1);border:1px solid rgba(232,184,75,0.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--mid-brown);font-weight:500;">🔥 ' + cook + ' min cuisson</span>' : '') +
            '</div>' : '') +
-           (ingredients ? '<div style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
-           instructions +
+           (ingredients ? '<div id="fav-ingredients-' + i + '" data-portions="' + (r.portions || 2) + '" style="margin-bottom:12px;">' + ingredients + '</div>' : '') +
+           instructions + portionsHtml +
            '    <div style="display:flex;gap:8px;margin-top:12px;">' +
            '      <button id="fav-photo-btn-' + i + '" onclick="prendrePhotoSauvegardee(' + i + ',\'fav\');event.stopPropagation();" style="background:rgba(232,184,75,0.1);border:1.5px solid rgba(232,184,75,0.3);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--mid-brown,#b8942a);cursor:pointer;">📸</button>' +
            '      <button onclick="ajouterFavoriAuxCourses(' + i + ');event.stopPropagation();" style="flex:1;background:rgba(122,158,126,0.1);border:1.5px solid rgba(122,158,126,0.35);border-radius:10px;padding:8px;font-size:12px;color:var(--sage,#7a9e7e);font-weight:600;cursor:pointer;">🛒 Ajouter aux courses</button>' +
@@ -414,9 +422,13 @@ export function ajouterFavoriAuxCourses(idx) {
   try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
   var r = favs[idx]
   if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) { afficherToast('Pas d\'ingrédients à ajouter'); return }
+  var basePortions = r.portions || r.nb_personnes || 2
+  var portions = st.favoriServings[idx] || basePortions
+  var ratio = portions / Math.max(basePortions, 1)
   var nouveaux = r.ingredients.map(function(ing) {
     if (typeof ing === 'string') return { nom: ing, quantite: null, unite: 'g' }
-    return { nom: ing.nom || ing.name || ing, quantite: ing.quantite || null, unite: ing.unite || 'g' }
+    var qty = ing.quantite ? Math.round(ing.quantite * ratio) : null
+    return { nom: ing.nom || ing.name || ing, quantite: qty, unite: ing.unite || 'g' }
   }).filter(function(ing) { return ing.nom })
   var existing = null
   try { existing = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null') } catch(e) {}
@@ -430,7 +442,7 @@ export function ajouterFavoriAuxCourses(idx) {
   var recettes    = (existing && existing.recettes) ? existing.recettes : []
   var nomRecette  = r.nom || r.titre || ''
   if (nomRecette && !recettes.find(function(x) { return (x.nom || '').toLowerCase() === nomRecette.toLowerCase() })) {
-    recettes.push({ nom: nomRecette, type: 'favori', id: idx, portions: 2, basePortions: 2, ingredients: nouveaux })
+    recettes.push({ nom: nomRecette, type: 'favori', id: idx, portions: portions, basePortions: basePortions, ingredients: nouveaux })
   }
   try { localStorage.setItem('vitalia_liste_courses', JSON.stringify({ date: existing && existing.date ? existing.date : new Date().toISOString(), ingredients: liste, recettes: recettes })) } catch(e) {}
   sauvegarderListeCoursesSupabase()
@@ -601,6 +613,34 @@ export function changerPortionsSaved(idx, delta) {
     } catch(e) {}
   }
   if (st.savedSelected[idx]) import('./plan.js').then(function(m) { m.afficherBoutonListeCourses && m.afficherBoutonListeCourses() })
+}
+
+export function changerPortionsFavori(idx, delta) {
+  if (st.favoriServings[idx] == null) {
+    try {
+      var _list = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]')
+      var _r = _list[idx]
+      st.favoriServings[idx] = (_r && (_r.portions || _r.nb_personnes)) || 2
+    } catch(e) { st.favoriServings[idx] = 2 }
+  }
+  st.favoriServings[idx] = Math.max(1, Math.min(8, st.favoriServings[idx] + delta))
+  var el = document.getElementById('fav-portions-' + idx)
+  if (el) el.textContent = st.favoriServings[idx]
+  var ingContainer = document.getElementById('fav-ingredients-' + idx)
+  if (ingContainer) {
+    try {
+      var favList = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]')
+      var r = favList[idx]
+      if (r && Array.isArray(r.ingredients)) {
+        var basePortions = parseFloat(ingContainer.dataset.portions) || r.portions || 2
+        var ratio        = st.favoriServings[idx] / Math.max(basePortions, 1)
+        ingContainer.innerHTML = r.ingredients.map(function(i) {
+          var qty = i.quantite ? Math.round(i.quantite * ratio) : null
+          return '<span style="display:inline-block;background:var(--cream);border-radius:8px;padding:3px 8px;font-size:12px;margin:2px;">' + (i.nom || i.name || i) + (qty ? ' ' + qty + '\u202f' + (i.unite || 'g') : '') + '</span>'
+        }).join('')
+      }
+    } catch(e) {}
+  }
 }
 
 // ── Liste de courses dans l'onglet À faire ──
