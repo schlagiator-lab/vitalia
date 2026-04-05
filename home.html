@@ -153,6 +153,31 @@
       <!-- sourire -->
       <path d="M34 57 Q40 62 46 57" stroke="#92400E" stroke-width="2" fill="none" stroke-linecap="round"/>
     </symbol>
+    <symbol id="mascot-cannelle" viewBox="0 0 80 80">
+      <!-- Bâton de Cannelle de Ceylan : couches fines enroulées -->
+      <!-- Corps cylindrique -->
+      <rect x="14" y="37" width="52" height="26" rx="13" fill="#92400E"/>
+      <rect x="14" y="35" width="52" height="26" rx="13" fill="#B45309"/>
+      <!-- Couches fines (signature Ceylan) -->
+      <path d="M14 41 Q40 37 66 41" stroke="#92400E" stroke-width="1.5" fill="none"/>
+      <path d="M14 47 Q40 43 66 47" stroke="#92400E" stroke-width="1.5" fill="none"/>
+      <path d="M14 53 Q40 49 66 53" stroke="#92400E" stroke-width="1.5" fill="none"/>
+      <!-- Extrémités spiralées -->
+      <ellipse cx="14" cy="48" rx="5" ry="13" fill="#78350F"/>
+      <ellipse cx="66" cy="48" rx="5" ry="13" fill="#78350F"/>
+      <!-- Petite branche / tige -->
+      <path d="M39 19 L39 35" stroke="#78350F" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="39" cy="18" rx="5" ry="6" fill="#15803D"/>
+      <ellipse cx="39" cy="17" rx="3" ry="4" fill="#16A34A"/>
+      <!-- Yeux -->
+      <circle cx="32" cy="45" r="3.5" fill="#1C0A00"/><circle cx="48" cy="45" r="3.5" fill="#1C0A00"/>
+      <circle cx="33" cy="44" r="1.2" fill="white"/><circle cx="49" cy="44" r="1.2" fill="white"/>
+      <!-- Sourire -->
+      <path d="M32 52 Q40 58 48 52" stroke="#1C0A00" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <!-- Joues -->
+      <circle cx="25" cy="50" r="4" fill="rgba(251,146,60,0.3)"/>
+      <circle cx="55" cy="50" r="4" fill="rgba(251,146,60,0.3)"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -478,6 +503,10 @@
         <div class="companion-chip" onclick="ouvrirAlly('epinards')">
           <div class="companion-avatar" id="ally-epinards" style="background:linear-gradient(135deg,#DCFCE7,#86EFAC)"><svg width="40" height="40"><use href="#mascot-epinards"/></svg></div>
           <div class="companion-name">Épinards</div>
+        </div>
+        <div class="companion-chip" onclick="ouvrirAlly('cannelle')">
+          <div class="companion-avatar" id="ally-cannelle" style="background:linear-gradient(135deg,#FEF3C7,#FDBA74)"><svg width="40" height="40"><use href="#mascot-cannelle"/></svg></div>
+          <div class="companion-name">Cannelle Ceylan</div>
         </div>
       </div>
     </div>
@@ -916,6 +945,26 @@
         <span class="atfaire-card-arrow">›</span>
       </div>
 
+      <div class="atfaire-card atfaire-card-techniques" onclick="ouvrirSheet('techniques')">
+        <span class="atfaire-card-icon">🔪</span>
+        <div class="atfaire-card-title">Techniques culinaires</div>
+        <div class="atfaire-card-sub">Comprendre les gestes essentiels de la cuisine</div>
+        <span class="atfaire-card-arrow">›</span>
+      </div>
+
+      <div class="atfaire-card atfaire-card-conseils" onclick="ouvrirSheet('groupesanguin')">
+        <span class="atfaire-card-icon">🩸</span>
+        <div class="atfaire-card-title">Régimes Groupe Sanguin</div>
+        <div class="atfaire-card-sub">O · A · B · AB · Résumé comparatif</div>
+        <span class="atfaire-card-arrow">›</span>
+      </div>
+
+      <div class="atfaire-card atfaire-card-acidobasic" onclick="ouvrirSheet('acidobasic')">
+        <span class="atfaire-card-icon">⚖️</span>
+        <div class="atfaire-card-title">Équilibre Acido-Basique</div>
+        <div class="atfaire-card-sub">Alcalinisants · neutres · acidifiants — par aliment et par famille</div>
+        <span class="atfaire-card-arrow">›</span>
+      </div>
 
     </div>
 
@@ -977,6 +1026,634 @@
     </div>
   </div>
 
+
+  <!-- ── Sheet : Régimes Groupe Sanguin ── -->
+  <div class="bottom-sheet" id="sheet-groupesanguin">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🩸 Régimes Groupe Sanguin</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- Onglets -->
+      <div class="bloodtype-tabs">
+        <button class="bloodtype-tab-btn active" id="bt-tab-o"      onclick="switchBloodtypeTab('o')">O</button>
+        <button class="bloodtype-tab-btn"         id="bt-tab-a"      onclick="switchBloodtypeTab('a')">A</button>
+        <button class="bloodtype-tab-btn"         id="bt-tab-b"      onclick="switchBloodtypeTab('b')">B</button>
+        <button class="bloodtype-tab-btn"         id="bt-tab-ab"     onclick="switchBloodtypeTab('ab')">AB</button>
+        <button class="bloodtype-tab-btn"         id="bt-tab-resume" onclick="switchBloodtypeTab('resume')">Résumé</button>
+      </div>
+
+      <!-- Légende commune -->
+      <div class="bloodtype-legend">
+        <div class="bloodtype-legend-item"><div class="bloodtype-legend-dot b"></div>✅ Bénéfique</div>
+        <div class="bloodtype-legend-item"><div class="bloodtype-legend-dot n"></div>⚪ Neutre</div>
+        <div class="bloodtype-legend-item"><div class="bloodtype-legend-dot e"></div>❌ À éviter</div>
+      </div>
+
+      <!-- ═══════════ GROUPE O ═══════════ -->
+      <div id="bt-content-o">
+        <div class="bloodtype-intro"><strong>Le Chasseur — Régime riche en protéines animales.</strong> Privilégier viandes, poissons, légumes. Limiter céréales, légumineuses et produits laitiers.<br><span style="opacity:0.7;">Source : Dr. Peter D'Adamo — <em>Eat Right 4 Your Type</em></span></div>
+        <div class="bloodtype-category"><details><summary>🥩 Viandes &amp; Volailles</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Bœuf</span><span>Agneau</span><span>Mouton</span><span>Veau</span><span>Bison/Buffle</span><span>Chevreuil/Venaison</span><span>Cœur</span><span>Foie de veau</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Poulet</span><span>Dinde</span><span>Canard</span><span>Oie</span><span>Faisan</span><span>Perdrix</span><span>Lapin</span><span>Autruche</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Porc</span><span>Bacon</span><span>Jambon</span><span>Caille</span><span>Tortue</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🐟 Poissons &amp; Fruits de mer</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Bar/Loup</span><span>Cabillaud/Morue</span><span>Flétan</span><span>Perche</span><span>Brochet</span><span>Vivaneau rouge</span><span>Alose</span><span>Sole</span><span>Esturgeon</span><span>Espadon</span><span>Truite arc-en-ciel</span><span>Thon germon</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Anchois</span><span>Carpe</span><span>Hareng frais</span><span>Saumon frais</span><span>Sardine</span><span>Maquereau</span><span>Dorade</span><span>Mérou</span><span>Crevette</span><span>Moule</span><span>Huître</span><span>Homard</span><span>Crabe</span><span>Pétoncle</span><span>Escargot</span><span>Requin</span><span>Tilapia</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Poisson-chat</span><span>Hareng fumé/mariné</span><span>Saumon fumé</span><span>Poulpe</span><span>Calmar</span><span>Barracuda</span><span>Grenouille</span><span>Ormeau</span><span>Conque</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥛 Produits laitiers &amp; Œufs</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Beurre</span><span>Ghee</span><span>Fromage de chèvre</span><span>Feta</span><span>Mozzarella</span><span>Fromage fermier</span><span>Œufs de poule</span><span>Œufs de canard</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Lait de vache</span><span>Lait de chèvre</span><span>Yaourt</span><span>Kéfir</span><span>Crème fraîche</span><span>Glace</span><span>Babeurre</span><span>Petit-lait (whey)</span><span>Fromage américain</span><span>Bleu</span><span>Brie</span><span>Camembert</span><span>Cheddar</span><span>Cottage</span><span>Edam</span><span>Emmental</span><span>Gouda</span><span>Gruyère</span><span>Parmesan</span><span>Provolone</span><span>Ricotta</span><span>Suisse</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫒 Huiles &amp; Graisses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Huile d'olive</span><span>Huile de lin</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Huile d'amande</span><span>Huile de sésame</span><span>Huile de noix</span><span>Huile de colza</span><span>Huile de foie de morue</span><span>Huile de bourrache</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Huile de maïs</span><span>Huile de coton</span><span>Huile d'arachide</span><span>Huile de carthame</span><span>Huile de tournesol</span><span>Huile de soja</span><span>Huile de coco</span><span>Huile d'avocat</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥜 Noix &amp; Graines</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Noix</span><span>Graines de lin</span><span>Graines de courge</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amandes</span><span>Beurre d'amande</span><span>Noisettes</span><span>Noix de macadamia</span><span>Noix de pécan</span><span>Pignons de pin</span><span>Graines de sésame</span><span>Tahini</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Noix de cajou</span><span>Cacahuètes</span><span>Beurre de cacahuète</span><span>Pistaches</span><span>Noix du Brésil</span><span>Graines de tournesol</span><span>Graines de pavot</span><span>Châtaignes</span><span>Litchi</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫘 Légumineuses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Haricots azuki</span><span>Haricots pinto</span><span>Haricots à œil noir</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Haricots noirs</span><span>Haricots blancs (cannellini)</span><span>Fèves</span><span>Pois chiches</span><span>Haricots de Lima</span><span>Haricots mungo</span><span>Lentilles</span><span>Soja (tofu, tempeh, miso)</span><span>Petits pois</span><span>Pois mange-tout</span><span>Haricots verts</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Haricots rouges (kidney)</span><span>Haricots blancs (navy)</span><span>Haricots cuivrés</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🌾 Céréales &amp; Pains</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Pain Essene / céréales germées</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amarante</span><span>Sarrasin/Kasha</span><span>Épeautre</span><span>Millet</span><span>Avoine (flocons, son)</span><span>Riz (complet, blanc, basmati)</span><span>Quinoa</span><span>Pain de riz complet</span><span>Pain Ezekiel</span><span>Galettes de riz</span><span>Pain sans gluten</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Blé (tous produits)</span><span>Maïs (tous produits)</span><span>Orge</span><span>Seigle</span><span>Pain complet de blé</span><span>Pain multicéréales</span><span>Pumpernickel</span><span>Semoule</span><span>Couscous</span><span>Crème de blé</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥦 Légumes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Artichaut</span><span>Brocoli</span><span>Chou frisé (kale)</span><span>Épinards</span><span>Blettes</span><span>Chou cavalier</span><span>Chicorée</span><span>Scarole</span><span>Oignon (tous)</span><span>Patate douce</span><span>Potiron/Courge</span><span>Poivron rouge</span><span>Piment de Cayenne</span><span>Panais</span><span>Betterave (feuilles)</span><span>Pissenlit</span><span>Topinambour</span><span>Gombo</span><span>Laitue romaine</span><span>Navet</span><span>Algues/Kelp</span><span>Gingembre frais</span><span>Persil</span><span>Raifort</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Asperge</span><span>Roquette</span><span>Carotte</span><span>Céleri</span><span>Courgette</span><span>Aubergine</span><span>Ail</span><span>Fenouil</span><span>Endive</span><span>Tomate</span><span>Radis daïkon</span><span>Chou</span><span>Poivron (vert, jaune)</span><span>Jalapeño</span><span>Olive verte</span><span>Échalote</span><span>Oignon vert</span><span>Cresson</span><span>Igname</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Avocat</span><span>Chou-fleur</span><span>Maïs</span><span>Concombre</span><span>Poireau</span><span>Champignons</span><span>Moutarde (feuilles)</span><span>Olive noire</span><span>Pomme de terre (toutes)</span><span>Germes de luzerne</span><span>Taro</span><span>Yucca</span><span>Rhubarbe</span><span>Câpres</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍎 Fruits</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Myrtille</span><span>Cerise</span><span>Figue (fraîche/séchée)</span><span>Goyave</span><span>Prune</span><span>Pruneau</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Pomme</span><span>Abricot</span><span>Banane</span><span>Mangue</span><span>Raisin</span><span>Pamplemousse</span><span>Citron</span><span>Citron vert</span><span>Ananas</span><span>Poire</span><span>Pêche</span><span>Nectarine</span><span>Papaye</span><span>Framboise</span><span>Fraise</span><span>Pastèque</span><span>Grenade</span><span>Canneberge</span><span>Datte</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Orange</span><span>Mandarine</span><span>Kiwi</span><span>Melon cantaloup</span><span>Melon miel</span><span>Mûre</span><span>Noix de coco</span><span>Avocat</span><span>Plantain</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍵 Boissons &amp; Tisanes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Thé vert</span><span>Eau gazeuse/Seltz</span><span>Tisane de gingembre</span><span>Tisane de pissenlit</span><span>Tisane de fenugrec</span><span>Tisane d'églantier</span><span>Tisane de menthe poivrée</span><span>Tisane de réglisse</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Vin rouge</span><span>Bière*</span><span>Vin blanc*</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Café</span><span>Thé noir</span><span>Sodas (tous)</span><span>Alcools forts</span><span>Tisane de luzerne</span><span>Tisane d'aloès</span><span>Tisane d'échinacée</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🧂 Épices &amp; Condiments</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Curcuma</span><span>Curry</span><span>Piment de Cayenne</span><span>Persil</span><span>Caroube</span><span>Dulse</span><span>Raifort</span><span>Kelp/Algue</span><span>Miso</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Ail</span><span>Basilic</span><span>Origan</span><span>Thym</span><span>Romarin</span><span>Sauge</span><span>Aneth</span><span>Cumin</span><span>Cannelle</span><span>Clou de girofle</span><span>Paprika</span><span>Safran</span><span>Miel</span><span>Sirop d'érable</span><span>Mélasse</span><span>Chocolat</span><span>Sel</span><span>Moutarde sèche</span><span>Vinaigre de cidre</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Poivre noir</span><span>Poivre blanc</span><span>Noix de muscade</span><span>Macis</span><span>Ketchup</span><span>Mayonnaise</span><span>Vinaigre (sauf cidre)</span><span>Cornichons</span><span>Sauce Worcestershire</span><span>Sirop de maïs</span><span>Fécule de maïs</span></div></div>
+        </div></details></div>
+      </div>
+
+      <!-- ═══════════ GROUPE A ═══════════ -->
+      <div id="bt-content-a" style="display:none">
+        <div class="bloodtype-intro"><strong>Le Cultivateur — Régime principalement végétarien.</strong> Privilégier légumes, fruits, légumineuses, céréales complètes, soja et poisson. Limiter viande et produits laitiers.<br><span style="opacity:0.7;">Source : Dr. Peter D'Adamo — <em>Eat Right 4 Your Type</em></span></div>
+        <div class="bloodtype-category"><details><summary>🥩 Viandes &amp; Volailles</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Poulet</span><span>Dinde</span><span>Poule de Cornouailles</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Bœuf</span><span>Agneau</span><span>Mouton</span><span>Porc</span><span>Bacon</span><span>Jambon</span><span>Veau</span><span>Chevreuil</span><span>Canard</span><span>Oie</span><span>Lapin</span><span>Foie</span><span>Cœur</span><span>Perdrix</span><span>Faisan</span><span>Caille</span><span>Bison</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🐟 Poissons &amp; Fruits de mer</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Carpe</span><span>Cabillaud/Morue</span><span>Maquereau</span><span>Saumon frais</span><span>Sardine</span><span>Truite arc-en-ciel</span><span>Escargot</span><span>Perche jaune</span><span>Vivaneau rouge</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Mérou</span><span>Lotte</span><span>Doré</span><span>Truite de mer</span><span>Perche argentée</span><span>Merlan</span><span>Thon germon</span><span>Mahi-mahi</span><span>Perche de mer</span><span>Brochet</span><span>Dorade</span><span>Poisson-voile</span><span>Requin</span><span>Éperlan</span><span>Esturgeon</span><span>Espadon</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Anchois</span><span>Barracuda</span><span>Poisson-chat</span><span>Palourde</span><span>Conque</span><span>Crabe</span><span>Écrevisse</span><span>Anguille</span><span>Grenouille</span><span>Hareng</span><span>Homard</span><span>Saumon fumé</span><span>Moule</span><span>Poulpe</span><span>Huître</span><span>Crevette</span><span>Calmar</span><span>Sole grise</span><span>Bar rayé</span><span>Flétan</span><span>Églefin</span><span>Colin</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥛 Produits laitiers &amp; Œufs</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Fromage de soja</span><span>Lait de soja</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Fromage fermier</span><span>Feta</span><span>Fromage de chèvre</span><span>Lait de chèvre</span><span>Kéfir</span><span>Mozzarella allégée</span><span>Ricotta allégée</span><span>Yaourt</span><span>Œufs</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Lait de vache</span><span>Beurre</span><span>Babeurre</span><span>Crème fraîche</span><span>Glace</span><span>Petit-lait (whey)</span><span>Caséine</span><span>Fromage américain</span><span>Bleu</span><span>Brie</span><span>Camembert</span><span>Cheddar</span><span>Colby</span><span>Cottage</span><span>Edam</span><span>Emmental</span><span>Gouda</span><span>Gruyère</span><span>Parmesan</span><span>Provolone</span><span>Neufchâtel</span><span>Suisse</span><span>Sorbet</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫒 Huiles &amp; Graisses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Huile d'olive</span><span>Huile de lin</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Huile de colza</span><span>Huile de foie de morue</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Huile de maïs</span><span>Huile de coton</span><span>Huile d'arachide</span><span>Huile de carthame</span><span>Huile de sésame</span><span>Huile de tournesol</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥜 Noix &amp; Graines</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Cacahuètes</span><span>Beurre de cacahuète</span><span>Graines de courge</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amandes</span><span>Beurre d'amande</span><span>Châtaignes</span><span>Noisettes</span><span>Noix de macadamia</span><span>Pignons de pin</span><span>Graines de pavot</span><span>Graines de sésame</span><span>Tahini</span><span>Graines de tournesol</span><span>Noix</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Noix du Brésil</span><span>Noix de cajou</span><span>Pistaches</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫘 Légumineuses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Haricots azuki</span><span>Haricots noirs</span><span>Haricots verts</span><span>Haricots pinto</span><span>Soja rouge</span><span>Lentilles (toutes)</span><span>Haricots à œil noir</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Haricots blancs (cannellini)</span><span>Fèves</span><span>Petits pois</span><span>Pois mange-tout</span><span>Jicama</span><span>Haricots verts fins</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Haricots cuivrés</span><span>Pois chiches</span><span>Haricots rouges (kidney)</span><span>Haricots de Lima</span><span>Haricots blancs (navy)</span><span>Tamarin</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🌾 Céréales &amp; Pains</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Amarante</span><span>Sarrasin/Kasha</span><span>Pain Essene</span><span>Pain Ezekiel</span><span>Galettes de riz</span><span>Pain de soja</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Orge</span><span>Maïs (corn flakes, polenta)</span><span>Épeautre</span><span>Millet</span><span>Avoine (flocons, son)</span><span>Riz (complet, blanc, basmati)</span><span>Kamut</span><span>Quinoa</span><span>Couscous</span><span>Pain de riz complet</span><span>Pain de seigle 100%</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Blé (tous produits)</span><span>Pain complet de blé</span><span>Pain multicéréales</span><span>Pumpernickel</span><span>Crème de blé</span><span>Farine de blé</span><span>Granola</span><span>Son de blé</span><span>Germe de blé</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥦 Légumes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Artichaut</span><span>Topinambour</span><span>Brocoli</span><span>Carotte</span><span>Chicorée</span><span>Chou cavalier</span><span>Pissenlit</span><span>Scarole</span><span>Ail</span><span>Raifort</span><span>Chou frisé (kale)</span><span>Chou-rave</span><span>Poireau</span><span>Laitue romaine</span><span>Gombo</span><span>Oignon (rouge, espagnol, jaune)</span><span>Persil</span><span>Panais</span><span>Potiron</span><span>Épinards</span><span>Germes de luzerne</span><span>Blettes</span><span>Tempeh</span><span>Tofu</span><span>Navet</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Roquette</span><span>Asperge</span><span>Avocat</span><span>Betterave</span><span>Bok choy</span><span>Chou-fleur</span><span>Céleri</span><span>Concombre</span><span>Radis daïkon</span><span>Endive</span><span>Fenouil</span><span>Courgette</span><span>Moutarde (feuilles)</span><span>Olive verte</span><span>Oignon vert</span><span>Radicchio</span><span>Radis</span><span>Rutabaga</span><span>Échalote</span><span>Cresson</span><span>Courge</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Chou (chinois, rouge, blanc)</span><span>Aubergine</span><span>Haricots de Lima</span><span>Champignon (commun, shiitake)</span><span>Olive noire</span><span>Poivron (tous)</span><span>Pomme de terre (douce, rouge, blanche)</span><span>Tomate</span><span>Igname</span><span>Maïs</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍎 Fruits</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Abricot</span><span>Mûre</span><span>Myrtille</span><span>Cerise</span><span>Canneberge</span><span>Figue (fraîche/séchée)</span><span>Pamplemousse</span><span>Citron</span><span>Ananas</span><span>Prune</span><span>Pruneau</span><span>Raisin sec</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Pomme</span><span>Datte</span><span>Raisin</span><span>Kiwi</span><span>Citron vert</span><span>Melon</span><span>Nectarine</span><span>Pêche</span><span>Poire</span><span>Grenade</span><span>Framboise</span><span>Fraise</span><span>Pastèque</span><span>Groseille</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Banane</span><span>Noix de coco</span><span>Mangue</span><span>Melon cantaloup</span><span>Melon miel</span><span>Orange</span><span>Papaye</span><span>Plantain</span><span>Mandarine</span><span>Rhubarbe</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍵 Boissons &amp; Tisanes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Café (régulier &amp; décaféiné)</span><span>Thé vert</span><span>Vin rouge</span><span>Tisane de luzerne</span><span>Tisane d'aloès</span><span>Tisane de bardane</span><span>Tisane de camomille</span><span>Tisane d'échinacée</span><span>Tisane de fenugrec</span><span>Tisane de gingembre</span><span>Tisane de ginseng</span><span>Tisane de chardon-Marie</span><span>Tisane d'églantier</span><span>Tisane de millepertuis</span><span>Tisane de valériane</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Vin blanc</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Bière</span><span>Alcools forts</span><span>Thé noir</span><span>Eau de Seltz</span><span>Sodas (tous)</span><span>Tisane de cataire</span><span>Tisane de soie de maïs</span><span>Tisane de trèfle rouge</span><span>Tisane de rhubarbe</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🧂 Épices &amp; Condiments</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Mélasse noire</span><span>Ail</span><span>Gingembre</span><span>Kelp/Algue</span><span>Miso</span><span>Sauce soja</span><span>Tamari</span><span>Sirop d'érable</span><span>Marjolaine</span><span>Menthe</span><span>Moutarde sèche</span><span>Noix de muscade</span><span>Origan</span><span>Paprika</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Basilic</span><span>Laurier</span><span>Aneth</span><span>Cumin</span><span>Cannelle</span><span>Clou de girofle</span><span>Coriandre</span><span>Ciboulette</span><span>Persil</span><span>Romarin</span><span>Sauge</span><span>Thym</span><span>Curcuma</span><span>Safran</span><span>Sel</span><span>Miel</span><span>Sucre</span><span>Chocolat</span><span>Caroube</span><span>Fécule de maïs</span><span>Vanille</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Câpres</span><span>Gélatine</span><span>Poivre (noir, blanc, Cayenne, piment)</span><span>Vinaigre (tous)</span><span>Ketchup</span><span>Mayonnaise</span><span>Sauce Worcestershire</span></div></div>
+        </div></details></div>
+      </div>
+
+      <!-- ═══════════ GROUPE B ═══════════ -->
+      <div id="bt-content-b" style="display:none">
+        <div class="bloodtype-intro"><strong>Le Nomade — Régime varié et équilibré.</strong> Peut tolérer viande, produits laitiers, céréales, légumes et fruits. Éviter poulet, maïs, blé, sarrasin et cacahuètes.<br><span style="opacity:0.7;">Source : Dr. Peter D'Adamo — <em>Eat Right 4 Your Type</em></span></div>
+        <div class="bloodtype-category"><details><summary>🥩 Viandes &amp; Volailles</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Agneau</span><span>Mouton</span><span>Lapin</span><span>Chevreuil/Venaison</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Bœuf</span><span>Bison/Buffle</span><span>Foie</span><span>Faisan</span><span>Dinde</span><span>Veau</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Poulet</span><span>Poule de Cornouailles</span><span>Canard</span><span>Oie</span><span>Cœur</span><span>Perdrix</span><span>Porc</span><span>Bacon</span><span>Jambon</span><span>Caille</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🐟 Poissons &amp; Fruits de mer</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Cabillaud/Morue</span><span>Flet/Plie</span><span>Mérou</span><span>Églefin</span><span>Colin</span><span>Flétan</span><span>Maquereau</span><span>Mahi-mahi</span><span>Lotte</span><span>Perche de mer</span><span>Doré</span><span>Brochet</span><span>Dorade</span><span>Saumon frais</span><span>Sardine</span><span>Truite de mer</span><span>Alose</span><span>Sole</span><span>Esturgeon</span><span>Caviar</span><span>Éperlan</span><span>Vivaneau</span><span>Requin</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Thon germon</span><span>Poisson bleu</span><span>Carpe</span><span>Poisson-chat</span><span>Hareng (frais et mariné)</span><span>Truite arc-en-ciel</span><span>Vivaneau rouge</span><span>Poisson-voile</span><span>Pétoncle</span><span>Perche argentée</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Anchois</span><span>Barracuda</span><span>Palourde</span><span>Conque</span><span>Crabe</span><span>Écrevisse</span><span>Anguille</span><span>Grenouille</span><span>Homard</span><span>Saumon fumé</span><span>Moule</span><span>Poulpe</span><span>Huître</span><span>Bar de mer</span><span>Crevette</span><span>Escargot</span><span>Bar rayé</span><span>Tortue</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥛 Produits laitiers &amp; Œufs</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Cottage cheese</span><span>Fromage fermier</span><span>Feta</span><span>Fromage de chèvre</span><span>Lait de chèvre</span><span>Kéfir</span><span>Mozzarella</span><span>Ricotta</span><span>Lait écrémé/demi-écrémé</span><span>Yaourt</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Beurre</span><span>Babeurre</span><span>Brie</span><span>Camembert</span><span>Cheddar</span><span>Colby</span><span>Crème (fromage)</span><span>Edam</span><span>Emmental</span><span>Gouda</span><span>Gruyère</span><span>Monterey Jack</span><span>Münster</span><span>Neufchâtel</span><span>Parmesan</span><span>Provolone</span><span>Sorbet</span><span>Suisse</span><span>Petit-lait (whey)</span><span>Lait entier</span><span>Œufs</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Fromage américain</span><span>Bleu</span><span>Glace</span><span>Fromage à effilocher</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫒 Huiles &amp; Graisses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Huile d'olive</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Huile de foie de morue</span><span>Huile de lin</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Huile de colza</span><span>Huile de maïs</span><span>Huile de coton</span><span>Huile d'arachide</span><span>Huile de carthame</span><span>Huile de sésame</span><span>Huile de tournesol</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥜 Noix &amp; Graines</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amandes</span><span>Beurre d'amande</span><span>Noix du Brésil</span><span>Châtaignes</span><span>Noix de macadamia</span><span>Noix de pécan</span><span>Noix</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Noix de cajou</span><span>Noisettes</span><span>Pignons de pin</span><span>Pistaches</span><span>Cacahuètes</span><span>Beurre de cacahuète</span><span>Graines de pavot</span><span>Graines de courge</span><span>Graines de sésame</span><span>Tahini</span><span>Graines de tournesol</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫘 Légumineuses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Haricots rouges (kidney)</span><span>Haricots de Lima</span><span>Haricots blancs (navy)</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Haricots blancs (cannellini)</span><span>Haricots cuivrés</span><span>Fèves</span><span>Haricots verts</span><span>Petits pois</span><span>Tamarin</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Haricots azuki</span><span>Haricots noirs</span><span>Pois chiches</span><span>Haricots pinto</span><span>Lentilles (toutes)</span><span>Haricots à œil noir</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🌾 Céréales &amp; Pains</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Millet</span><span>Son d'avoine</span><span>Flocons d'avoine</span><span>Riz soufflé</span><span>Son de riz</span><span>Épeautre</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Crème de riz</span><span>Farina</span><span>Granola</span><span>Grape-nuts</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Amarante</span><span>Orge</span><span>Sarrasin/Kasha</span><span>Maïs (corn flakes, polenta)</span><span>Seigle</span><span>Blé (tous produits)</span><span>Son de blé</span><span>Germe de blé</span><span>Kamut</span><span>Sept céréales</span><span>Blé soufflé</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥦 Légumes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Betterave</span><span>Feuilles de betterave</span><span>Brocoli</span><span>Chou (chinois, rouge, blanc)</span><span>Carotte</span><span>Chou-fleur</span><span>Chou cavalier</span><span>Aubergine</span><span>Chou frisé (kale)</span><span>Champignon (shiitake)</span><span>Moutarde (feuilles)</span><span>Persil</span><span>Panais</span><span>Poivron (vert, rouge, jaune, jalapeño)</span><span>Patate douce</span><span>Choux de Bruxelles</span><span>Igname</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Roquette</span><span>Asperge</span><span>Bok choy</span><span>Céleri</span><span>Chicorée</span><span>Concombre</span><span>Radis daïkon</span><span>Pissenlit</span><span>Endive</span><span>Scarole</span><span>Fenouil</span><span>Ail</span><span>Gingembre</span><span>Raifort</span><span>Chou-rave</span><span>Poireau</span><span>Laitue</span><span>Champignon (abalone, enoki, portobello)</span><span>Gombo</span><span>Oignon</span><span>Pomme de terre (rouge, blanche)</span><span>Radicchio</span><span>Rappini</span><span>Rutabaga</span><span>Échalote</span><span>Cresson</span><span>Courgette</span><span>Algues/Seaweed</span><span>Épinards</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Artichaut</span><span>Topinambour</span><span>Avocat</span><span>Maïs</span><span>Olive (noire, verte, grecque)</span><span>Potiron</span><span>Radis</span><span>Germes (mungo, radis)</span><span>Tempeh</span><span>Tofu</span><span>Tomate</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍎 Fruits</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Banane</span><span>Canneberge</span><span>Raisin</span><span>Papaye</span><span>Ananas</span><span>Prune</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Pomme</span><span>Abricot</span><span>Mûre</span><span>Myrtille</span><span>Cerise</span><span>Datte</span><span>Figue</span><span>Pamplemousse</span><span>Goyave</span><span>Kiwi</span><span>Citron</span><span>Citron vert</span><span>Mangue</span><span>Melon</span><span>Nectarine</span><span>Orange</span><span>Pêche</span><span>Poire</span><span>Mandarine</span><span>Framboise</span><span>Fraise</span><span>Pastèque</span><span>Pruneau</span><span>Raisin sec</span><span>Groseille</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Noix de coco</span><span>Kaki</span><span>Grenade</span><span>Figue de barbarie</span><span>Rhubarbe</span><span>Carambole</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍵 Boissons &amp; Tisanes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Thé vert</span><span>Tisane de ginseng</span><span>Tisane de réglisse</span><span>Tisane de persil</span><span>Tisane de menthe poivrée</span><span>Tisane de framboisier</span><span>Tisane d'églantier</span><span>Tisane de sauge</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Bière</span><span>Café (régulier et décaféiné)</span><span>Thé noir</span><span>Vin rouge</span><span>Vin blanc</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Alcools forts</span><span>Eau de Seltz</span><span>Sodas (tous)</span><span>Tisane d'aloès</span><span>Tisane de pas-d'âne</span><span>Tisane de soie de maïs</span><span>Tisane de fenugrec</span><span>Tisane de houblon</span><span>Tisane de tilleul</span><span>Tisane de molène</span><span>Tisane de trèfle rouge</span><span>Tisane de rhubarbe</span><span>Tisane de séné</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🧂 Épices &amp; Condiments</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Piment de Cayenne</span><span>Curry</span><span>Gingembre</span><span>Raifort</span><span>Persil</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Ail</span><span>Basilic</span><span>Laurier</span><span>Aneth</span><span>Cumin</span><span>Romarin</span><span>Sauge</span><span>Thym</span><span>Origan</span><span>Paprika</span><span>Noix de muscade</span><span>Menthe</span><span>Miso</span><span>Miel</span><span>Sirop d'érable</span><span>Mélasse</span><span>Chocolat</span><span>Sel</span><span>Sauce soja</span><span>Vinaigre (cidre, balsamique)</span><span>Moutarde</span><span>Mayonnaise</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Piment de la Jamaïque</span><span>Extrait d'amande</span><span>Malt d'orge</span><span>Cannelle</span><span>Fécule de maïs</span><span>Sirop de maïs</span><span>Gélatine</span><span>Poivre (noir, blanc)</span><span>Tapioca</span><span>Ketchup</span></div></div>
+        </div></details></div>
+      </div>
+
+      <!-- ═══════════ GROUPE AB ═══════════ -->
+      <div id="bt-content-ab" style="display:none">
+        <div class="bloodtype-intro"><strong>L'Énigme — Régime mixte équilibré.</strong> Combine les besoins des types A et B. Privilégier tofu, fruits de mer, légumes verts, kelp. Éviter poulet, maïs, sarrasin, haricots rouges.<br><span style="opacity:0.7;">Source : Dr. Peter D'Adamo — <em>Eat Right 4 Your Type</em></span></div>
+        <div class="bloodtype-category"><details><summary>🥩 Viandes &amp; Volailles</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Agneau</span><span>Mouton</span><span>Lapin</span><span>Dinde</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Foie</span><span>Faisan</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Bœuf</span><span>Bison/Buffle</span><span>Poulet</span><span>Poule de Cornouailles</span><span>Canard</span><span>Oie</span><span>Cœur</span><span>Perdrix</span><span>Porc</span><span>Bacon</span><span>Jambon</span><span>Caille</span><span>Veau</span><span>Chevreuil</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🐟 Poissons &amp; Fruits de mer</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Thon germon</span><span>Cabillaud/Morue</span><span>Mérou</span><span>Colin</span><span>Maquereau</span><span>Mahi-mahi</span><span>Lotte</span><span>Perche de mer</span><span>Doré</span><span>Brochet</span><span>Dorade</span><span>Truite arc-en-ciel</span><span>Vivaneau rouge</span><span>Poisson-voile</span><span>Saumon frais</span><span>Sardine</span><span>Truite de mer</span><span>Alose</span><span>Escargot</span><span>Esturgeon</span><span>Bar rayé</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Poisson bleu</span><span>Carpe</span><span>Poisson-chat</span><span>Caviar</span><span>Hareng frais</span><span>Moule</span><span>Pétoncle</span><span>Requin</span><span>Perche argentée</span><span>Sole</span><span>Calmar</span><span>Espadon</span><span>Merlan</span><span>Perche blanche</span><span>Perche jaune</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Anchois</span><span>Barracuda</span><span>Palourde</span><span>Conque</span><span>Crabe</span><span>Écrevisse</span><span>Anguille</span><span>Plie/Flet</span><span>Grenouille</span><span>Sole grise</span><span>Églefin</span><span>Flétan</span><span>Hareng mariné</span><span>Homard</span><span>Saumon fumé</span><span>Poulpe</span><span>Huître</span><span>Bar de mer</span><span>Crevette</span><span>Tortue</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥛 Produits laitiers &amp; Œufs</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Cottage cheese</span><span>Fromage fermier</span><span>Feta</span><span>Fromage de chèvre</span><span>Lait de chèvre</span><span>Kéfir</span><span>Mozzarella</span><span>Ricotta</span><span>Crème fraîche allégée</span><span>Yaourt</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Caséine</span><span>Cheddar</span><span>Colby</span><span>Crème (fromage)</span><span>Edam</span><span>Emmental</span><span>Gouda</span><span>Gruyère</span><span>Monterey Jack</span><span>Münster</span><span>Neufchâtel</span><span>Lait écrémé</span><span>Fromage de soja</span><span>Lait de soja</span><span>Suisse</span><span>Petit-lait (whey)</span><span>Œufs</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Fromage américain</span><span>Bleu</span><span>Brie</span><span>Beurre</span><span>Babeurre</span><span>Camembert</span><span>Glace</span><span>Parmesan</span><span>Provolone</span><span>Sorbet</span><span>Lait entier</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫒 Huiles &amp; Graisses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Huile d'olive</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Huile de colza</span><span>Huile de foie de morue</span><span>Huile de lin</span><span>Huile d'arachide</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Huile de maïs</span><span>Huile de coton</span><span>Huile de carthame</span><span>Huile de sésame</span><span>Huile de tournesol</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥜 Noix &amp; Graines</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Châtaignes</span><span>Cacahuètes</span><span>Beurre de cacahuète</span><span>Noix</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amandes</span><span>Beurre d'amande</span><span>Noix du Brésil</span><span>Noix de cajou</span><span>Litchi</span><span>Noix de macadamia</span><span>Pignons de pin</span><span>Pistaches</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Noisettes</span><span>Graines de pavot</span><span>Graines de courge</span><span>Graines de sésame</span><span>Tahini</span><span>Graines de tournesol</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🫘 Légumineuses</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Haricots blancs (navy)</span><span>Haricots pinto</span><span>Soja rouge</span><span>Lentilles vertes</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Haricots blancs (cannellini)</span><span>Haricots cuivrés</span><span>Haricots verts</span><span>Jicama</span><span>Haricots du Nord</span><span>Petits pois</span><span>Tamarin</span><span>Lentilles (rouges)</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Haricots azuki</span><span>Haricots noirs</span><span>Fèves</span><span>Pois chiches</span><span>Haricots rouges (kidney)</span><span>Haricots de Lima</span><span>Haricots à œil noir</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🌾 Céréales &amp; Pains</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Millet</span><span>Son d'avoine</span><span>Flocons d'avoine</span><span>Son de riz</span><span>Riz soufflé</span><span>Épeautre</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Amarante</span><span>Orge</span><span>Crème de riz</span><span>Crème de blé</span><span>Farina</span><span>Granola</span><span>Grape-nuts</span><span>Sept céréales</span><span>Blé soufflé</span><span>Son de blé</span><span>Germe de blé</span><span>Flocons de soja</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Sarrasin/Kasha</span><span>Maïs (corn flakes, polenta)</span><span>Kamut</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🥦 Légumes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Feuilles de betterave</span><span>Betterave</span><span>Brocoli</span><span>Chou-fleur</span><span>Céleri</span><span>Chou cavalier</span><span>Concombre</span><span>Pissenlit</span><span>Aubergine</span><span>Ail</span><span>Chou frisé (kale)</span><span>Moutarde (feuilles)</span><span>Persil</span><span>Panais</span><span>Patate douce</span><span>Germes de luzerne</span><span>Tempeh</span><span>Tofu</span><span>Igname</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Roquette</span><span>Asperge</span><span>Bok choy</span><span>Chou</span><span>Carotte</span><span>Chicorée</span><span>Coriandre</span><span>Radis daïkon</span><span>Endive</span><span>Scarole</span><span>Fenouil</span><span>Gingembre</span><span>Raifort</span><span>Chou-rave</span><span>Poireau</span><span>Laitue</span><span>Champignon</span><span>Gombo</span><span>Oignon</span><span>Pomme de terre</span><span>Potiron</span><span>Radicchio</span><span>Rappini</span><span>Rutabaga</span><span>Échalote</span><span>Algues/Seaweed</span><span>Épinards</span><span>Courge</span><span>Blettes</span><span>Navet</span><span>Cresson</span><span>Courgette</span><span>Tomate</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Artichaut</span><span>Topinambour</span><span>Avocat</span><span>Maïs</span><span>Haricots de Lima</span><span>Champignon (abalone, shiitake)</span><span>Olive noire</span><span>Poivron (tous)</span><span>Radis</span><span>Germes (mungo, radis)</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍎 Fruits</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Cerise</span><span>Canneberge</span><span>Figue (fraîche/séchée)</span><span>Groseille à maquereau</span><span>Raisin</span><span>Pamplemousse</span><span>Kiwi</span><span>Citron</span><span>Ananas</span><span>Prune</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Pomme</span><span>Abricot</span><span>Mûre</span><span>Myrtille</span><span>Datte</span><span>Citron vert</span><span>Melon</span><span>Nectarine</span><span>Papaye</span><span>Pêche</span><span>Poire</span><span>Plantain</span><span>Pruneau</span><span>Raisin sec</span><span>Framboise</span><span>Fraise</span><span>Mandarine</span><span>Pastèque</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Banane</span><span>Noix de coco</span><span>Goyave</span><span>Mangue</span><span>Orange</span><span>Kaki</span><span>Grenade</span><span>Figue de barbarie</span><span>Rhubarbe</span><span>Carambole</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🍵 Boissons &amp; Tisanes</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Café (régulier &amp; décaféiné)</span><span>Thé vert</span><span>Tisane de luzerne</span><span>Tisane de bardane</span><span>Tisane de camomille</span><span>Tisane d'échinacée</span><span>Tisane de gingembre</span><span>Tisane de ginseng</span><span>Tisane de réglisse</span><span>Tisane d'églantier</span><span>Tisane de fraisier</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Bière</span><span>Eau de Seltz</span><span>Soda club</span><span>Vin rouge</span><span>Vin blanc</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Alcools forts</span><span>Thé noir</span><span>Sodas</span><span>Tisane d'aloès</span><span>Tisane de pas-d'âne</span><span>Tisane de soie de maïs</span><span>Tisane de fenugrec</span><span>Tisane de houblon</span><span>Tisane de tilleul</span><span>Tisane de molène</span><span>Tisane de trèfle rouge</span><span>Tisane de rhubarbe</span><span>Tisane de séné</span></div></div>
+        </div></details></div>
+        <div class="bloodtype-category"><details><summary>🧂 Épices &amp; Condiments</summary><div class="bloodtype-groups">
+          <div class="bloodtype-group benefique"><div class="bloodtype-group-label">✅ BÉNÉFIQUE</div><div class="bloodtype-tags"><span>Curry</span><span>Ail</span><span>Raifort</span><span>Miso</span><span>Persil</span></div></div>
+          <div class="bloodtype-group neutre"><div class="bloodtype-group-label">⚪ NEUTRE</div><div class="bloodtype-tags"><span>Basilic</span><span>Laurier</span><span>Aneth</span><span>Cumin</span><span>Cannelle</span><span>Clou de girofle</span><span>Coriandre</span><span>Romarin</span><span>Sauge</span><span>Thym</span><span>Noix de muscade</span><span>Origan</span><span>Paprika</span><span>Menthe</span><span>Sel</span><span>Sauce soja</span><span>Tamari</span><span>Miel</span><span>Sirop d'érable</span><span>Mélasse</span><span>Chocolat</span><span>Caroube</span><span>Kelp/Dulse</span><span>Safran</span><span>Sucre</span><span>Vanille</span><span>Poivre (modéré)</span></div></div>
+          <div class="bloodtype-group eviter"><div class="bloodtype-group-label">❌ À ÉVITER</div><div class="bloodtype-tags"><span>Piment de la Jamaïque</span><span>Extrait d'amande</span><span>Anis</span><span>Malt d'orge</span><span>Câpres</span><span>Fécule de maïs</span><span>Sirop de maïs</span><span>Gélatine</span><span>Piment de Cayenne</span><span>Tapioca</span><span>Ketchup</span><span>Cornichons</span><span>Sauce Worcestershire</span><span>Vinaigre (sauf cidre)</span></div></div>
+        </div></details></div>
+      </div>
+
+      <!-- ═══════════ RÉSUMÉ ═══════════ -->
+      <div id="bt-content-resume" style="display:none">
+        <div class="bloodtype-intro">Vue d'ensemble comparative des 4 groupes sanguins selon Dr. D'Adamo.<br><span style="opacity:0.7;">Source : <em>Eat Right 4 Your Type</em></span></div>
+        <div class="bt-summary-grid">
+
+          <div class="bt-summary-card">
+            <div class="bt-summary-header">
+              <div class="bt-summary-type">O</div>
+              <div class="bt-summary-name">Le Chasseur — Protéines élevées, faible en céréales</div>
+            </div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Viandes</span><span class="bt-summary-val">Bœuf, agneau, veau, chevreuil, bison</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Poissons</span><span class="bt-summary-val">Bar, cabillaud, flétan, espadon, truite</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥛 Laitiers</span><span class="bt-summary-val">Très limités (chèvre en neutre seulement)</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🌾 Céréales</span><span class="bt-summary-val">Pain Essene/germé, riz, quinoa, épeautre</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥦 Légumes ★</span><span class="bt-summary-val">Brocoli, kale, épinards, oignon, patate douce</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🍎 Fruits ★</span><span class="bt-summary-val">Cerise, figue, prune, myrtille, pruneau</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label bt-summary-eviter">❌ Éviter</span><span class="bt-summary-val bt-summary-eviter">Blé, maïs, haricots kidney/navy, produits laitiers, porc</span></div>
+          </div>
+
+          <div class="bt-summary-card">
+            <div class="bt-summary-header">
+              <div class="bt-summary-type">A</div>
+              <div class="bt-summary-name">Le Cultivateur — Principalement végétarien</div>
+            </div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Viandes</span><span class="bt-summary-val">Peu/pas de viande (poulet, dinde en neutre)</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Poissons</span><span class="bt-summary-val">Cabillaud, saumon, sardine, maquereau</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥛 Laitiers</span><span class="bt-summary-val">Soja préféré, chèvre en neutre</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🌾 Céréales</span><span class="bt-summary-val">Amarante, sarrasin, riz, épeautre</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥦 Légumes ★</span><span class="bt-summary-val">Brocoli, kale, ail, artichaut, tofu, épinards</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🍎 Fruits ★</span><span class="bt-summary-val">Myrtille, cerise, figue, citron, ananas, prune</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label bt-summary-eviter">❌ Éviter</span><span class="bt-summary-val bt-summary-eviter">Viande rouge, produits laitiers de vache, haricots kidney/lima, blé, orange</span></div>
+          </div>
+
+          <div class="bt-summary-card">
+            <div class="bt-summary-header">
+              <div class="bt-summary-type">B</div>
+              <div class="bt-summary-name">Le Nomade — Varié et équilibré, riche en laitiers</div>
+            </div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Viandes</span><span class="bt-summary-val">Agneau, lapin, chevreuil, mouton</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Poissons</span><span class="bt-summary-val">Cabillaud, flétan, saumon, sardine</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥛 Laitiers</span><span class="bt-summary-val">Bien tolérés (cottage, kéfir, yaourt, chèvre)</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🌾 Céréales</span><span class="bt-summary-val">Millet, avoine, riz, épeautre</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥦 Légumes ★</span><span class="bt-summary-val">Betterave, brocoli, chou, chou-fleur, patate douce</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🍎 Fruits ★</span><span class="bt-summary-val">Raisin, ananas, canneberge, prune, banane</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label bt-summary-eviter">❌ Éviter</span><span class="bt-summary-val bt-summary-eviter">Poulet, maïs, blé, sarrasin, lentilles, cacahuètes, tomate, sésame</span></div>
+          </div>
+
+          <div class="bt-summary-card">
+            <div class="bt-summary-header">
+              <div class="bt-summary-type">AB</div>
+              <div class="bt-summary-name">L'Énigme — Mixte A + B, équilibré</div>
+            </div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Viandes</span><span class="bt-summary-val">Agneau, mouton, lapin, dinde</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">✅ Poissons</span><span class="bt-summary-val">Thon, cabillaud, saumon, maquereau</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥛 Laitiers</span><span class="bt-summary-val">Bien tolérés (cottage, kéfir, yaourt, chèvre)</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🌾 Céréales</span><span class="bt-summary-val">Millet, avoine, riz, épeautre</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🥦 Légumes ★</span><span class="bt-summary-val">Brocoli, kale, betterave, chou-fleur, tofu, ail</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label">🍎 Fruits ★</span><span class="bt-summary-val">Cerise, raisin, figue, kiwi, citron, ananas</span></div>
+            <div class="bt-summary-row"><span class="bt-summary-label bt-summary-eviter">❌ Éviter</span><span class="bt-summary-val bt-summary-eviter">Poulet, maïs, sarrasin, haricots kidney, bœuf, porc</span></div>
+          </div>
+
+        </div>
+        <div class="bt-warning">⚠️ Ce régime est basé sur les théories de Dr. Peter D'Adamo (<em>Eat Right 4 Your Type</em>). Il n'existe pas de consensus scientifique validant ce régime. Consultez toujours un professionnel de santé avant tout changement alimentaire.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Sheet : Équilibre Acido-Basique ── -->
+  <div class="bottom-sheet" id="sheet-acidobasic">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">⚖️ Équilibre Acido-Basique</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="bloodtype-intro">
+        L'alimentation peut influencer le <strong>pH urinaire</strong> et le métabolisme acido-basique de l'organisme. Les aliments "alcalinisants" ou "acidifiants" désignent leur <em>effet potentiel rénal</em>, non leur acidité au goût.<br>
+        <span style="opacity:0.7;font-size:11px;">⚠️ Concept issu de la nutrition fonctionnelle — non unanimement validé par la médecine conventionnelle. À titre indicatif.</span>
+      </div>
+
+      <!-- Légende couleurs -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+        <span class="ab-badge ab-badge-1">🟢 Très alcalinisant</span>
+        <span class="ab-badge ab-badge-2">🌿 Alcalinisant</span>
+        <span class="ab-badge ab-badge-3">⚪ Neutre</span>
+        <span class="ab-badge ab-badge-4">🟡 Lég. acidifiant</span>
+        <span class="ab-badge ab-badge-5">🟠 Acidifiant</span>
+        <span class="ab-badge ab-badge-6">🔴 Très acidifiant</span>
+      </div>
+
+      <!-- ── SECTION 1 : Par niveau ── -->
+      <div class="ab-section-title">Par niveau d'effet</div>
+
+      <div class="ab-level ab-1">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Très alcalinisants</div></div>
+        <div class="ab-level-tags">
+          <span>Citrons</span><span>Limes</span><span>Épinards</span><span>Légumes verts à feuilles</span><span>Chou</span><span>Salade</span><span>Herbes fraîches</span><span>Concombre</span><span>Céleri</span><span>Avocat</span><span>Algues</span><span>Olives</span><span>Gingembre</span><span>Thé vert</span><span>Thé à la menthe</span>
+        </div>
+      </div>
+
+      <div class="ab-level ab-2">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Alcalinisants</div></div>
+        <div class="ab-level-tags">
+          <span>La plupart des fruits frais</span><span>La plupart des légumes</span><span>Ail</span><span>Oignon</span><span>Noix</span><span>Amandes</span><span>Épices</span><span>Fines herbes</span>
+        </div>
+      </div>
+
+      <div class="ab-level ab-3">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Neutres ou peu acidifiants</div></div>
+        <div class="ab-level-tags">
+          <span>Eau</span><span>Féculents peu transformés</span><span>Fruits oléagineux (modéré)</span><span>Certains légumes racines</span>
+        </div>
+      </div>
+
+      <div class="ab-level ab-4">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Légèrement acidifiants</div></div>
+        <div class="ab-level-tags">
+          <span>Céréales complètes</span><span>Pain complet</span><span>Riz complet</span><span>Avoine</span><span>Légumineuses</span><span>Tofu</span><span>Certaines graines</span>
+        </div>
+      </div>
+
+      <div class="ab-level ab-5">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Acidifiants</div></div>
+        <div class="ab-level-tags">
+          <span>Viande</span><span>Volaille</span><span>Poisson</span><span>Œufs</span><span>Fromage</span><span>Produits laitiers</span><span>Charcuterie</span>
+        </div>
+      </div>
+
+      <div class="ab-level ab-6">
+        <div class="ab-level-header"><div class="ab-level-dot"></div><div class="ab-level-name">Très acidifiants</div></div>
+        <div class="ab-level-tags">
+          <span>Sodas</span><span>Alcool</span><span>Café</span><span>Céréales raffinées</span><span>Pain blanc</span><span>Riz blanc</span><span>Pâtisseries</span><span>Snacks ultra-transformés</span><span>Aliments très salés</span>
+        </div>
+      </div>
+
+      <!-- ── SECTION 2 : Par famille ── -->
+      <div class="ab-section-title">Par famille d'aliments</div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🍎 Fruits</div>
+        <div class="ab-family-examples">Citron, orange, pomme, banane, raisin, fruits rouges, melon</div>
+        <span class="ab-badge ab-badge-2">Globalement alcalinisants</span><br>
+        <span style="font-size:11px;color:var(--text-light);font-style:italic;">Même si certains fruits sont naturellement acides au goût</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🥦 Légumes</div>
+        <div class="ab-family-examples">Épinards, chou, brocoli, salade, concombre, céleri, courgette, carotte, betterave, asperge</div>
+        <span class="ab-badge ab-badge-1">Très souvent alcalinisants</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🫘 Légumineuses</div>
+        <div class="ab-family-examples">Lentilles, pois chiches, haricots secs</div>
+        <span class="ab-badge ab-badge-4">Neutres à légèrement acidifiants</span><br>
+        <span style="font-size:11px;color:var(--text-light);font-style:italic;">Selon les tableaux et les portions</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🌾 Céréales</div>
+        <div class="ab-family-examples">Riz blanc, pain blanc, pâtes blanches, avoine, pain complet, riz complet</div>
+        <span class="ab-badge ab-badge-5">Les raffinées sont plus acidifiantes</span><br>
+        <span style="font-size:11px;color:var(--text-light);font-style:italic;">Les céréales complètes sont moins acidifiantes que les raffinées</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🥩 Protéines animales</div>
+        <div class="ab-family-examples">Viande rouge, volaille, poisson, fruits de mer, œufs</div>
+        <span class="ab-badge ab-badge-5">Généralement acidifiantes</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🥛 Produits laitiers</div>
+        <div class="ab-family-examples">Lait, yaourt, fromage, beurre</div>
+        <span class="ab-badge ab-badge-5">Souvent acidifiants</span><br>
+        <span style="font-size:11px;color:var(--text-light);font-style:italic;">Surtout les fromages</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🫒 Matières grasses</div>
+        <div class="ab-family-examples">Huiles végétales, avocat, olives, graines, noix</div>
+        <span class="ab-badge ab-badge-3">Neutre à alcalinisant (avocat, olives, noix)</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🍵 Boissons</div>
+        <div class="ab-family-examples">Eau, thé vert, thé à la menthe, café, sodas, alcool</div>
+        <span class="ab-badge ab-badge-2">Eau &amp; thés : favorables</span>
+        <span class="ab-badge ab-badge-6" style="margin-left:4px;">Café, sodas, alcool : acidifiants</span>
+      </div>
+
+      <div class="ab-family-row">
+        <div class="ab-family-name">🏭 Produits transformés</div>
+        <div class="ab-family-examples">Plats industriels, fast-food, snacks, charcuterie, produits très salés</div>
+        <span class="ab-badge ab-badge-6">Souvent très acidifiants</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Sheet : Techniques culinaires ── -->
+  <div class="bottom-sheet" id="sheet-techniques">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🔪 Techniques culinaires</div>
+      <button class="sheet-close" onclick="fermerSheet()">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="techniques-category">
+        <div class="techniques-category-title">Cuisson</div>
+        <div class="technique-item">
+          <div class="technique-name">Faire revenir</div>
+          <div class="technique-def">Cuire dans un corps gras chaud en remuant jusqu'à légère coloration, sans saisir complètement.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Faire dorer</div>
+          <div class="technique-def">Cuire à feu assez vif pour obtenir une belle surface bien colorée et appétissante.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Saisir</div>
+          <div class="technique-def">Cuire à très haute température quelques secondes pour caraméliser rapidement l'extérieur d'une viande ou d'un poisson et en retenir les jus.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Mijoter</div>
+          <div class="technique-def">Cuire lentement à feu très doux dans un liquide frémissant (à peine bouillant) pour attendrir et développer les saveurs.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Blanchir</div>
+          <div class="technique-def">Plonger un aliment dans l'eau bouillante salée quelques minutes, puis immédiatement dans l'eau glacée pour stopper la cuisson et conserver la couleur.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Pocher</div>
+          <div class="technique-def">Cuire doucement dans un liquide chaud à petits frémissements (jamais à pleine ébullition), idéal pour œufs, poissons et volailles.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Blondir</div>
+          <div class="technique-def">Faire cuire doucement un aliment (souvent des oignons) jusqu'à ce qu'il prenne une légère couleur blonde transparente sans brunir.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Caraméliser</div>
+          <div class="technique-def">Chauffer du sucre ou des légumes (oignons, carottes) jusqu'à obtenir une couleur ambrée et un goût doux et sucré concentré.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Torréfier</div>
+          <div class="technique-def">Chauffer à sec dans une poêle ou au four des épices, céréales ou fruits secs pour en exhaler et intensifier les arômes.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Gratiner</div>
+          <div class="technique-def">Passer un plat sous le gril du four pour obtenir une croûte dorée en surface, généralement avec du fromage ou de la chapelure.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Flamber</div>
+          <div class="technique-def">Arroser un plat d'alcool chaud et l'enflammer pour brûler l'alcool tout en conservant les arômes.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Confire</div>
+          <div class="technique-def">Cuire très lentement et longuement dans un corps gras (canard) ou du sucre (fruits) à basse température pour conserver et concentrer.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Nacrer</div>
+          <div class="technique-def">Faire revenir le riz cru dans un corps gras jusqu'à ce qu'il devienne translucide et nacré, étape clé du risotto.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Porter à ébullition</div>
+          <div class="technique-def">Chauffer un liquide jusqu'à atteindre 100 °C (apparition de gros bouillons), puis généralement réduire le feu.</div>
+        </div>
+      </div>
+
+      <div class="techniques-category">
+        <div class="techniques-category-title">Préparation</div>
+        <div class="technique-item">
+          <div class="technique-name">Réserver</div>
+          <div class="technique-def">Mettre de côté un aliment ou une préparation déjà cuit(e) ou préparé(e) pour l'utiliser plus tard dans la recette.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Ciseler</div>
+          <div class="technique-def">Couper très finement des herbes ou des oignons en tout petits morceaux réguliers à l'aide d'un couteau bien aiguisé.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Émincer</div>
+          <div class="technique-def">Couper un aliment en tranches fines et régulières (champignons, oignons, viande).</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Hacher</div>
+          <div class="technique-def">Couper en très petits morceaux plus ou moins irréguliers, souvent au couteau en berçant la lame.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Tamiser</div>
+          <div class="technique-def">Passer de la farine, du sucre glace ou du cacao au tamis pour éliminer les grumeaux et aérer la préparation.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Fouetter</div>
+          <div class="technique-def">Battre énergiquement une préparation au fouet pour l'aérer, l'émulsionner ou la faire monter (crème, œufs).</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Pétrir</div>
+          <div class="technique-def">Travailler une pâte à la main ou au robot en l'étirant et la repliant pour développer le gluten et la rendre lisse et élastique.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Abaisser</div>
+          <div class="technique-def">Étaler une pâte au rouleau à pâtisserie pour l'amincir uniformément à l'épaisseur souhaitée.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Mariner</div>
+          <div class="technique-def">Faire tremper un aliment dans un mélange aromatique (huile, épices, acide) pour l'attendrir et l'imprégner de saveurs.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Monter en neige</div>
+          <div class="technique-def">Battre des blancs d'œufs vigoureusement jusqu'à obtenir une mousse ferme et brillante qui tient en pics.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Incorporer</div>
+          <div class="technique-def">Mélanger délicatement un ingrédient à une préparation aérée (blancs en neige, chantilly) par un mouvement de bas en haut pour ne pas la faire retomber.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Cuire à blanc</div>
+          <div class="technique-def">Cuire une fond de tarte seul, sans garniture, en le lestant (haricots secs, billes) pour éviter qu'il gonfle et se déforme.</div>
+        </div>
+      </div>
+
+      <div class="techniques-category">
+        <div class="techniques-category-title">Finition & assaisonnement</div>
+        <div class="technique-item">
+          <div class="technique-name">Déglacer</div>
+          <div class="technique-def">Verser un liquide (vin, bouillon, vinaigre) dans un fond de cuisson chaud pour dissoudre et récupérer les sucs caramélisés collés à la casserole.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Réduire</div>
+          <div class="technique-def">Faire évaporer un liquide à feu moyen en le laissant bouillir pour le concentrer, l'épaissir et en intensifier les saveurs.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Napper</div>
+          <div class="technique-def">Recouvrir uniformément un plat ou une préparation d'une sauce pour le glacer ou le protéger.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Monter au beurre</div>
+          <div class="technique-def">Incorporer du beurre froid coupé en petits morceaux dans une sauce chaude hors du feu pour la lier, l'épaissir et l'enrichir.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Rectifier l'assaisonnement</div>
+          <div class="technique-def">Goûter la préparation en fin de cuisson et ajuster sel, poivre et épices au besoin pour parfaire l'équilibre des saveurs.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Rafraîchir</div>
+          <div class="technique-def">Plonger rapidement un aliment chaud dans de l'eau très froide (ou glacée) pour stopper net la cuisson et fixer la couleur.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Mixer</div>
+          <div class="technique-def">Réduire en purée lisse ou en liquide à l'aide d'un mixeur plongeant ou d'un blender.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Singer</div>
+          <div class="technique-def">Saupoudrer de la farine sur des aliments en cours de cuisson (viande, légumes) pour lier et épaissir la sauce qui se formera.</div>
+        </div>
+        <div class="technique-item">
+          <div class="technique-name">Vanner</div>
+          <div class="technique-def">Remuer régulièrement une crème ou une sauce avec une spatule pendant son refroidissement pour éviter la formation d'une peau.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- ── Floating shopping list bar (outside tabs so it's always visible) ── -->
   <div class="courses-bar" id="coursesBar" style="display:none;">

@@ -14,7 +14,8 @@ import {
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
   ouvrirAlly, fermerAlly, setText, changerDefaultPortions,
-  ouvrirSheet, fermerSheet
+  ouvrirSheet, fermerSheet,
+  switchBloodtypeTab
 } from './modules/ui.js'
 import {
   toggleInstructions, toggleRoutineItem,
@@ -60,7 +61,7 @@ Object.assign(window, {
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
   selectProfilTempsCuisine, modifierProfilComplet, toggleEmailDigest,
   ouvrirAlly, fermerAlly, setText, changerDefaultPortions,
-  ouvrirSheet, fermerSheet,
+  ouvrirSheet, fermerSheet, switchBloodtypeTab,
   // plan
   toggleInstructions, toggleRoutineItem,
   changerPortions, noterRecette, sauvegarderRecette,

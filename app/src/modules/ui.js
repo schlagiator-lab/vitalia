@@ -152,6 +152,19 @@ export function fermerSheet() {
   }
 }
 
+// ── Onglets Groupe Sanguin ──
+var _bloodtypeTab = 'o'
+export function switchBloodtypeTab(type) {
+  _bloodtypeTab = type
+  var types = ['o', 'a', 'b', 'ab', 'resume']
+  types.forEach(function(t) {
+    var btn     = document.getElementById('bt-tab-' + t)
+    var content = document.getElementById('bt-content-' + t)
+    if (btn)     btn.classList.toggle('active', t === type)
+    if (content) content.style.display = t === type ? 'block' : 'none'
+  })
+}
+
 // ── setText helper ──
 export function setText(id, val) {
   var e = document.getElementById(id); if (e) e.textContent = val
@@ -465,7 +478,16 @@ export var ALLY_INFO = {
   patate:    { name:'Patate douce',    subtitle:'L\'alliée du sommeil & de l\'énergie',bg:'linear-gradient(135deg,#FED7AA,#FB923C)', benefits:['Riche en tryptophane, précurseur de la mélatonine','Béta-carotène puissant antioxydant','Index glycémique modéré — énergie longue durée'], detail:'Son tryptophane se convertit en sérotonine puis en mélatonine. Sa richesse en béta-carotène protège les cellules et sa peau contient des fibres prébiotiques précieuses.', tip:'💡 Cuire avec la peau pour préserver les fibres. Associée à la vitamine C, elle multiplie l\'absorption du fer.' },
   miel:      { name:'Miel',            subtitle:'L\'or liquide apaisant & antibactérien',bg:'linear-gradient(135deg,#FEF3C7,#FCD34D)',benefits:['Antibactérien naturel','Adoucit la gorge et calme les voies respiratoires','Soutient le sommeil grâce au fructose'], detail:'Le miel brut contient des flavonoïdes et du méthylglyoxal aux propriétés antibactériennes prouvées. Une cuillère de miel le soir favorise le sommeil.', tip:'💡 Ne jamais chauffer au-delà de 40°C. Ajouter dans des boissons tièdes, jamais bouillantes.' },
   epinards:  { name:'Épinards',        subtitle:'Le bouclier vert en fer & magnésium',bg:'linear-gradient(135deg,#DCFCE7,#86EFAC)', benefits:['Excellente source de fer non-héminique et de magnésium','Riches en lutéine pour la santé oculaire','Nitrates naturels qui améliorent l\'oxygénation musculaire'], detail:'Les épinards contiennent du fer, du magnésium, du calcium et des vitamines K et B9. Leurs nitrates naturels améliorent la circulation sanguine.', tip:'💡 Associer avec du citron pour tripler l\'absorption du fer. Cuits à la vapeur, ils concentrent leurs nutriments.' },
-  amandes:   { name:'Amandes',         subtitle:'La noix du magnésium & des bons gras',bg:'linear-gradient(135deg,#FEF3C7,#FDE68A)',benefits:['1ère source végétale de vitamine E antioxydante','Riches en magnésium — anti-stress et anti-crampes','Acides gras qui soutiennent le cœur'], detail:'30g d\'amandes apportent 75mg de magnésium, 7,3mg de vitamine E et 6g de protéines végétales. Des études montrent qu\'une poignée/jour réduit le LDL-cholestérol de 4 à 5%.', tip:'💡 Tremper les amandes une nuit dans l\'eau froide améliore leur digestibilité.' }
+  amandes:   { name:'Amandes',         subtitle:'La noix du magnésium & des bons gras',bg:'linear-gradient(135deg,#FEF3C7,#FDE68A)',benefits:['1ère source végétale de vitamine E antioxydante','Riches en magnésium — anti-stress et anti-crampes','Acides gras qui soutiennent le cœur'], detail:'30g d\'amandes apportent 75mg de magnésium, 7,3mg de vitamine E et 6g de protéines végétales. Des études montrent qu\'une poignée/jour réduit le LDL-cholestérol de 4 à 5%.', tip:'💡 Tremper les amandes une nuit dans l\'eau froide améliore leur digestibilité.' },
+  cannelle:  { name:'Cannelle de Ceylan', subtitle:'La vraie cannelle, sans risque au quotidien', bg:'linear-gradient(135deg,#FEF3C7,#FDBA74)',
+    benefits:[
+      'Contrôle de la glycémie et sensibilité à l\'insuline améliorée',
+      'Extrêmement riche en polyphénols antioxydants',
+      'Anti-inflammatoire naturel — sans coumarine dangereuse'
+    ],
+    detailHTML:'<strong style="color:var(--deep-brown)">⚔️ Le duel : Ceylan vs Cassia</strong><br><span style="font-size:12px;color:var(--text-light)">En magasin, "Cannelle" sans précision = presque toujours Cassia (moins chère). Cherchez "Vraie cannelle" ou <em>C. verum</em> pour la Ceylan.</span><div class="ally-compare-table"><div class="ally-compare-row header"><span>Caractéristique</span><span>Ceylan ✅</span><span>Cassia ⚠️</span></div><div class="ally-compare-row"><span>Coumarine</span><span>Quasi nulle (0,004%)</span><span>Élevée (~1%)</span></div><div class="ally-compare-row"><span>Goût</span><span>Doux, délicat, sucré</span><span>Fort, piquant, boisé</span></div><div class="ally-compare-row"><span>Bâton</span><span>Couches fines (cigare)</span><span>Couche épaisse et dure</span></div><div class="ally-compare-row"><span>Couleur</span><span>Brun clair / Tan</span><span>Brun foncé / Rougeâtre</span></div></div><strong style="color:#dc2626">⚠️ La Coumarine — point crucial</strong><br><span style="font-size:12px;color:var(--text-light)">La coumarine peut être hépatotoxique à doses répétées. Une seule cuillère à café de Cassia suffit à dépasser la dose journalière admissible pour un adulte de 60 kg. La Ceylan (0,004%) est sans danger même à forte consommation quotidienne.</span>',
+    tipHTML:'💡 <strong>Utilisation quotidienne</strong> (porridge, café, régulation glycémie, diabète) → <strong style="color:#16a34a">Ceylan obligatoire</strong>. Votre foie vous remerciera !<br>Utilisation occasionnelle (gâteau une fois par semaine) → Cassia sans problème.<br><br><strong>Test du bâton :</strong> Essayez de le casser. Très dur et épais = Cassia. S\'effrite facilement en couches fines comme un cigare = Ceylan ✅'
+  }
 }
 
 export function ouvrirAlly(name) {
@@ -476,8 +498,10 @@ export function ouvrirAlly(name) {
   document.getElementById('allyModalSubtitle').textContent = info.subtitle
   document.getElementById('allyModalBenefits').innerHTML =
     info.benefits.map(function(b) { return '<li>' + b + '</li>' }).join('')
-  document.getElementById('allyModalDetail').textContent = info.detail
-  document.getElementById('allyModalTip').textContent = info.tip
+  var elDetail = document.getElementById('allyModalDetail')
+  var elTip    = document.getElementById('allyModalTip')
+  if (info.detailHTML) { elDetail.innerHTML = info.detailHTML } else { elDetail.textContent = info.detail || '' }
+  if (info.tipHTML)    { elTip.innerHTML    = info.tipHTML    } else { elTip.textContent    = info.tip    || '' }
   var footer = document.getElementById('allyModalFooter')
   if (footer) footer.style.display = st.currentActiveAllies.includes(name) ? 'block' : 'none'
   document.getElementById('allyModal').style.display = 'flex'
