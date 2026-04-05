@@ -772,9 +772,9 @@ serve(async (req: Request) => {
     const profil = profils?.[0] || {};
 
     const budgetRepasMap: Record<string, string> = {
-      faible: '< 10 CHF par repas',
-      moyen:  '10-20 CHF par repas',
-      eleve:  '> 20 CHF par repas',
+      faible: '< 10 CHF par repas (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, boîtes de conserve — éviter viande rouge, poisson frais noble, noix de cajou)',
+      moyen:  '10-20 CHF par repas (équilibre qualité/prix : poulet, légumineuses, légumes variés, oeufs bio, fromage courant)',
+      eleve:  '> 20 CHF par repas (ingrédients premium : saumon, crevettes, noix, légumes bio, viande de qualité, fromages affinés)',
     };
 
     const profilNorm = {

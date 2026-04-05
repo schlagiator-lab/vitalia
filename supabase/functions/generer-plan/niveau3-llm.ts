@@ -260,9 +260,11 @@ function construirePromptRecette(
   const allergenes = profil.allergenes || [];
   const tempsMax = profil.temps_preparation || 45;
   
-  const budget = profil.budget === 'faible'  ? '5-8 euros/portion'
-               : profil.budget === 'eleve'   ? '12-20 euros/portion'
-               : '8-12 euros/portion';
+  const budget = profil.budget === 'faible'
+    ? '5-8 euros/portion (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, sardines en boîte, flocons d\'avoine — éviter viande rouge, poisson frais noble, noix de cajou)'
+    : profil.budget === 'eleve'
+    ? '12-20 euros/portion (ingrédients premium : saumon, crevettes, noix, graines, légumes bio, viande de qualité, fromages affinés)'
+    : '8-12 euros/portion (équilibre qualité/prix : poulet, légumineuses, légumes variés, oeufs bio, fromage courant)';
 
   // Contraintes spécifiques petit-déjeuner
   const estPetitDej = typeRepas === 'petit-dejeuner';

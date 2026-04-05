@@ -570,8 +570,8 @@ serve(async (req) => {
     // Helper : convertit un budget numérique (CHF) en catégorie 'faible'/'moyen'/'eleve'
     function budgetNumeriquesVersCategorie(budgetChf: number | null | undefined): 'faible' | 'moyen' | 'eleve' {
       if (!budgetChf) return 'moyen';
-      if (budgetChf <= 18) return 'faible';
-      if (budgetChf <= 32) return 'moyen';
+      if (budgetChf <= 10) return 'faible';
+      if (budgetChf <= 20) return 'moyen';
       return 'eleve';
     }
 

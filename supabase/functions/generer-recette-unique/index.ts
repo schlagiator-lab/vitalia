@@ -313,9 +313,11 @@ function construirePrompt(
 
   const tempsMax = profil.temps_preparation || 45;
   const allergenes = profil.allergenes || [];
-  const budgetLabel = profil.budget === 'faible' ? '5-8€/pers.'
-                    : profil.budget === 'eleve'  ? '12-20€/pers.'
-                    : '8-12€/pers.';
+  const budgetLabel = profil.budget === 'faible'
+    ? '5-8€/pers. (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, boîtes de conserve — éviter viande rouge, poisson frais noble, noix de cajou)'
+    : profil.budget === 'eleve'
+    ? '12-20€/pers. (ingrédients premium : saumon, crevettes, noix, légumes bio, viande de qualité, fromages affinés)'
+    : '8-12€/pers. (équilibre qualité/prix : poulet, légumineuses, légumes variés, oeufs bio)';
 
   const frigoSection = ingredientsFrigo.length > 0
     ? `**INGRÉDIENTS DU FRIGO À UTILISER OBLIGATOIREMENT** :\n${ingredientsFrigo.map((i: string) => `- ${i}`).join('\n')}`
