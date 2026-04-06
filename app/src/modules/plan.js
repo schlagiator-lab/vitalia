@@ -573,7 +573,7 @@ export async function genererSemaine(forcer) {
     var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions }),
+      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions, budget_max: ({ faible: 8, moyen: 15, eleve: 25 })[st.selectedBudget] || 15 }),
     })
     var data = await resp.json()
     if (data.success && data.semaine) {

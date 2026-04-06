@@ -742,7 +742,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes } = body;
+    const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes, budget_max } = body;
     const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
     const repasInclus: string[] = Array.isArray(repas_inclus) && repas_inclus.length > 0
       ? repas_inclus
@@ -820,16 +820,27 @@ serve(async (req: Request) => {
     const profil = profils?.[0] || {};
 
     const budgetRepasMap: Record<string, string> = {
-      faible: '< 10 CHF par repas (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, boîtes de conserve — éviter viande rouge, poisson frais noble, noix de cajou)',
-      moyen:  '10-20 CHF par repas (équilibre qualité/prix : poulet, légumineuses, légumes variés, oeufs bio, fromage courant)',
-      eleve:  '> 20 CHF par repas (ingrédients premium : saumon, crevettes, noix, légumes bio, viande de qualité, fromages affinés)',
+      faible: 'moins de 10 CHF par repas (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, boîtes de conserve, flocons d\'avoine — éviter viande rouge, poisson frais noble, noix de cajou)',
+      moyen:  '10 à 20 CHF par repas (équilibre qualité/prix : poulet, légumineuses, légumes variés, oeufs bio, fromage courant)',
+      eleve:  'plus de 20 CHF par repas (ingrédients premium : saumon, crevettes, noix, graines, légumes bio, viande de qualité, fromages affinés)',
     };
+
+    // Priorité : budget_max envoyé par l'UI > budget_complements en DB
+    function budgetNumeriquesVersCategorie(chf: number | null | undefined): 'faible' | 'moyen' | 'eleve' {
+      if (!chf) return 'moyen';
+      if (chf <= 10) return 'faible';
+      if (chf <= 20) return 'moyen';
+      return 'eleve';
+    }
+    const budgetCategorie = budget_max
+      ? budgetNumeriquesVersCategorie(budget_max)
+      : (profil.budget_complements || profil.budget || 'moyen');
 
     const profilNorm = {
       regime_alimentaire: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire),
       allergenes: normaliserArray(profil.allergies || profil.allergenes),
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
-      budget: budgetRepasMap[profil.budget_complements || profil.budget || 'moyen'] || '10-20 CHF par repas',
+      budget: budgetRepasMap[budgetCategorie] || '10 à 20 CHF par repas',
       estVegan: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
         .some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())),
       estVegetarien: normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
