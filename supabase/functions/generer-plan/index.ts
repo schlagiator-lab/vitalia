@@ -623,9 +623,42 @@ serve(async (req) => {
         .maybeSingle();
 
       if (cached?.plan_json && !force_regeneration) {
+        const planData = { ...cached.plan_json } as any;
+
+        // Recalculer score_nutritionnel si absent (plans générés avant cette fonctionnalité)
+        if (planData.plan && !planData.plan.score_nutritionnel) {
+          const p = planData.plan;
+          const repas = [
+            p.matin || p.petit_dejeuner,
+            p.midi  || p.dejeuner,
+            p.soir  || p.diner,
+            p.apres_midi || p.pause || p.collation
+          ].filter(Boolean) as any[];
+          const ingUniques = new Set<string>();
+          repas.forEach(m => ((m.ingredients || []) as any[]).forEach((i: any) => {
+            const k = ((i.nom as string) || '').toLowerCase().slice(0, 15);
+            if (k) ingUniques.add(k);
+          }));
+          const nbRepas  = repas.slice(0, 3).length;
+          const nbNutri  = repas.slice(0, 3).filter((m: any) => {
+            const nv = m.valeurs_nutritionnelles;
+            return nv && nv.calories && nv.proteines;
+          }).length;
+          let s = 5;
+          s += nbRepas * 0.5;
+          s += nbNutri * 0.3;
+          if (repas.length > 3)                          s += 0.4;
+          if ((p.nutraceutiques || []).length >= 2)      s += 0.6;
+          else if ((p.nutraceutiques || []).length === 1) s += 0.3;
+          if ((p.aromatherapie || []).length > 0)        s += 0.4;
+          s += Math.min(ingUniques.size / 20, 0.7);
+          planData.plan.score_nutritionnel = Math.min(parseFloat(s.toFixed(1)), 10);
+          console.log(`[CACHE] score_nutritionnel recalculé : ${planData.plan.score_nutritionnel}`);
+        }
+
         console.log(`[CACHE] Plan journalier trouvé — généré le ${cached.created_at}`);
         return new Response(
-          JSON.stringify({ ...cached.plan_json, _source: 'cache' }),
+          JSON.stringify({ ...planData, _source: 'cache' }),
           { status: 200, headers: CORS_HEADERS }
         );
       }

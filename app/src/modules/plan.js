@@ -145,7 +145,7 @@ export function afficherPlan(plan) {
 
   setText('heroMessage', plan.message_motivation || plan.message_personnalise || 'Ton plan est prêt ! 🌿')
   var score = plan.score_nutritionnel
-  if (score) {
+  if (score != null && score !== undefined) {
     setText('scoreValue', score + '/10')
     afficherEtoiles(score)
   } else {

@@ -12,19 +12,101 @@ export var SYMPTOM_LABELS_CHECKIN = {
   hormones: 'Équilibre hormonal'
 }
 
-export function afficherCheckinModal() {
+var SYMPTOM_ICONS = {
+  vitalite: '⚡', serenite: '🧘', digestion: '🌿',
+  sommeil: '🌙', mobilite: '💪', hormones: '⚖️'
+}
+
+export async function afficherCheckinModal() {
   var symptomes = (st.selectedSymptoms || []).filter(function(s) {
     return SYMPTOM_LABELS_CHECKIN[s]
   })
   if (!symptomes.length) return
   if (document.getElementById('checkinModal')) return
 
+  // Charger l'historique récent pour le contexte (7 derniers jours)
+  var moyennesParSymptome = {}
+  var hierParSymptome = {}
+
+  if (st.profil_id && st.profil_id !== 'new') {
+    try {
+      var since = new Date()
+      since.setDate(since.getDate() - 7)
+      var resp = await authFetch(
+        SUPABASE_URL + '/rest/v1/checkin_symptomes' +
+        '?profil_id=eq.' + st.profil_id +
+        '&date=gte.' + since.toISOString().split('T')[0] +
+        '&order=date.asc&limit=200',
+        { method: 'GET',
+          headers: { 'Content-Type': 'application/json',
+                     'apikey': SUPABASE_ANON_KEY,
+                     'Authorization': 'Bearer ' + st.authToken } }
+      )
+      var rows = await resp.json()
+      if (Array.isArray(rows)) {
+        var bySymptom = {}
+        rows.forEach(function(r) {
+          if (!bySymptom[r.symptome_key]) bySymptom[r.symptome_key] = []
+          bySymptom[r.symptome_key].push({ date: r.date, score: r.score })
+        })
+        var yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        var yDate = yesterday.toISOString().split('T')[0]
+        Object.keys(bySymptom).forEach(function(key) {
+          var data = bySymptom[key]
+          moyennesParSymptome[key] = Math.round(
+            data.reduce(function(s, d) { return s + d.score }, 0) / data.length * 10
+          ) / 10
+          var hierData = data.filter(function(d) { return d.date === yDate })
+          if (hierData.length) {
+            hierParSymptome[key] = Math.round(
+              hierData.reduce(function(s, d) { return s + d.score }, 0) / hierData.length
+            )
+          }
+        })
+      }
+    } catch(e) {}
+  }
+
+  // Trouver le besoin prioritaire (moyenne la plus basse sur 7j)
+  var prioriteKey = null
+  var minMoy = 11
+  symptomes.forEach(function(key) {
+    if (moyennesParSymptome[key] !== undefined && moyennesParSymptome[key] < minMoy) {
+      minMoy = moyennesParSymptome[key]
+      prioriteKey = key
+    }
+  })
+
+  // Bannière besoin prioritaire
+  var prioriteHtml = ''
+  if (prioriteKey) {
+    prioriteHtml =
+      '<div class="checkin-priority">' +
+        '<div class="checkin-priority-label">🎯 Besoin à cibler</div>' +
+        '<div class="checkin-priority-name">' +
+          SYMPTOM_ICONS[prioriteKey] + ' ' + SYMPTOM_LABELS_CHECKIN[prioriteKey] +
+        '</div>' +
+        '<div class="checkin-priority-avg">Moyenne 7 jours · ' + minMoy + '/10</div>' +
+      '</div>'
+  }
+
+  // Sliders avec score de référence
   var slidersHtml = symptomes.map(function(key) {
     var label = SYMPTOM_LABELS_CHECKIN[key] || key
-    return '<div class="checkin-slider-row">' +
+    var icon  = SYMPTOM_ICONS[key] || ''
+    var hierScore = hierParSymptome[key]
+    var refHtml = hierScore !== undefined
+      ? '<span class="checkin-ref-score">hier : ' + hierScore + '</span>'
+      : ''
+    var isPriority = key === prioriteKey
+    return '<div class="checkin-slider-row' + (isPriority ? ' checkin-priority-item' : '') + '">' +
       '<div class="checkin-slider-label">' +
-        '<span class="checkin-slider-name">' + label + '</span>' +
-        '<span class="checkin-slider-val" id="checkin-val-' + key + '">5</span>' +
+        '<span class="checkin-slider-name">' + icon + ' ' + label + '</span>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          refHtml +
+          '<span class="checkin-slider-val" id="checkin-val-' + key + '">5</span>' +
+        '</div>' +
       '</div>' +
       '<input type="range" class="checkin-slider" min="1" max="10" value="5" ' +
         'id="checkin-slider-' + key + '" ' +
@@ -38,8 +120,9 @@ export function afficherCheckinModal() {
       '<div class="checkin-handle"></div>' +
       '<div style="font-family:\'Fraunces\',serif;font-size:20px;font-weight:700;' +
            'color:var(--deep-brown);margin-bottom:4px;">Comment tu te sens ?</div>' +
-      '<div style="font-size:13px;color:var(--text-light);margin-bottom:24px;">' +
+      '<div style="font-size:13px;color:var(--text-light);margin-bottom:16px;">' +
            'Un rapide état des lieux pour affiner tes recommandations</div>' +
+      prioriteHtml +
       slidersHtml +
       '<button onclick="sauvegarderCheckin()" ' +
         'style="width:100%;background:var(--terracotta);color:white;border:none;' +
