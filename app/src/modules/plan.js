@@ -145,7 +145,32 @@ export function afficherPlan(plan) {
 
   setText('heroMessage', plan.message_motivation || plan.message_personnalise || 'Ton plan est prêt ! 🌿')
   var score = plan.score_nutritionnel
-  if (score != null && score !== undefined) {
+  if (score == null || score === undefined) {
+    // Calcul de secours depuis les données du plan (plans anciens sans ce champ)
+    var repas = [plan.matin, plan.midi, plan.soir, plan.apres_midi].filter(Boolean)
+    var ingUniques = new Set()
+    repas.forEach(function(m) {
+      ;(m.ingredients || []).forEach(function(i) {
+        var k = (typeof i === 'string' ? i : (i.nom || '')).toLowerCase().slice(0, 15)
+        if (k) ingUniques.add(k)
+      })
+    })
+    var nbUniques = ingUniques.size
+    var nbRepas = Math.min(repas.length, 3)
+    var nbNutri = repas.slice(0, 3).filter(function(m) {
+      var nv = m.valeurs_nutritionnelles; return nv && nv.calories && nv.proteines
+    }).length
+    var s = 5
+    s += nbRepas * 0.5
+    s += nbNutri * 0.3
+    if (repas.length > 3)                              s += 0.4
+    if ((plan.nutraceutiques || []).length >= 2)       s += 0.6
+    else if ((plan.nutraceutiques || []).length === 1) s += 0.3
+    if ((plan.aromatherapie  || []).length > 0)        s += 0.4
+    s += Math.min(nbUniques / 20, 0.7)
+    score = Math.min(parseFloat(s.toFixed(1)), 10)
+  }
+  if (score != null) {
     setText('scoreValue', score + '/10')
     afficherEtoiles(score)
   } else {
