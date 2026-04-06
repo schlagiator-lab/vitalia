@@ -27,6 +27,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY            = Deno.env.get('RESEND_API_KEY') || ''
+// Domaine expéditeur vérifié dans Resend (ex: "Vitalia <bonjour@vitalia.app>")
+const FROM_EMAIL                = Deno.env.get('FROM_EMAIL') || 'Vitalia <onboarding@resend.dev>'
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -194,13 +196,16 @@ serve(async (req: Request) => {
         .order('created_at', { ascending: false })
         .limit(1)
 
-      const planData = plans?.[0]?.plan_json || null
+      const planJson = plans?.[0]?.plan_json || null
+      // plan_json est stocké sous la forme { success, plan: { matin, midi, soir, ... }, ... }
+      // Le plan réel est dans planJson.plan (formaterReponseAPI)
+      const planData = planJson?.plan || planJson || null
 
       // Normalize keys: matin/midi/soir OR petit_dejeuner/dejeuner/diner
-      const matonObj = planData?.matin       || planData?.petit_dejeuner || null
-      const midiObj  = planData?.midi        || planData?.dejeuner       || null
-      const soirObj  = planData?.soir        || planData?.diner          || null
-      const nutraArr = planData?.nutraceutiques || planData?.supplements   || []
+      const matonObj = planData?.matin          || planData?.petit_dejeuner || null
+      const midiObj  = planData?.midi           || planData?.dejeuner       || null
+      const soirObj  = planData?.soir           || planData?.diner          || null
+      const nutraArr = planData?.nutraceutiques || planData?.supplements    || []
 
       const emailHtml = buildEmailHtml({
         prenom: profile.prenom || '',
@@ -218,9 +223,9 @@ serve(async (req: Request) => {
           'Authorization': `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from:    'Vitalia <onboarding@resend.dev>',
+          from:    FROM_EMAIL,
           to:      [email],
-          subject: 'Ton plan bien-etre du jour',
+          subject: 'Ton plan bien-être du jour 🌿',
           html:    emailHtml,
         }),
       })
