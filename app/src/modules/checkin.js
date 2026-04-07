@@ -282,7 +282,7 @@ export async function afficherEvolution() {
     var hasRadarData = radarScores.some(function(s) { return s !== null })
     var radarHtml = ''
     if (hasRadarData) {
-      var cx = 110; var cy = 110; var maxR = 90; var n = radarKeys.length
+      var cx = 110; var cy = 110; var maxR = 100; var n = radarKeys.length
       function radarPt(idx, val) {
         var angle = (idx / n) * 2 * Math.PI - Math.PI / 2
         var r = (val / 10) * maxR
@@ -443,7 +443,7 @@ export async function afficherEvolution() {
         return recent.length ? Math.round(avg(recent) * 10) / 10 : Math.round(d[d.length-1].score * 10) / 10
       })
 
-      var cx2 = 110; var cy2 = 110; var maxR2 = 84; var n2 = radarKeys2.length
+      var cx2 = 110; var cy2 = 110; var maxR2 = 96; var n2 = radarKeys2.length
       function rpt(i, v) {
         var a = (i / n2) * 2 * Math.PI - Math.PI / 2
         return [(cx2 + v * maxR2 / 10 * Math.cos(a)).toFixed(1), (cy2 + v * maxR2 / 10 * Math.sin(a)).toFixed(1)]
