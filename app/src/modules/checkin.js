@@ -90,52 +90,70 @@ export async function afficherCheckinModal() {
       '</div>'
   }
 
-  // Sliders avec score de référence
+  // Sliders — pré-remplis avec les valeurs d'hier (ou 5 par défaut)
   var slidersHtml = symptomes.map(function(key) {
-    var label = SYMPTOM_LABELS_CHECKIN[key] || key
-    var icon  = SYMPTOM_ICONS[key] || ''
+    var label     = SYMPTOM_LABELS_CHECKIN[key] || key
+    var icon      = SYMPTOM_ICONS[key] || ''
     var hierScore = hierParSymptome[key]
-    var refHtml = hierScore !== undefined
-      ? '<span class="checkin-ref-score">hier : ' + hierScore + '</span>'
-      : ''
+    var initVal   = hierScore !== undefined ? hierScore : 5
     var isPriority = key === prioriteKey
     return '<div class="checkin-slider-row' + (isPriority ? ' checkin-priority-item' : '') + '">' +
       '<div class="checkin-slider-label">' +
         '<span class="checkin-slider-name">' + icon + ' ' + label + '</span>' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
-          refHtml +
-          '<span class="checkin-slider-val" id="checkin-val-' + key + '">5</span>' +
-        '</div>' +
+        '<span class="checkin-slider-val" id="checkin-val-' + key + '">' + initVal + '</span>' +
       '</div>' +
-      '<input type="range" class="checkin-slider" min="1" max="10" value="5" ' +
+      '<input type="range" class="checkin-slider" min="1" max="10" value="' + initVal + '" ' +
         'id="checkin-slider-' + key + '" ' +
         'oninput="document.getElementById(\'checkin-val-' + key + '\').textContent=this.value">' +
-      '<div class="checkin-emoji-row"><span>😔 Difficile</span><span>😊 Excellent</span></div>' +
     '</div>'
   }).join('')
 
   var html = '<div class="checkin-modal" id="checkinModal">' +
     '<div class="checkin-sheet">' +
       '<div class="checkin-handle"></div>' +
-      '<div style="font-family:\'Fraunces\',serif;font-size:20px;font-weight:700;' +
-           'color:var(--deep-brown);margin-bottom:4px;">Comment tu te sens ?</div>' +
-      '<div style="font-size:13px;color:var(--text-light);margin-bottom:16px;">' +
-           'Un rapide état des lieux pour affiner tes recommandations</div>' +
+      '<div style="font-family:\'Fraunces\',serif;font-size:18px;font-weight:700;' +
+           'color:var(--deep-brown);margin-bottom:2px;">Comment tu te sens ?</div>' +
+      '<div style="font-size:12px;color:var(--text-light);margin-bottom:10px;' +
+           'display:flex;justify-content:space-between;">' +
+           '<span>Glisse horizontalement pour noter</span>' +
+           '<span style="color:var(--terracotta);">😔 1 · · · 10 😊</span>' +
+      '</div>' +
       prioriteHtml +
       slidersHtml +
       '<button onclick="sauvegarderCheckin()" ' +
         'style="width:100%;background:var(--terracotta);color:white;border:none;' +
-        'border-radius:16px;padding:14px;font-size:15px;font-weight:600;' +
-        'cursor:pointer;font-family:\'DM Sans\',sans-serif;margin-top:8px;">' +
+        'border-radius:16px;padding:13px;font-size:15px;font-weight:600;' +
+        'cursor:pointer;font-family:\'DM Sans\',sans-serif;margin-top:10px;">' +
         'Enregistrer mon ressenti</button>' +
       '<button onclick="fermerCheckinModal(false)" ' +
         'style="width:100%;background:none;border:none;color:var(--text-light);' +
-        'font-size:13px;cursor:pointer;margin-top:10px;padding:6px;">' +
+        'font-size:13px;cursor:pointer;margin-top:6px;padding:4px;">' +
         'Pas maintenant</button>' +
     '</div>' +
   '</div>'
 
   document.body.insertAdjacentHTML('beforeend', html)
+
+  // Fix 2 — bloquer les glissements verticaux qui modifient accidentellement les sliders
+  document.querySelectorAll('#checkinModal .checkin-slider').forEach(function(slider) {
+    var startX, startY, startVal
+    slider.addEventListener('touchstart', function(e) {
+      startX   = e.touches[0].clientX
+      startY   = e.touches[0].clientY
+      startVal = parseFloat(slider.value)
+    }, { passive: true })
+    slider.addEventListener('touchmove', function(e) {
+      var dx = Math.abs(e.touches[0].clientX - startX)
+      var dy = Math.abs(e.touches[0].clientY - startY)
+      if (dy > dx) {
+        // mouvement principalement vertical → annuler le changement de valeur
+        slider.value = startVal
+        var key = slider.id.replace('checkin-slider-', '')
+        var valEl = document.getElementById('checkin-val-' + key)
+        if (valEl) valEl.textContent = startVal
+      }
+    }, { passive: true })
+  })
 }
 
 export function fermerCheckinModal(skipToday) {
@@ -406,91 +424,71 @@ export async function afficherEvolution() {
 
     container.innerHTML = html
 
-    // Also populate Aujourd'hui evolution section using CSS classes
-    var evoSection  = document.getElementById('evolutionSection')
-    var evoContent  = document.getElementById('evolutionContent')
+    // ── Aujourd'hui : rose radar + besoin à cibler ──
+    var evoSection = document.getElementById('evolutionSection')
+    var evoContent = document.getElementById('evolutionContent')
     if (evoSection && evoContent && symptomKeys.length) {
-      var htmlAujourd = ''
-      symptomKeys.forEach(function(key, idx) {
-        var data   = bySymptom[key]
-        var label  = LABELS[key] || key
-        var today2 = new Date()
-
-        var week1b = data.filter(function(d) {
-          return Math.floor((today2 - new Date(d.date)) / 86400000) <= 7
-        })
-        var week2b = data.filter(function(d) {
-          var n = Math.floor((today2 - new Date(d.date)) / 86400000)
-          return n > 7 && n <= 14
-        })
-        var avg1b = avg(week1b)
-        var avg2b = avg(week2b)
-
-        var badgeHtml = ''
-        var lineColor2 = '#9E8070'
-        if (avg1b !== null && avg2b !== null && avg2b > 0) {
-          var delta2 = Math.round(((avg1b - avg2b) / avg2b) * 100)
-          if (delta2 > 2) {
-            badgeHtml = '<span class="evolution-badge-pos">+' + delta2 + '%</span>'
-            lineColor2 = '#7A9E7E'
-          } else if (delta2 < -2) {
-            badgeHtml = '<span class="evolution-badge-neg">' + delta2 + '%</span>'
-            lineColor2 = '#C4714A'
-          } else {
-            badgeHtml = '<span class="evolution-badge-neu">Stable</span>'
-          }
-        } else {
-          badgeHtml = '<span class="evolution-badge-neu">En cours...</span>'
-        }
-
-        var scores2   = data.map(function(d) { return d.score })
-        var latestS   = scores2[scores2.length - 1]
-        var latestLbl = latestS <= 3 ? 'Difficile' : latestS <= 5 ? 'Moyen'
-                      : latestS <= 7 ? 'Bien' : 'Excellent'
-        var minS2 = Math.min.apply(null, scores2)
-        var maxS2 = Math.max.apply(null, scores2)
-        var range2 = Math.max(maxS2 - minS2, 1)
-        var W2 = 260; var H2 = 36; var pad2 = 4
-
-        var sparkHtml2
-        if (scores2.length === 1) {
-          sparkHtml2 = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" ' +
-            'style="width:100%;height:40px;display:block;" xmlns="http://www.w3.org/2000/svg">' +
-            '<circle cx="' + (W2/2).toFixed(1) + '" cy="' + (H2/2).toFixed(1) + '" ' +
-            'r="3.5" fill="' + lineColor2 + '"/></svg>'
-        } else {
-          var pts2 = scores2.map(function(s, i) {
-            var x = pad2 + (i / Math.max(scores2.length - 1, 1)) * (W2 - pad2 * 2)
-            var y = pad2 + (1 - (s - minS2) / range2) * (H2 - pad2 * 2)
-            return x.toFixed(1) + ',' + y.toFixed(1)
-          }).join(' ')
-          var li2 = scores2.length - 1
-          var lx2 = (pad2 + (li2 / Math.max(scores2.length - 1, 1)) * (W2 - pad2 * 2)).toFixed(1)
-          var ly2 = (pad2 + (1 - (scores2[li2] - minS2) / range2) * (H2 - pad2 * 2)).toFixed(1)
-          sparkHtml2 = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" ' +
-            'style="width:100%;height:40px;display:block;" xmlns="http://www.w3.org/2000/svg" ' +
-            'preserveAspectRatio="none">' +
-            '<polyline points="' + pts2 + '" fill="none" stroke="' + lineColor2 + '" ' +
-            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>' +
-            '<circle cx="' + lx2 + '" cy="' + ly2 + '" r="3.5" fill="' + lineColor2 + '"/>' +
-            '</svg>'
-        }
-
-        if (idx > 0) htmlAujourd += '<div class="evolution-divider"></div>'
-        htmlAujourd += '<div class="evolution-symptom">'
-        htmlAujourd += '<div class="evolution-symptom-header">'
-        htmlAujourd += '<span class="evolution-symptom-name">' + label + '</span>'
-        htmlAujourd += '<div style="display:flex;align-items:center;gap:8px;">' + badgeHtml +
-          '<span class="evolution-score">' + latestS + '/10 · ' + latestLbl + '</span></div>'
-        htmlAujourd += '</div>'
-        htmlAujourd += sparkHtml2
-        htmlAujourd += '<div style="display:flex;justify-content:space-between;margin-top:2px;">'
-        htmlAujourd += '<span style="font-size:9px;color:var(--text-light);">Il y a 14j</span>'
-        htmlAujourd += '<span style="font-size:9px;color:var(--text-light);">Aujourd\'hui</span>'
-        htmlAujourd += '</div>'
-        htmlAujourd += '</div>'
+      // Radar 7 derniers jours
+      var radarKeys2 = Object.keys(LABELS)
+      var radarScores2 = radarKeys2.map(function(k) {
+        var d = bySymptom[k]
+        return d && d.length ? Math.round(avg(d.filter(function(x) {
+          return Math.floor((new Date() - new Date(x.date)) / 86400000) <= 7
+        }).concat(d.length ? [d[d.length-1]] : []).slice(0,7)) * 10) / 10 : null
       })
-      evoContent.innerHTML = htmlAujourd
+      // Recalcul propre : moyenne 7j par symptôme
+      radarScores2 = radarKeys2.map(function(k) {
+        var d = bySymptom[k]; if (!d || !d.length) return null
+        var recent = d.filter(function(x) { return Math.floor((new Date() - new Date(x.date)) / 86400000) <= 7 })
+        return recent.length ? Math.round(avg(recent) * 10) / 10 : Math.round(d[d.length-1].score * 10) / 10
+      })
+
+      var cx2 = 110; var cy2 = 110; var maxR2 = 84; var n2 = radarKeys2.length
+      function rpt(i, v) {
+        var a = (i / n2) * 2 * Math.PI - Math.PI / 2
+        return [(cx2 + v * maxR2 / 10 * Math.cos(a)).toFixed(1), (cy2 + v * maxR2 / 10 * Math.sin(a)).toFixed(1)]
+      }
+      var gridSvg2 = ''
+      ;[2,4,6,8,10].forEach(function(g) {
+        gridSvg2 += '<polygon points="' + radarKeys2.map(function(_, i) { var p=rpt(i,g); return p[0]+','+p[1] }).join(' ') + '" fill="none" stroke="rgba(196,113,74,0.12)" stroke-width="1"/>'
+      })
+      var axesSvg2 = radarKeys2.map(function(_, i) { var p=rpt(i,10); return '<line x1="'+cx2+'" y1="'+cy2+'" x2="'+p[0]+'" y2="'+p[1]+'" stroke="rgba(196,113,74,0.15)" stroke-width="1"/>' }).join('')
+      var scorePts2 = radarKeys2.map(function(k, i) { var s=radarScores2[i]!==null?radarScores2[i]:0; var p=rpt(i,s); return p[0]+','+p[1] }).join(' ')
+      var labelsSvg2 = radarKeys2.map(function(k, i) {
+        var a = (i / n2) * 2 * Math.PI - Math.PI / 2
+        var lx = (cx2 + (maxR2 + 20) * Math.cos(a)).toFixed(1)
+        var ly = (cy2 + (maxR2 + 20) * Math.sin(a)).toFixed(1)
+        var anchor = Math.cos(a) > 0.1 ? 'start' : Math.cos(a) < -0.1 ? 'end' : 'middle'
+        var s = radarScores2[i]; var p = rpt(i, s !== null ? s : 0)
+        return '<text x="'+lx+'" y="'+ly+'" text-anchor="'+anchor+'" font-family="DM Sans,sans-serif" font-size="11" fill="var(--deep-brown)" dominant-baseline="middle">'+ICONS[k]+' '+(LABELS[k]||k).split(' ')[0]+(s!==null?' · '+s:'')+'</text>'+
+               '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="var(--terracotta)"/>'
+      }).join('')
+
+      // Besoin prioritaire (moyenne 7j la plus basse)
+      var prioKey2 = null; var prioMin2 = 11
+      radarKeys2.forEach(function(k, i) {
+        var s = radarScores2[i]; if (s !== null && s < prioMin2) { prioMin2 = s; prioKey2 = k }
+      })
+      var prioHtml2 = ''
+      if (prioKey2) {
+        prioHtml2 = '<div style="background:linear-gradient(135deg,rgba(196,113,74,0.08),rgba(232,184,75,0.06));' +
+          'border:1px solid rgba(196,113,74,0.2);border-radius:14px;padding:12px 14px;margin-top:12px;">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--terracotta);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">🎯 Besoin à cibler</div>' +
+          '<div style="font-size:15px;font-weight:700;color:var(--deep-brown);">' + ICONS[prioKey2] + ' ' + LABELS[prioKey2] + '</div>' +
+          '<div style="font-size:12px;color:var(--text-light);margin-top:2px;">Moyenne 7 jours · ' + prioMin2 + '/10</div>' +
+          '</div>'
+      }
+
+      evoContent.innerHTML =
+        '<div style="display:flex;justify-content:center;">' +
+        '<svg viewBox="0 0 220 220" style="width:100%;max-width:280px;height:auto;overflow:visible;">' +
+        gridSvg2 + axesSvg2 +
+        '<polygon points="' + scorePts2 + '" fill="rgba(196,113,74,0.18)" stroke="var(--terracotta)" stroke-width="2" stroke-linejoin="round"/>' +
+        labelsSvg2 + '</svg></div>' +
+        prioHtml2 +
+        '<div style="text-align:center;margin-top:10px;">' +
+        '<button onclick="ouvrirSheet(\'evolution\')" style="background:none;border:1px solid rgba(196,113,74,0.2);border-radius:10px;padding:7px 16px;font-size:12px;color:var(--mid-brown);cursor:pointer;font-family:\'DM Sans\',sans-serif;">Voir toutes les courbes →</button>' +
+        '</div>'
       evoSection.style.display = ''
     }
 
