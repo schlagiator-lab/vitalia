@@ -324,7 +324,7 @@ export async function afficherEvolution() {
         'padding:16px;box-shadow:var(--card-shadow);margin-bottom:14px;">' +
         '<div style="font-size:13px;font-weight:600;color:var(--deep-brown);margin-bottom:12px;">🌸 Vue globale · 7 derniers jours</div>' +
         '<div style="display:flex;justify-content:center;">' +
-        '<svg viewBox="0 0 220 220" style="width:100%;max-width:260px;height:auto;overflow:visible;">' +
+        '<svg viewBox="-80 -10 380 240" style="width:100%;height:auto;">' +
         gridSvg + axesSvg +
         '<polygon points="' + scorePts + '" fill="rgba(196,113,74,0.18)" stroke="var(--terracotta)" stroke-width="2" stroke-linejoin="round"/>' +
         labelsSvg +
@@ -481,7 +481,7 @@ export async function afficherEvolution() {
 
       evoContent.innerHTML =
         '<div style="display:flex;justify-content:center;">' +
-        '<svg viewBox="0 0 220 220" style="width:100%;max-width:280px;height:auto;overflow:visible;">' +
+        '<svg viewBox="-80 -10 380 240" style="width:100%;height:auto;">' +
         gridSvg2 + axesSvg2 +
         '<polygon points="' + scorePts2 + '" fill="rgba(196,113,74,0.18)" stroke="var(--terracotta)" stroke-width="2" stroke-linejoin="round"/>' +
         labelsSvg2 + '</svg></div>' +
