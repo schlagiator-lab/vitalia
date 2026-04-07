@@ -246,12 +246,12 @@ export function updateAlliesFromPlan(plan) {
   var keywords = {
     goji:'goji', curcuma:'curcuma', gingembre:'gingembre', myrtille:'myrtille',
     avocat:'avocat', banane:'banane', miel:'miel', amandes:'amande',
-    patate:'patate douce', epinards:'épinard'
+    patate:'patate douce', epinards:'épinard', cannelle:'cannelle'
   }
   var allyNames = {
     goji:'Goji', curcuma:'Curcuma', gingembre:'Gingembre', myrtille:'Myrtille',
     avocat:'Avocat', banane:'Banane', miel:'Miel', amandes:'Amandes',
-    patate:'Patate douce', epinards:'Épinards'
+    patate:'Patate douce', epinards:'Épinards', cannelle:'Cannelle Ceylan'
   }
   var ingredientNames = []
   var mealKeys = ['matin','petit_dejeuner','midi','dejeuner','soir','diner','pause','collation','apres_midi']
