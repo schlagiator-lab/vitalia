@@ -574,6 +574,16 @@ export function toggleSelectSaved(idx) {
       import('./plan.js').then(function(m) {
         var manuels = (existing2.ingredients || []).filter(function(i) { return i.manuel })
         existing2.ingredients = m.reagregerDepuisRecettes(existing2.recettes).concat(manuels)
+        // Préserver les cases cochées des ingrédients encore présents
+        var oldVu2 = {}
+        try { oldVu2 = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+        var newVu2 = {}
+        existing2.ingredients.forEach(function(ing) {
+          var key = ing.nom.toLowerCase().trim()
+          var match = Object.keys(oldVu2).find(function(k) { return k.toLowerCase().trim() === key })
+          if (match && oldVu2[match]) newVu2[ing.nom] = true
+        })
+        localStorage.setItem('vitalia_courses_vu', JSON.stringify(newVu2))
         existing2.date = new Date().toISOString()
         localStorage.setItem('vitalia_liste_courses', JSON.stringify(existing2))
         sauvegarderListeCoursesSupabase()
@@ -784,7 +794,20 @@ export function supprimerRecetteDeListeProfile(type, id) {
     var manuels = (raw.ingredients || []).filter(function(i) { return i.manuel })
     raw.ingredients = m.reagregerDepuisRecettes(raw.recettes).concat(manuels)
     if (!raw.recettes.length && !manuels.length) { localStorage.removeItem('vitalia_liste_courses'); localStorage.removeItem('vitalia_courses_vu') }
-    else { raw.date = new Date().toISOString(); localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw)) }
+    else {
+      // Préserver les cases cochées des ingrédients encore présents
+      var oldVu = {}
+      try { oldVu = JSON.parse(localStorage.getItem('vitalia_courses_vu') || '{}') } catch(e) {}
+      var newVu = {}
+      raw.ingredients.forEach(function(ing) {
+        var key = ing.nom.toLowerCase().trim()
+        var match = Object.keys(oldVu).find(function(k) { return k.toLowerCase().trim() === key })
+        if (match && oldVu[match]) newVu[ing.nom] = true
+      })
+      localStorage.setItem('vitalia_courses_vu', JSON.stringify(newVu))
+      raw.date = new Date().toISOString()
+      localStorage.setItem('vitalia_liste_courses', JSON.stringify(raw))
+    }
     sauvegarderListeCoursesSupabase()
     afficherListeCoursesProfile()
   })

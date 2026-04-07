@@ -981,7 +981,9 @@ function construireListeRecettes() {
     if (!recette) return
     result.push({ type: 'semaine', id: id,
       nom: recette.nom || ((MEAL_LABEL[mealKey] || mealKey) + ' ' + (JOUR_LABEL[jour] || jour)),
-      portions: st.semaineServings[id] || st.defaultPortions, basePortions: st.semaineBasePortions || st.defaultPortions || 1, ingredients: recette.ingredients || [] })
+      portions: st.semaineServings[id] || recette.portions || recette.nb_personnes || st.defaultPortions,
+      basePortions: recette.portions || recette.nb_personnes || st.semaineBasePortions || st.defaultPortions || 2,
+      ingredients: recette.ingredients || [] })
   })
 
   var savedList = []
@@ -991,7 +993,9 @@ function construireListeRecettes() {
     var recette = savedList[parseInt(idx)]; if (!recette) return
     result.push({ type: 'saved', id: parseInt(idx),
       nom: recette.nom || 'Recette sauvegardée',
-      portions: st.savedServings[parseInt(idx)] || 2, basePortions: recette.portions || 2, ingredients: recette.ingredients || [] })
+      portions: st.savedServings[parseInt(idx)] || recette.portions || recette.nb_personnes || 2,
+      basePortions: recette.portions || recette.nb_personnes || 2,
+      ingredients: recette.ingredients || [] })
   })
   return result
 }
@@ -1030,14 +1034,15 @@ function aggregerIngredients() {
     var parts   = id.split('_'), jour = parts[0], mealKey = parts.slice(1).join('_')
     var recette = st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][mealKey]
     if (!recette || !recette.ingredients) return
-    ajouterIngredients(recette.ingredients, (st.semaineServings[id] || st.defaultPortions) / (st.semaineBasePortions || st.defaultPortions || 1))
+    var semaineBase = recette.portions || recette.nb_personnes || st.semaineBasePortions || st.defaultPortions || 2
+    ajouterIngredients(recette.ingredients, (st.semaineServings[id] || recette.portions || recette.nb_personnes || st.defaultPortions) / Math.max(semaineBase, 1))
   })
   var savedList = []
   try { savedList = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
   Object.keys(st.savedSelected).forEach(function(idx) {
     if (!st.savedSelected[idx]) return
     var recette = savedList[parseInt(idx)]; if (!recette || !recette.ingredients) return
-    ajouterIngredients(recette.ingredients, (st.savedServings[parseInt(idx)] || 2) / Math.max(recette.portions || 2, 1))
+    ajouterIngredients(recette.ingredients, (st.savedServings[parseInt(idx)] || recette.portions || recette.nb_personnes || 2) / Math.max(recette.portions || recette.nb_personnes || 2, 1))
   })
   return Object.values(map).sort(function(a, b) { return a.nom.localeCompare(b.nom) })
 }

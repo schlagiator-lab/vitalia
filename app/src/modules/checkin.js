@@ -18,9 +18,8 @@ var SYMPTOM_ICONS = {
 }
 
 export async function afficherCheckinModal() {
-  var symptomes = (st.selectedSymptoms || []).filter(function(s) {
-    return SYMPTOM_LABELS_CHECKIN[s]
-  })
+  // Afficher tous les objectifs santé disponibles à chaque check-in
+  var symptomes = Object.keys(SYMPTOM_LABELS_CHECKIN)
   if (!symptomes.length) return
   if (document.getElementById('checkinModal')) return
 
@@ -129,7 +128,7 @@ export async function afficherCheckinModal() {
         'border-radius:16px;padding:14px;font-size:15px;font-weight:600;' +
         'cursor:pointer;font-family:\'DM Sans\',sans-serif;margin-top:8px;">' +
         'Enregistrer mon ressenti</button>' +
-      '<button onclick="fermerCheckinModal(true)" ' +
+      '<button onclick="fermerCheckinModal(false)" ' +
         'style="width:100%;background:none;border:none;color:var(--text-light);' +
         'font-size:13px;cursor:pointer;margin-top:10px;padding:6px;">' +
         'Pas maintenant</button>' +
@@ -151,9 +150,7 @@ export function fermerCheckinModal(skipToday) {
 }
 
 export async function sauvegarderCheckin() {
-  var symptomes = (st.selectedSymptoms || []).filter(function(s) {
-    return SYMPTOM_LABELS_CHECKIN[s]
-  })
+  var symptomes = Object.keys(SYMPTOM_LABELS_CHECKIN)
   if (!symptomes.length) { fermerCheckinModal(true); return }
   if (!st.profil_id || st.profil_id === 'new') { fermerCheckinModal(true); return }
 
@@ -252,12 +249,71 @@ export async function afficherEvolution() {
       digestion:'Digestion', sommeil:'Sommeil',
       mobilite:'Mobilité', hormones:'Équilibre hormonal'
     }
+    var ICONS = { vitalite:'⚡', serenite:'🧘', digestion:'🌿', sommeil:'🌙', mobilite:'💪', hormones:'⚖️' }
 
     var avg = function(arr) {
       return arr.length ? arr.reduce(function(s,d){return s+d.score},0)/arr.length : null
     }
 
-    var html = ''
+    // ── Rose radar globale ──
+    var radarKeys = Object.keys(LABELS)
+    var radarScores = radarKeys.map(function(k) {
+      var d = bySymptom[k]
+      return d && d.length ? Math.round(avg(d.slice(-7)) * 10) / 10 : null
+    })
+    var hasRadarData = radarScores.some(function(s) { return s !== null })
+    var radarHtml = ''
+    if (hasRadarData) {
+      var cx = 110; var cy = 110; var maxR = 90; var n = radarKeys.length
+      function radarPt(idx, val) {
+        var angle = (idx / n) * 2 * Math.PI - Math.PI / 2
+        var r = (val / 10) * maxR
+        return [(cx + r * Math.cos(angle)).toFixed(1), (cy + r * Math.sin(angle)).toFixed(1)]
+      }
+      // Grilles
+      var gridSvg = ''
+      ;[2, 4, 6, 8, 10].forEach(function(g) {
+        var gPts = radarKeys.map(function(_, i) {
+          var p = radarPt(i, g); return p[0] + ',' + p[1]
+        }).join(' ')
+        gridSvg += '<polygon points="' + gPts + '" fill="none" stroke="rgba(196,113,74,0.12)" stroke-width="1"/>'
+      })
+      // Axes
+      var axesSvg = radarKeys.map(function(k, i) {
+        var p = radarPt(i, 10)
+        return '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0] + '" y2="' + p[1] + '" stroke="rgba(196,113,74,0.15)" stroke-width="1"/>'
+      }).join('')
+      // Polygone scores
+      var scorePts = radarKeys.map(function(k, i) {
+        var s = radarScores[i] !== null ? radarScores[i] : 0
+        var p = radarPt(i, s); return p[0] + ',' + p[1]
+      }).join(' ')
+      // Labels + points
+      var labelsSvg = radarKeys.map(function(k, i) {
+        var angle = (i / n) * 2 * Math.PI - Math.PI / 2
+        var lx = (cx + (maxR + 18) * Math.cos(angle)).toFixed(1)
+        var ly = (cy + (maxR + 18) * Math.sin(angle)).toFixed(1)
+        var anchor = Math.cos(angle) > 0.1 ? 'start' : Math.cos(angle) < -0.1 ? 'end' : 'middle'
+        var s = radarScores[i]
+        var p = radarPt(i, s !== null ? s : 0)
+        return '<text x="' + lx + '" y="' + ly + '" text-anchor="' + anchor + '" ' +
+          'font-family="DM Sans,sans-serif" font-size="11" fill="var(--deep-brown)" dominant-baseline="middle">' +
+          ICONS[k] + ' ' + (LABELS[k] || k).split(' ')[0] + (s !== null ? ' · ' + s : '') + '</text>' +
+          '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4" fill="var(--terracotta)"/>'
+      }).join('')
+
+      radarHtml = '<div style="background:var(--card-bg);border-radius:16px;border:1px solid var(--card-border);' +
+        'padding:16px;box-shadow:var(--card-shadow);margin-bottom:14px;">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--deep-brown);margin-bottom:12px;">🌸 Vue globale · 7 derniers jours</div>' +
+        '<div style="display:flex;justify-content:center;">' +
+        '<svg viewBox="0 0 220 220" style="width:100%;max-width:260px;height:auto;overflow:visible;">' +
+        gridSvg + axesSvg +
+        '<polygon points="' + scorePts + '" fill="rgba(196,113,74,0.18)" stroke="var(--terracotta)" stroke-width="2" stroke-linejoin="round"/>' +
+        labelsSvg +
+        '</svg></div></div>'
+    }
+
+    var html = radarHtml
     symptomKeys.forEach(function(key) {
       var data   = bySymptom[key]
       var label  = LABELS[key] || key
