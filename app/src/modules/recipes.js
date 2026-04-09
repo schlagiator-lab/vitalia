@@ -186,7 +186,7 @@ export async function sauvegarderRecetteUnique() {
   if (!st.recetteCourante) return
   try {
     var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
-    var entry = Object.assign({}, st.recetteCourante, { id: 'recette_' + Date.now(), saved_at: new Date().toISOString(), note: 0 })
+    var entry = Object.assign({}, st.recetteCourante, { id: 'recette_' + Date.now(), saved_at: new Date().toISOString(), note: 0, portions: st.recetteCourante.portions || st.recetteCourante.nb_personnes || st.defaultPortions || 2 })
     saved.unshift(entry)
     localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0,50)))
   } catch(e) {}

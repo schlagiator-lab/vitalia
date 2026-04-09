@@ -25,7 +25,13 @@ export async function afficherCheckinModal() {
 
   // Charger l'historique récent pour le contexte (7 derniers jours)
   var moyennesParSymptome = {}
-  var hierParSymptome = {}
+
+  // Scores pré-remplis : derniers scores connus (localStorage en priorité, Supabase en fallback)
+  var dernierScores = {}
+  try {
+    var _cached = JSON.parse(localStorage.getItem('vitalia_checkin_derniers_scores') || 'null')
+    if (_cached && typeof _cached === 'object') dernierScores = _cached
+  } catch(e) {}
 
   if (st.profil_id && st.profil_id !== 'new') {
     try {
@@ -48,18 +54,17 @@ export async function afficherCheckinModal() {
           if (!bySymptom[r.symptome_key]) bySymptom[r.symptome_key] = []
           bySymptom[r.symptome_key].push({ date: r.date, score: r.score })
         })
-        var yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        var yDate = yesterday.toISOString().split('T')[0]
         Object.keys(bySymptom).forEach(function(key) {
           var data = bySymptom[key]
           moyennesParSymptome[key] = Math.round(
             data.reduce(function(s, d) { return s + d.score }, 0) / data.length * 10
           ) / 10
-          var hierData = data.filter(function(d) { return d.date === yDate })
-          if (hierData.length) {
-            hierParSymptome[key] = Math.round(
-              hierData.reduce(function(s, d) { return s + d.score }, 0) / hierData.length
+          // Trouver la date la plus récente (pas forcément hier)
+          var maxDate = data.reduce(function(max, d) { return d.date > max ? d.date : max }, '')
+          var recentData = data.filter(function(d) { return d.date === maxDate })
+          if (recentData.length) {
+            dernierScores[key] = Math.round(
+              recentData.reduce(function(s, d) { return s + d.score }, 0) / recentData.length
             )
           }
         })
@@ -94,8 +99,7 @@ export async function afficherCheckinModal() {
   var slidersHtml = symptomes.map(function(key) {
     var label     = SYMPTOM_LABELS_CHECKIN[key] || key
     var icon      = SYMPTOM_ICONS[key] || ''
-    var hierScore = hierParSymptome[key]
-    var initVal   = hierScore !== undefined ? hierScore : 5
+    var initVal   = dernierScores[key] !== undefined ? dernierScores[key] : 5
     var isPriority = key === prioriteKey
     return '<div class="checkin-slider-row' + (isPriority ? ' checkin-priority-item' : '') + '">' +
       '<div class="checkin-slider-label">' +
@@ -173,11 +177,15 @@ export async function sauvegarderCheckin() {
   if (!st.profil_id || st.profil_id === 'new') { fermerCheckinModal(true); return }
 
   var today = new Date().toISOString().split('T')[0]
+  var scoresMap = {}
   var rows = symptomes.map(function(key) {
     var slider = document.getElementById('checkin-slider-' + key)
     var score  = slider ? parseInt(slider.value) : 5
+    scoresMap[key] = score
     return { profil_id: st.profil_id, date: today, symptome_key: key, score: score }
   })
+  // Persister les scores pour pré-remplir le prochain check-in
+  try { localStorage.setItem('vitalia_checkin_derniers_scores', JSON.stringify(scoresMap)) } catch(e) {}
 
   try {
     await authFetch(

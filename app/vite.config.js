@@ -13,6 +13,10 @@ export default defineConfig({
       workbox: {
         // Cache l'app shell + assets statiques
         globPatterns: ['**/*.{js,css,html,png,webp,woff2}'],
+        // Activation immédiate du nouveau SW sans attendre la fermeture de tous les onglets
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Supabase API → toujours réseau (pas de cache)
         runtimeCaching: [
           {

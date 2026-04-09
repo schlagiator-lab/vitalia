@@ -360,7 +360,7 @@ export function sauvegarderRecette(m) {
   var saved = []
   try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
   if (saved.some(function(s){ return s.titre === titre })) { afficherToast('Déjà sauvegardée !'); return }
-  var entry = Object.assign({}, r, { id: 'recette_' + Date.now(), saved_at: new Date().toISOString(), note: 0 })
+  var entry = Object.assign({}, r, { id: 'recette_' + Date.now(), saved_at: new Date().toISOString(), note: 0, portions: st.recipeServings[m] || r.portions || r.nb_personnes || 2 })
   saved.unshift(entry)
   try { localStorage.setItem('vitalia_recettes_sauvegardees', JSON.stringify(saved.slice(0, 50))) } catch(e) {}
   var btn = document.getElementById('save-btn-' + m)
@@ -925,7 +925,7 @@ export function sauvegarderRecetteSemaine(id) {
   var mealKey = parts.slice(1).join('_')
   var recette = st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][mealKey]
   if (!recette) return
-  var entry = Object.assign({}, recette, { id:'recette_' + Date.now(), saved_at: new Date().toISOString(), note: st.semaineRatings[id] || 0 })
+  var entry = Object.assign({}, recette, { id:'recette_' + Date.now(), saved_at: new Date().toISOString(), note: st.semaineRatings[id] || 0, portions: st.semaineServings[id] || recette.portions || recette.nb_personnes || st.semaineBasePortions || 2 })
   try {
     var saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]')
     saved.unshift(entry)

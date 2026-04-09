@@ -255,3 +255,14 @@ document.addEventListener('visibilitychange', function() {
   chargerRecettesSauvegardeesSupabase()
   chargerListeCoursesSupabase()
 })
+
+// ── Mise à jour automatique quand un nouveau Service Worker prend le contrôle ──
+// Quand skipWaiting active le nouveau SW, controllerchange se déclenche → on recharge.
+if ('serviceWorker' in navigator) {
+  var _swReloading = false
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (_swReloading) return
+    _swReloading = true
+    window.location.reload()
+  })
+}
