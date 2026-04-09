@@ -4,6 +4,11 @@ import { afficherToast } from './ui.js'
 import { sauvegarderListeCoursesSupabase, effacerListeCoursesSupabase } from './api.js'
 import { afficherPhotoRecette, chargerMeilleurePhoto } from './photos.js'
 
+// ── Pagination recettes sauvegardées & favoris ──
+var PAGE_SIZE   = 10
+var _savedLimit = PAGE_SIZE
+var _favoriLimit = PAGE_SIZE
+
 // ══════════════════════════════════════════════════════
 // ONGLET RECETTE
 // ══════════════════════════════════════════════════════
@@ -213,9 +218,10 @@ export async function sauvegarderRecetteUnique() {
 // ONGLET À FAIRE — RECETTES SAUVEGARDÉES & FAVORIS
 // ══════════════════════════════════════════════════════
 
-export function afficherRecettesSauvegardees() {
+export function afficherRecettesSauvegardees(reset) {
   var container = document.getElementById('recettesSauvegardeesListe'); if (!container) return
   var activeQuery = (document.getElementById('recettes-search') || {}).value || ''
+  if (reset) _savedLimit = PAGE_SIZE
   var saved = []
   try { saved = JSON.parse(localStorage.getItem('vitalia_recettes_sauvegardees') || '[]') } catch(e) {}
 
@@ -224,7 +230,10 @@ export function afficherRecettesSauvegardees() {
     return
   }
 
-  container.innerHTML = saved.slice(0, 20).map(function(r, idx) {
+  var page    = saved.slice(0, _savedLimit)
+  var restant = saved.length - _savedLimit
+
+  container.innerHTML = page.map(function(r, idx) {
     var nv    = r.valeurs_nutritionnelles || {}
     var cal   = nv.calories ? nv.calories + ' kcal' : ''
     var type  = r.type_repas || ''
@@ -283,10 +292,14 @@ export function afficherRecettesSauvegardees() {
            '</div>'
   }).join('')
 
+  if (restant > 0) {
+    container.innerHTML += '<button onclick="voirPlusSaved()" style="width:100%;padding:12px;background:none;border:1.5px solid rgba(196,113,74,0.25);border-radius:14px;color:var(--terracotta);font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;">Voir plus (' + restant + ' restantes)</button>'
+  }
+
   if (activeQuery) filtrerRecettesSauvegardees(activeQuery)
 
   // Chargement asynchrone des photos (propre puis communauté en fallback)
-  saved.slice(0, 20).forEach(function(r, idx) {
+  page.forEach(function(r, idx) {
     var titre = r.nom || r.titre || ''
     if (!titre) return
     if (r.photo_url) {
@@ -308,16 +321,19 @@ export function filtrerRecettesSauvegardees(query) {
   })
 }
 
-export function afficherFavoris() {
+export function afficherFavoris(reset) {
   var container = document.getElementById('favorisListe'); if (!container) return
   var activeQuery = (document.getElementById('favoris-search') || {}).value || ''
+  if (reset) _favoriLimit = PAGE_SIZE
   var favs = []
   try { favs = JSON.parse(localStorage.getItem('vitalia_favoris') || '[]') } catch(e) {}
   if (!favs.length) {
     container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-light);font-size:13px;">Notez une recette ★★★★ ou ★★★★★ dans "À faire > Recettes" pour l\'ajouter ici</div>'
     return
   }
-  container.innerHTML = favs.map(function(r, i) {
+  var page    = favs.slice(0, _favoriLimit)
+  var restant = favs.length - _favoriLimit
+  container.innerHTML = page.map(function(r, i) {
     var nv   = r.valeurs_nutritionnelles || {}
     var cal  = nv.calories ? nv.calories + ' kcal' : ''
     var type = r.type_repas || r.moment || ''
@@ -374,10 +390,15 @@ export function afficherFavoris() {
            '  </div>' +
            '</div>'
   }).join('')
+
+  if (restant > 0) {
+    container.innerHTML += '<button onclick="voirPlusFavoris()" style="width:100%;padding:12px;background:none;border:1.5px solid rgba(232,184,75,0.35);border-radius:14px;color:var(--mid-brown,#b8942a);font-size:13px;font-weight:600;cursor:pointer;margin-top:4px;">Voir plus (' + restant + ' restants)</button>'
+  }
+
   if (activeQuery) filtrerFavoris(activeQuery)
 
   // Chargement asynchrone des photos (propre puis communauté en fallback)
-  favs.forEach(function(r, i) {
+  page.forEach(function(r, i) {
     var titre = r.nom || r.titre || ''
     if (!titre) return
     if (r.photo_url) {
@@ -388,6 +409,16 @@ export function afficherFavoris() {
       })
     }
   })
+}
+
+export function voirPlusSaved() {
+  _savedLimit += PAGE_SIZE
+  afficherRecettesSauvegardees()
+}
+
+export function voirPlusFavoris() {
+  _favoriLimit += PAGE_SIZE
+  afficherFavoris()
 }
 
 export function filtrerFavoris(query) {

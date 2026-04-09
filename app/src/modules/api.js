@@ -2,20 +2,40 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
 import { authFetch } from './auth.js'
 import { appliquerProfil, afficherToast } from './ui.js'
 
-// ── Chargement du profil depuis Supabase ──
+// ── Chargement du profil + liste de courses en un seul appel Supabase ──
 export async function chargerProfilSupabase(id) {
   try {
     var r = await authFetch(
       SUPABASE_URL + '/rest/v1/profils_utilisateurs?id=eq.' + id + '&limit=1',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + st.authToken } }
     )
-    if (r.ok) {
-      var d = await r.json()
-      if (d && d[0]) {
-        st.profilUtilisateur = d[0]
-        appliquerProfil(d[0])
-        localStorage.setItem('vitalia_profil', JSON.stringify(d[0]))
-      }
+    if (!r.ok) return
+    var d = await r.json()
+    if (!d || !d[0]) return
+    var profil = d[0]
+    st.profilUtilisateur = profil
+    appliquerProfil(profil)
+    localStorage.setItem('vitalia_profil', JSON.stringify(profil))
+    // Extraire et sync la liste de courses si présente dans le profil (évite un 2e appel)
+    if (profil.liste_courses) {
+      try {
+        var local  = JSON.parse(localStorage.getItem('vitalia_liste_courses') || 'null')
+        var remote = profil.liste_courses
+        var remoteDate = remote.date ? new Date(remote.date).getTime() : 0
+        var localDate  = (local && local.date) ? new Date(local.date).getTime() : 0
+        if (remoteDate > localDate) {
+          var manuels = local ? (local.ingredients || []).filter(function(i) { return i.manuel }) : []
+          var merged  = {
+            date: remote.date,
+            ingredients: (remote.ingredients || []).concat(manuels.filter(function(m) {
+              return !(remote.ingredients || []).some(function(ri) { return ri.nom === m.nom })
+            })),
+            recettes: remote.recettes || []
+          }
+          localStorage.setItem('vitalia_liste_courses', JSON.stringify(merged))
+          import('./recipes.js').then(function(m) { m.afficherListeCoursesProfile() })
+        }
+      } catch(e) {}
     }
   } catch(e) { console.warn('Profile load error:', e) }
 }

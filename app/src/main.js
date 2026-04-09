@@ -38,7 +38,8 @@ import {
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
   supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
-  mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris
+  mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris,
+  voirPlusSaved, voirPlusFavoris
 } from './modules/recipes.js'
 import {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin, verifierCheckinDuJour,
@@ -83,6 +84,7 @@ Object.assign(window, {
   supprimerArticleManuelCourses, toggleCoursesVu,
   supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
   mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris,
+  voirPlusSaved, voirPlusFavoris,
   // checkin
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique,
@@ -154,13 +156,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     try { st.profilUtilisateur = JSON.parse(cached); appliquerProfil(st.profilUtilisateur) } catch(e) {}
   }
 
-  // Profil frais depuis Supabase
-  chargerProfilSupabase(st.profil_id)
-
-  // Favoris & À faire
-  migrerFavoris()
-  chargerFavorisSupabase()
-  chargerRecettesSauvegardeesSupabase()
+  // Sync Supabase au démarrage (en parallèle)
+  if (navigator.onLine) {
+    chargerProfilSupabase(st.profil_id)
+    migrerFavoris()
+    Promise.all([
+      chargerFavorisSupabase(),
+      chargerRecettesSauvegardeesSupabase(),
+      chargerListeCoursesSupabase(),
+    ]).catch(function() {})
+  } else {
+    migrerFavoris()
+  }
 
   // Badge objectif principal
   updateObjectifPrincipalBadge()
@@ -242,19 +249,53 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 })
 
-// ── Sync Supabase quand l'onglet redevient visible (cross-device) ──
+// ── Sync Supabase quand l'onglet redevient visible (cross-device, 5 min debounce) ──
 var _lastVisibilitySync = 0
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState !== 'visible') return
   if (!st.profil_id || st.profil_id === 'new') return
+  if (!navigator.onLine) return
   var now = Date.now()
   if (now - _lastVisibilitySync < 5 * 60 * 1000) return
   _lastVisibilitySync = now
   chargerProfilSupabase(st.profil_id)
-  chargerFavorisSupabase()
-  chargerRecettesSauvegardeesSupabase()
-  chargerListeCoursesSupabase()
+  Promise.all([
+    chargerFavorisSupabase(),
+    chargerRecettesSauvegardeesSupabase(),
+    chargerListeCoursesSupabase(),
+  ]).catch(function() {})
 })
+
+// ── Banner hors-ligne ──
+function _majBanniereOffline() {
+  var id = 'vitalia-offline-banner'
+  var existing = document.getElementById(id)
+  if (!navigator.onLine) {
+    if (existing) return
+    var el = document.createElement('div')
+    el.id = id
+    el.textContent = '📶 Mode hors-ligne — données locales utilisées'
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#5a3820;color:#faf7f2;' +
+      'font-size:12px;text-align:center;padding:6px 12px;font-family:"DM Sans",sans-serif;'
+    document.body.prepend(el)
+  } else {
+    if (existing) existing.remove()
+  }
+}
+window.addEventListener('online',  function() {
+  _majBanniereOffline()
+  // Resync dès que la connexion revient
+  if (st.profil_id && st.profil_id !== 'new') {
+    chargerProfilSupabase(st.profil_id)
+    Promise.all([
+      chargerFavorisSupabase(),
+      chargerRecettesSauvegardeesSupabase(),
+      chargerListeCoursesSupabase(),
+    ]).catch(function() {})
+  }
+})
+window.addEventListener('offline', _majBanniereOffline)
+_majBanniereOffline() // vérifier au chargement
 
 // ── Mise à jour automatique quand un nouveau Service Worker prend le contrôle ──
 // Quand skipWaiting active le nouveau SW, controllerchange se déclenche → on recharge.
