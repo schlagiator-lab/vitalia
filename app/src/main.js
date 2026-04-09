@@ -20,27 +20,37 @@ import {
 import {
   toggleInstructions, toggleRoutineItem,
   afficherPlan, changerPortions, noterRecette, sauvegarderRecette,
-  noterPlan, genererPlan,
+  noterPlan, genererPlan
+} from './modules/plan-jour.js'
+import {
   toggleSemaineSymptom, toggleDay, toggleDayMeal, genererSemaine,
   afficherSemaine, chargerEtapesRecette, changerPortionsSemaine, noterRecetteSemaine,
-  sauvegarderRecetteSemaine, toggleSelectRecetteSemaine, reagregerDepuisRecettes,
+  sauvegarderRecetteSemaine, toggleSelectRecetteSemaine
+} from './modules/plan-semaine.js'
+import {
+  reagregerDepuisRecettes,
   afficherListeCourses, toggleCoursesModalItem, fermerListeCourses, sauvegarderListeCourses,
   genererRecettePourRepas
-} from './modules/plan.js'
+} from './modules/plan-courses.js'
 import {
   toggleRepasInclus, selectTypeRepas, toggleRecetteSymptom,
   ajouterIngredientFrigo, supprimerIngredientFrigo,
-  genererRecetteUnique, afficherRecetteUnique, sauvegarderRecetteUnique,
+  genererRecetteUnique, afficherRecetteUnique, sauvegarderRecetteUnique
+} from './modules/recette-unique.js'
+import {
   afficherRecettesSauvegardees, filtrerRecettesSauvegardees,
   afficherFavoris, filtrerFavoris, supprimerFavori, ajouterFavoriAuxCourses,
   toggleSavedRecette, supprimerRecetteSauvegardee, noterRecetteSauvegardee,
   toggleSelectSaved, changerPortionsSaved, changerPortionsFavori,
+  switchRecettesView, filtrerRecettesOuFavoris,
+  voirPlusSaved, voirPlusFavoris
+} from './modules/recettes-saved.js'
+import {
   afficherListeCoursesProfile, toggleCoursesVuByIdx, ajouterArticleManuelCourses,
   supprimerArticleManuelCourses, toggleCoursesVu,
   supprimerRecetteDeListeProfile, changerPortionsListeProfile, viderListeCourses,
-  mettreAJourDashboardCuisine, switchRecettesView, filtrerRecettesOuFavoris,
-  voirPlusSaved, voirPlusFavoris
-} from './modules/recipes.js'
+  mettreAJourDashboardCuisine
+} from './modules/courses-profile.js'
 import {
   afficherCheckinModal, fermerCheckinModal, sauvegarderCheckin, verifierCheckinDuJour,
   afficherEvolution, afficherHistoriqueCompact, afficherHistorique
