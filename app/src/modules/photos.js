@@ -4,6 +4,23 @@ const BUCKET      = 'recette-photos'
 const MAX_WIDTH   = 1200
 const JPEG_QUALITY = 0.75
 
+// ── Limiteur de concurrence pour les requêtes photos (max 3 en parallèle) ──
+var _photoRunning = 0
+var _photoQueue   = []
+function _photoSlot(fn) {
+  return new Promise(function(resolve, reject) {
+    function tryRun() {
+      if (_photoRunning >= 3) { _photoQueue.push(tryRun); return }
+      _photoRunning++
+      fn().then(resolve, reject).finally(function() {
+        _photoRunning--
+        if (_photoQueue.length) _photoQueue.shift()()
+      })
+    }
+    tryRun()
+  })
+}
+
 // ── Compression Canvas ──
 export function compresserImage(file) {
   return new Promise(function(resolve, reject) {
@@ -75,29 +92,31 @@ export async function chargerPhotoCommunaute(titre) {
 
 // ── Récupérer la meilleure photo disponible pour une recette ──
 // Priorité : 1) photo propre de l'utilisateur  2) photo communauté
-// Retourne { url, isCommunaute } ou null
-export async function chargerMeilleurePhoto(titre) {
-  if (!titre) return null
-  // 1. Photo de l'utilisateur (privée ou partagée)
-  if (st.profil_id && st.authToken) {
-    try {
-      var res = await fetch(
-        SUPABASE_URL + '/rest/v1/recette_photos' +
-          '?titre=eq.' + encodeURIComponent(titre) +
-          '&profil_id=eq.' + st.profil_id +
-          '&select=photo_url' +
-          '&order=created_at.desc' +
-          '&limit=1',
-        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + st.authToken } }
-      )
-      var data = await res.json()
-      if (Array.isArray(data) && data[0]) return { url: data[0].photo_url, isCommunaute: false }
-    } catch(e) {}
-  }
-  // 2. Photo communauté en fallback
-  var communUrl = await chargerPhotoCommunaute(titre)
-  if (communUrl) return { url: communUrl, isCommunaute: true }
-  return null
+// Retourne { url, isCommunaute } ou null — max 3 requêtes en parallèle via _photoSlot
+export function chargerMeilleurePhoto(titre) {
+  if (!titre) return Promise.resolve(null)
+  return _photoSlot(async function() {
+    // 1. Photo de l'utilisateur (privée ou partagée)
+    if (st.profil_id && st.authToken) {
+      try {
+        var res = await fetch(
+          SUPABASE_URL + '/rest/v1/recette_photos' +
+            '?titre=eq.' + encodeURIComponent(titre) +
+            '&profil_id=eq.' + st.profil_id +
+            '&select=photo_url' +
+            '&order=created_at.desc' +
+            '&limit=1',
+          { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + st.authToken } }
+        )
+        var data = await res.json()
+        if (Array.isArray(data) && data[0]) return { url: data[0].photo_url, isCommunaute: false }
+      } catch(e) {}
+    }
+    // 2. Photo communauté en fallback
+    var communUrl = await chargerPhotoCommunaute(titre)
+    if (communUrl) return { url: communUrl, isCommunaute: true }
+    return null
+  })
 }
 
 // ── Injecter la photo dans le panneau d'une recette ──

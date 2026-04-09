@@ -67,3 +67,14 @@ export const st = {
   coursesChecked:       {},
   _coursesIngredients:  [],
 }
+
+// ── Sécurité : échappe les caractères HTML avant injection dans innerHTML ──
+export function escapeHtml(str) {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}

@@ -28,15 +28,29 @@ export function setupAuth() {
 }
 
 // ── Wrapper fetch : injecte le bon token et gère le 401 avec retry ──
+// Timeout de 45s pour les Edge Functions (génération IA), 15s pour le reste.
 export async function authFetch(url, options) {
   // Les Edge Functions utilisent SERVICE_ROLE_KEY en interne — passer la clé anon suffit.
   var isFunctionUrl  = url.includes('/functions/v1/')
   var tokenEffectif  = isFunctionUrl ? SUPABASE_ANON_KEY : st.authToken
 
+  var controller = new AbortController()
+  var timeoutMs  = isFunctionUrl ? 45000 : 15000
+  var timer      = setTimeout(function() { controller.abort() }, timeoutMs)
+
   var opts = Object.assign({}, options, {
+    signal:  controller.signal,
     headers: Object.assign({}, options.headers, { 'Authorization': 'Bearer ' + tokenEffectif })
   })
-  var resp = await fetch(url, opts)
+  var resp
+  try {
+    resp = await fetch(url, opts)
+    clearTimeout(timer)
+  } catch(e) {
+    clearTimeout(timer)
+    if (e.name === 'AbortError') throw new Error('Délai dépassé — le serveur met trop de temps à répondre, réessaie.')
+    throw e
+  }
 
   if (resp.status === 401) {
     if (isFunctionUrl) {

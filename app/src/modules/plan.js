@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, st } from './state.js'
+import { SUPABASE_URL, SUPABASE_ANON_KEY, st, escapeHtml } from './state.js'
 import { authFetch } from './auth.js'
 import { afficherToast, setText, fermerConfig, updateObjectifPrincipalBadge, syncAllPreferencesChips } from './ui.js'
 import { syncBesoinsVersProfil, sauvegarderListeCoursesSupabase } from './api.js'
@@ -684,7 +684,7 @@ export function afficherSemaine(data) {
       }
 
       var tip = recette.astuces && recette.astuces[0]
-      if (tip) html += '<div class="day-meal-tip" style="margin-top:8px;">💡 ' + tip + '</div>'
+      if (tip) html += '<div class="day-meal-tip" style="margin-top:8px;">💡 ' + escapeHtml(tip) + '</div>'
 
       html += '<div class="semaine-meal-actions">'
       if (m.key !== 'pause') {
@@ -714,7 +714,7 @@ export function afficherSemaine(data) {
     var conseil = data.conseil_du_jour || (data.semaine && Object.values(data.semaine)[0] && Object.values(data.semaine)[0].conseil)
     if (conseil) {
       conseilEl.style.display = 'block'
-      conseilEl.innerHTML = '<div class="conseil-card"><div class="conseil-title">💡 Conseil de la semaine</div><div class="conseil-text">' + conseil + '</div></div>'
+      conseilEl.innerHTML = '<div class="conseil-card"><div class="conseil-title">💡 Conseil de la semaine</div><div class="conseil-text">' + escapeHtml(conseil) + '</div></div>'
     } else { conseilEl.style.display = 'none' }
   }
 
@@ -781,10 +781,10 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
       }
       var html = '<div class="day-meal-steps">'
       data.instructions.forEach(function(step, i) {
-        html += '<div class="day-meal-step"><div class="day-meal-stepnum">' + (i+1) + '</div><div>' + step + '</div></div>'
+        html += '<div class="day-meal-step"><div class="day-meal-stepnum">' + (i+1) + '</div><div>' + escapeHtml(step) + '</div></div>'
       })
       html += '</div>'
-      if (data.astuces && data.astuces[0]) html += '<div class="day-meal-tip" style="margin-top:8px;">💡 ' + data.astuces[0] + '</div>'
+      if (data.astuces && data.astuces[0]) html += '<div class="day-meal-tip" style="margin-top:8px;">💡 ' + escapeHtml(data.astuces[0]) + '</div>'
       stepsDiv.innerHTML = html
     } else {
       stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
@@ -848,42 +848,42 @@ function renderWellnessSemaine(data) {
   var nutra = data.nutraceutiques && data.nutraceutiques[0]
   if (nutra) {
     html += '<div class="wellness-card"><div class="wellness-card-type">💊 Nutraceutique de la semaine</div>'
-    html += '<div class="wellness-card-name">' + (nutra.nom || nutra.name || 'Supplément') + '</div>'
+    html += '<div class="wellness-card-name">' + escapeHtml(nutra.nom || nutra.name || 'Supplément') + '</div>'
     var desc = nutra.description || (Array.isArray(nutra.bienfaits) ? nutra.bienfaits.slice(0,2).join('. ') : (nutra.bienfaits || ''))
-    if (desc) html += '<div class="wellness-card-body">' + String(desc).substring(0, 250) + '</div>'
+    if (desc) html += '<div class="wellness-card-body">' + escapeHtml(String(desc).substring(0, 250)) + '</div>'
     var badges = []
-    if (nutra.dosage)         badges.push('💊 ' + nutra.dosage)
-    if (nutra.moment_optimal) badges.push('⏰ ' + nutra.moment_optimal)
+    if (nutra.dosage)         badges.push('💊 ' + escapeHtml(nutra.dosage))
+    if (nutra.moment_optimal) badges.push('⏰ ' + escapeHtml(nutra.moment_optimal))
     if (badges.length) {
       html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">'
       badges.forEach(function(b) { html += '<span class="wellness-badge">' + b + '</span>' })
       html += '</div>'
     }
     var tip = Array.isArray(nutra.astuces) ? nutra.astuces[0] : (nutra.tip || nutra.conseil || '')
-    if (tip) html += '<div class="wellness-card-tip">💡 ' + tip + '</div>'
+    if (tip) html += '<div class="wellness-card-tip">💡 ' + escapeHtml(tip) + '</div>'
     html += '</div>'
   }
 
   var aroma = data.aromatherapie && data.aromatherapie[0]
   if (aroma) {
     html += '<div class="wellness-card"><div class="wellness-card-type">🌸 Aromathérapie de la semaine</div>'
-    html += '<div class="wellness-card-name">' + (aroma.nom || aroma.name || 'Huile essentielle') + '</div>'
+    html += '<div class="wellness-card-name">' + escapeHtml(aroma.nom || aroma.name || 'Huile essentielle') + '</div>'
     var aromaDesc = aroma.description || aroma.bienfaits || ''
-    if (aromaDesc) html += '<div class="wellness-card-body">' + String(aromaDesc).substring(0, 200) + '</div>'
+    if (aromaDesc) html += '<div class="wellness-card-body">' + escapeHtml(String(aromaDesc).substring(0, 200)) + '</div>'
     var aromaTip = Array.isArray(aroma.astuces) ? aroma.astuces[0] : (aroma.tip || aroma.utilisation || '')
-    if (aromaTip) html += '<div class="wellness-card-tip">💡 ' + aromaTip + '</div>'
+    if (aromaTip) html += '<div class="wellness-card-tip">💡 ' + escapeHtml(aromaTip) + '</div>'
     html += '</div>'
   }
 
   var routine = data.routines && data.routines[0]
   if (routine) {
     html += '<div class="wellness-card"><div class="wellness-card-type">🧘 Routine de la semaine</div>'
-    html += '<div class="wellness-card-name">' + (routine.nom || routine.name || 'Routine bien-être') + '</div>'
-    if (routine.description) html += '<div class="wellness-card-body">' + String(routine.description).substring(0, 250) + '</div>'
+    html += '<div class="wellness-card-name">' + escapeHtml(routine.nom || routine.name || 'Routine bien-être') + '</div>'
+    if (routine.description) html += '<div class="wellness-card-body">' + escapeHtml(String(routine.description).substring(0, 250)) + '</div>'
     var rBadges = []
-    if (routine.duree)          rBadges.push('⏱ ' + routine.duree)
-    if (routine.moment_optimal) rBadges.push('⏰ ' + routine.moment_optimal)
-    if (routine.frequence)      rBadges.push('🔄 ' + routine.frequence)
+    if (routine.duree)          rBadges.push('⏱ ' + escapeHtml(routine.duree))
+    if (routine.moment_optimal) rBadges.push('⏰ ' + escapeHtml(routine.moment_optimal))
+    if (routine.frequence)      rBadges.push('🔄 ' + escapeHtml(routine.frequence))
     if (rBadges.length) {
       html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">'
       rBadges.forEach(function(b) { html += '<span class="wellness-badge">' + b + '</span>' })
