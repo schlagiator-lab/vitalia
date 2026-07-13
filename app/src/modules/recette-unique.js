@@ -79,7 +79,7 @@ export async function genererRecetteUnique() {
     if (!resp.ok) {
       var errData = {}; try { errData = await resp.json() } catch(_) {}
       console.error('[genererRecetteUnique]', resp.status, errData)
-      if (resp.status !== 401) afficherToast('Erreur serveur ' + resp.status + ' – réessaie dans un instant')
+      if (resp.status !== 401) afficherToast((typeof errData.error === 'string' ? errData.error : errData.error && errData.error.message) || ('Erreur serveur ' + resp.status + ' – réessaie dans un instant'))
       return
     }
     var data = await resp.json()

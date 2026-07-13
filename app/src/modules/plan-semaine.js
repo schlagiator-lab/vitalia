@@ -129,15 +129,15 @@ export async function genererSemaine(forcer) {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions, budget_max: ({ faible: 8, moyen: 15, eleve: 25 })[st.selectedBudget] || 15, mode_repas: st.modeRepas }),
     })
-    var data = await resp.json()
-    if (data.success && data.semaine) {
+    var data = {}; try { data = await resp.json() } catch(_) {}
+    if (resp.ok && data.success && data.semaine) {
       st.semainePlanData = data
       cacherProgress()
       afficherSemaine(data)
       try { localStorage.setItem('vitalia_semaine_session', JSON.stringify(data)) } catch(e) {}
     } else {
       cacherProgressErreur()
-      afficherToast('Erreur lors de la génération de la semaine')
+      afficherToast((typeof data.error === 'string' ? data.error : data.error && data.error.message) || 'Erreur lors de la génération de la semaine')
     }
   } catch(err) {
     cacherProgressErreur()

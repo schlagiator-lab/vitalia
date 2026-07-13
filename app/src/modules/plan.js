@@ -427,8 +427,8 @@ export async function genererPlan(forcer) {
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + st.authToken },
       body: JSON.stringify(body)
     })
-    if (!res.ok) throw new Error('Erreur serveur ' + res.status)
-    var data = await res.json()
+    var data = {}; try { data = await res.json() } catch(_) {}
+    if (!res.ok) throw new Error((typeof data.error === 'string' ? data.error : data.error && data.error.message) || 'Erreur serveur ' + res.status)
     if (data.success && data.plan) {
       afficherPlan(data.plan)
       // verifierCheckinDuJour via import dynamique
