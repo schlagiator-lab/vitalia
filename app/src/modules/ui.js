@@ -5,6 +5,7 @@ import { _sb } from './auth.js'
 export const ALL_REGIMES_IDS = ['regimesChips','semaineRegimesChips','recetteRegimesChips','profilRegimesChips']
 export const ALL_TEMPS_IDS   = ['configTempsChips','semaineTempsChips','recetteTempsChips','profilTempsCuisineChips']
 export const ALL_BUDGET_IDS  = ['configBudgetChips','semaineBudgetChips','recetteBudgetChips','profilBudgetChips']
+export const ALL_MODE_IDS    = ['configModeChips','semaineModeChips','recetteModeChips','profilModeChips']
 
 var _budgetMaxMap = { faible: 8, moyen: 15, eleve: 25 }
 
@@ -231,6 +232,18 @@ export function selectSharedBudget(el, val) {
   autoSauvegarderPreferences()
 }
 
+// ── Chips partagés : Mode repas (chaud/froid) ──
+export function selectSharedMode(el, val) {
+  st.modeRepas = val
+  ALL_MODE_IDS.forEach(function(id) {
+    var container = document.getElementById(id); if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', c.dataset.val === val)
+    })
+  })
+  autoSauvegarderPreferences()
+}
+
 // ── Auto-sauvegarde préférences ──
 var _prefTimer   = null
 var _profilTimer = null
@@ -241,6 +254,7 @@ export function autoSauvegarderPreferences() {
     st.profilUtilisateur.temps_cuisine_max    = st.profilTempsCuisineCourant
     st.profilUtilisateur.budget_complements   = st.selectedBudget
     st.profilUtilisateur.nb_personnes         = st.defaultPortions
+    st.profilUtilisateur.mode_repas           = st.modeRepas
     localStorage.setItem('vitalia_profil', JSON.stringify(st.profilUtilisateur))
   }
   clearTimeout(_prefTimer)
@@ -253,6 +267,7 @@ export function autoSauvegarderPreferences() {
       budget_complements:   st.selectedBudget,
       budget_max:           _budgetMaxMap[st.selectedBudget] || 15,
       nb_personnes:         st.defaultPortions,
+      mode_repas:           st.modeRepas,
     }).eq('id', st.profil_id)
   }, 1500)
 }
@@ -270,6 +285,7 @@ export function autoSauvegarderProfilComplet() {
       budget_complements:   st.selectedBudget,
       budget_max:           _budgetMaxMap[st.selectedBudget] || 15,
       nb_personnes:         st.defaultPortions,
+      mode_repas:           st.modeRepas,
     }).eq('id', st.profil_id)
   }, 1500)
 }
@@ -294,6 +310,12 @@ export function syncAllPreferencesChips() {
       c.classList.toggle('selected', c.dataset.val === st.selectedBudget)
     })
   })
+  ALL_MODE_IDS.forEach(function(id) {
+    var container = document.getElementById(id); if (!container) return
+    container.querySelectorAll('.chip').forEach(function(c) {
+      c.classList.toggle('selected', c.dataset.val === st.modeRepas)
+    })
+  })
   updateProfilRecaps()
 }
 
@@ -301,11 +323,12 @@ export function updateProfilRecaps() {
   var tempsLabel  = st.profilTempsCuisineCourant + ' min'
   var budgetMap   = { faible: 'Petit < 10chf', moyen: 'Moyen 10-20chf', eleve: 'Grand > 20chf' }
   var budgetLabel = budgetMap[st.selectedBudget] || st.selectedBudget
+  var modeLabel   = st.modeRepas === 'froid' ? '❄️ Froid' : '🔥 Chaud'
   var regimesEmojiMap = { omnivore:'🥩', sans_gluten:'🌾', vegan:'🌱', vegetarien:'🥗', sans_lactose:'🥛', keto:'🥑', halal:'☪️', casher:'✡️' }
   var regimesLabel = st.selectedRegimes.length
     ? st.selectedRegimes.map(function(r) { return (regimesEmojiMap[r] || '') + ' ' + r.replace(/_/g,' ') }).join(' · ')
     : '—'
-  var text = '⏱ ' + tempsLabel + ' &nbsp;·&nbsp; 💰 ' + budgetLabel + '<br>' + regimesLabel
+  var text = '⏱ ' + tempsLabel + ' &nbsp;·&nbsp; 💰 ' + budgetLabel + ' &nbsp;·&nbsp; ' + modeLabel + '<br>' + regimesLabel
   ;['configProfilRecap','semaineProfilRecap','recetteProfilRecap'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.innerHTML = text
   })
@@ -350,6 +373,7 @@ export function appliquerProfil(p) {
   if (p.budget_complements)  st.selectedBudget = p.budget_complements
   if (p.temps_cuisine_max)   st.profilTempsCuisineCourant = p.temps_cuisine_max
   if (p.nb_personnes)        st.defaultPortions = p.nb_personnes
+  if (p.mode_repas)          st.modeRepas = p.mode_repas
   syncAllPreferencesChips()
 
   var initial = p.prenom ? p.prenom.charAt(0).toUpperCase() : '?'

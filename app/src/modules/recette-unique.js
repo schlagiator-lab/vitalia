@@ -73,6 +73,7 @@ export async function genererRecetteUnique() {
         symptomes:         st.recetteSelectedSymptoms,
         directive_chef:    (document.getElementById('directiveChefInput') || {}).value || '',
         nb_personnes:      st.defaultPortions,
+        mode_repas:        st.modeRepas,
       }),
     })
     if (!resp.ok) {

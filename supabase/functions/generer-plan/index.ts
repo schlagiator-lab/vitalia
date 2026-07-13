@@ -185,6 +185,7 @@ function selectionnerIngredientsTroisRepas(
 const PETIT_DEJ_DEFAUT_POOL = [
   {
     nom: 'Porridge Avoine Banane & Miel',
+    froid: false,
     ingredients: [
       { nom: "Flocons d'avoine", quantite: 60, unite: 'g' },
       { nom: 'Lait végétal', quantite: 200, unite: 'ml' },
@@ -201,6 +202,7 @@ const PETIT_DEJ_DEFAUT_POOL = [
   },
   {
     nom: 'Smoothie Bowl Myrtilles & Granola',
+    froid: true,
     ingredients: [
       { nom: 'Myrtilles surgelées', quantite: 150, unite: 'g' },
       { nom: 'Banane congelée', quantite: 1, unite: 'pièce' },
@@ -217,6 +219,7 @@ const PETIT_DEJ_DEFAUT_POOL = [
   },
   {
     nom: 'Tartines Avocat & Citron sur Pain Complet',
+    froid: true,
     ingredients: [
       { nom: 'Pain complet', quantite: 2, unite: 'tranches' },
       { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' },
@@ -230,23 +233,70 @@ const PETIT_DEJ_DEFAUT_POOL = [
       "Tartiner sur les toasts et parsemer de graines de sésame.",
     ],
   },
+  {
+    nom: 'Bol Yaourt Grec, Fruits Rouges & Granola',
+    froid: true,
+    ingredients: [
+      { nom: 'Yaourt grec', quantite: 150, unite: 'g' },
+      { nom: 'Fruits rouges frais ou surgelés', quantite: 100, unite: 'g' },
+      { nom: 'Granola', quantite: 30, unite: 'g' },
+      { nom: 'Miel', quantite: 10, unite: 'g' },
+    ],
+    instructions: [
+      "Verser le yaourt grec dans un bol.",
+      "Disposer les fruits rouges sur le dessus.",
+      "Parsemer de granola et arroser de miel.",
+      "Servir immédiatement bien frais.",
+    ],
+  },
 ];
 
 // Recette de dernier recours si LLM + BDD échouent tous les deux
-function genererRecetteParDefaut(typeRepas: string, _ingredients: string[]): any {
+function genererRecetteParDefaut(typeRepas: string, _ingredients: string[], modeRepas: 'chaud' | 'froid' = 'chaud'): any {
   if (typeRepas === 'petit-dejeuner') {
+    const pool = modeRepas === 'froid'
+      ? PETIT_DEJ_DEFAUT_POOL.filter(o => o.froid)
+      : PETIT_DEJ_DEFAUT_POOL;
+    const poolFinal = pool.length > 0 ? pool : PETIT_DEJ_DEFAUT_POOL;
     // Choisir aléatoirement dans le pool pour ne pas toujours retourner la même recette
-    const opt = PETIT_DEJ_DEFAUT_POOL[Math.floor(Math.random() * PETIT_DEJ_DEFAUT_POOL.length)];
+    const opt = poolFinal[Math.floor(Math.random() * poolFinal.length)];
     return {
       ...opt,
       type_repas: 'petit-dejeuner',
       style_culinaire: 'maison',
       temps_preparation: 5,
-      temps_cuisson: 3,
+      temps_cuisson: modeRepas === 'froid' ? 0 : 3,
       portions: 2,
       valeurs_nutritionnelles: { calories: 370, proteines: 9, glucides: 58, lipides: 10 },
       astuces: ["Un petit-déjeuner riche en fibres et protéines stabilise la glycémie jusqu'au déjeuner."],
       variantes: ['Varier les fruits selon la saison.'],
+      genere_par_llm: false,
+    };
+  }
+
+  if (modeRepas === 'froid') {
+    const nomsFroid: Record<string, string> = {
+      'dejeuner': 'Salade Fraîcheur du Midi',
+      'diner':    'Assiette Fraîcheur du Soir',
+    };
+    return {
+      nom: nomsFroid[typeRepas] || `Assiette froide ${typeRepas}`,
+      type_repas: typeRepas,
+      style_culinaire: 'simple',
+      ingredients: (_ingredients || []).slice(0, 4).map((nom, i) => ({
+        nom,
+        quantite: [100, 150, 80, 50][i] || 100,
+        unite: 'g'
+      })),
+      instructions: [
+        'Rincer et préparer soigneusement tous les ingrédients crus ou déjà cuits.',
+        'Couper les ingrédients en morceaux réguliers et les disposer en salade composée.',
+        "Assaisonner d'huile d'olive, vinaigre ou jus de citron, sel et poivre.",
+        'Servir frais, sans cuisson.',
+      ],
+      temps_preparation: 12,
+      temps_cuisson: 0,
+      portions: 2,
       genere_par_llm: false,
     };
   }
@@ -289,7 +339,8 @@ async function genererRecetteAvecFallback(
   historique: any,
   forceRegeneration: boolean = false,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = []
+  nomsDejaUtilises: string[] = [],
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<any> {
 
   // 1. Cache — skippé si force_regeneration
@@ -307,7 +358,7 @@ async function genererRecetteAvecFallback(
 
   // 2. LLM
   const recetteLLM = await genererRecetteLLM(
-    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter, nomsDejaUtilises
+    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter, nomsDejaUtilises, modeRepas
   );
   if (recetteLLM) {
     // Validation qualité : rejeter les recettes trop pauvres ou vagues
@@ -319,32 +370,37 @@ async function genererRecetteAvecFallback(
         PHRASES_VAGUES.some(p => step.toLowerCase().includes(p))
       );
     if (recettePauvre) {
-      console.warn(`[QUALITE] Recette ${typeRepas} insuffisante (${recetteLLM.ingredients.length} ings, ${recetteLLM.instructions.length} steps) → fallback BDD`);
+      console.warn(`[QUALITE] Recette ${typeRepas} insuffisante (${recetteLLM.ingredients.length} ings, ${recetteLLM.instructions.length} steps) → fallback`);
     } else {
       console.log(`[LLM] Recette ${typeRepas} générée : ${recetteLLM.nom}`);
       return recetteLLM;
     }
   }
 
-  // 3. BDD
-  console.log(`[FALLBACK-BDD] Recette ${typeRepas}...`);
-  const { petitDej, dejeuner, diner } = await selectionnerRecettes(
-    supabase, profil, styleCulinaire, historique
-  );
-  const recetteBDD = typeRepas === 'petit-dejeuner' ? petitDej
-                   : typeRepas === 'dejeuner'       ? dejeuner
-                   : diner;
-  if (recetteBDD) return transformerRecetteBDD(recetteBDD);
+  // 3. BDD — la table `recettes` n'a pas de métadonnée chaud/froid : sautée en mode froid
+  // pour éviter de servir un plat chaud (poêlé/rôti/mijoté) qui contredirait le choix utilisateur.
+  if (modeRepas !== 'froid') {
+    console.log(`[FALLBACK-BDD] Recette ${typeRepas}...`);
+    const { petitDej, dejeuner, diner } = await selectionnerRecettes(
+      supabase, profil, styleCulinaire, historique
+    );
+    const recetteBDD = typeRepas === 'petit-dejeuner' ? petitDej
+                     : typeRepas === 'dejeuner'       ? dejeuner
+                     : diner;
+    if (recetteBDD) return transformerRecetteBDD(recetteBDD);
+  } else {
+    console.log(`[FALLBACK-BDD] Sauté (mode froid, table recettes non annotée chaud/froid) pour ${typeRepas}`);
+  }
 
   // 4. Défaut absolu
-  console.log(`[DEFAULT] Recette ${typeRepas} par défaut`);
-  return genererRecetteParDefaut(typeRepas, ingredientsObligatoires);
+  console.log(`[DEFAULT] Recette ${typeRepas} par défaut (mode=${modeRepas})`);
+  return genererRecetteParDefaut(typeRepas, ingredientsObligatoires, modeRepas);
 }
 
 // Pool de pauses par objectif — 3 options par besoin, sélection aléatoire à chaque génération.
 // Toutes 100% alimentaires, sans aucun complément. Le LLM est exclu intentionnellement
 // car il tend à inclure des NAC (spiruline, ashwagandha, etc.) malgré les consignes.
-function recettePauseParDefaut(objectif: string): any {
+function recettePauseParDefaut(objectif: string, modeRepas: 'chaud' | 'froid' = 'chaud'): any {
   const pauses: Record<string, any[]> = {
     'vitalite': [
       {
@@ -505,26 +561,34 @@ function recettePauseParDefaut(objectif: string): any {
   };
 
   // Alias pour les besoins qui ne sont pas dans la liste principale
-  const pool = pauses[objectif] ?? pauses['energie'] ?? pauses['vitalite'];
+  let pool = pauses[objectif] ?? pauses['energie'] ?? pauses['vitalite'];
+  if (modeRepas === 'froid') {
+    // Exclut les options nécessitant de chauffer un liquide/aliment (ex: "Lait Chaud Miel & Muscade")
+    const poolFroid = pool.filter((p: any) =>
+      !(p.instructions || []).some((s: string) => /chauffer|chaud/i.test(s))
+    );
+    if (poolFroid.length > 0) pool = poolFroid;
+  }
   const index = Math.floor(Math.random() * pool.length);
-  console.log(`[PAUSE] Option ${index + 1}/${pool.length} sélectionnée pour objectif : ${objectif}`);
+  console.log(`[PAUSE] Option ${index + 1}/${pool.length} sélectionnée pour objectif : ${objectif} (mode=${modeRepas})`);
   return pool[index];
 }
 
 // Pause 15h30 : LLM en premier (prompt anti-NAC strict), pool statique en fallback.
 async function genererPauseAvecFallback(
   profil: ProfilUtilisateur,
-  contexte: ContexteUtilisateur
+  contexte: ContexteUtilisateur,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<any> {
   const objectif = contexte.objectif_principal || 'vitalite';
 
   // 1. LLM — prompt interdit explicitement tout complément alimentaire
-  const pauseLLM = await genererPauseLLM(profil, contexte);
+  const pauseLLM = await genererPauseLLM(profil, contexte, modeRepas);
   if (pauseLLM) return pauseLLM;
 
   // 2. Fallback : pool statique garanti sans NAC
-  console.log(`[PAUSE] Fallback pool statique pour objectif : ${objectif}`);
-  const recette = recettePauseParDefaut(objectif);
+  console.log(`[PAUSE] Fallback pool statique pour objectif : ${objectif} (mode=${modeRepas})`);
+  const recette = recettePauseParDefaut(objectif, modeRepas);
 
   // Si végane : retirer le miel de la recette sérénité si présent
   if (profil.regime_alimentaire?.includes('vegan')) {
@@ -569,7 +633,7 @@ serve(async (req) => {
     // → On charge le profil complet depuis Supabase via profil_id
     // =========================================================================
     const body = await req.json();
-    const { profil_id, symptomes, force_regeneration, meme_theme, preferences_moment, nb_personnes } = body;
+    const { profil_id, symptomes, force_regeneration, meme_theme, preferences_moment, nb_personnes, mode_repas } = body;
 
     // Helper : convertit un budget numérique (CHF) en catégorie 'faible'/'moyen'/'eleve'
     function budgetNumeriquesVersCategorie(budgetChf: number | null | undefined): 'faible' | 'moyen' | 'eleve' {
@@ -691,6 +755,12 @@ serve(async (req) => {
         { status: 404, headers: CORS_HEADERS }
       );
     }
+
+    // ── Mode repas chaud/froid : priorité au choix envoyé par le frontend, sinon profil BDD ──
+    const modeRepas: 'chaud' | 'froid' = (mode_repas === 'froid' || mode_repas === 'chaud')
+      ? mode_repas
+      : (profilBDD.mode_repas === 'froid' ? 'froid' : 'chaud');
+    console.log(`[P1] Mode repas : ${modeRepas}`);
 
     // ── Mapper colonnes Supabase → interface ProfilUtilisateur ──────────────
     const profil: ProfilUtilisateur = {
@@ -932,7 +1002,7 @@ serve(async (req) => {
 
     // Lancer pause + motivation + conseil en parallèle (indépendants des recettes)
     const [recettePause, messageMotivation, conseilDuJour] = await Promise.all([
-      genererPauseAvecFallback(profil, contexte),
+      genererPauseAvecFallback(profil, contexte, modeRepas),
       genererMessageMotivation(contexte, {}, profil_id),
       genererConseilDuJour(contexte, profil_id)
     ]);
@@ -943,19 +1013,22 @@ serve(async (req) => {
       supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej,
       profil, contexte, historique, forceRegen,
       [...ingDejeuner, ...ingDiner],
-      []   // premier repas : aucun nom précédent
+      [],   // premier repas : aucun nom précédent
+      modeRepas
     );
     const recetteDejeuner = await genererRecetteAvecFallback(
       supabase, 'dejeuner', styleDejeuner, ingDejeuner,
       profil, contexte, historique, forceRegen,
       [...ingPetitDej, ...ingDiner],
-      [recettePetitDej?.nom].filter(Boolean) as string[]
+      [recettePetitDej?.nom].filter(Boolean) as string[],
+      modeRepas
     );
     const recetteDiner = await genererRecetteAvecFallback(
       supabase, 'diner', styleDiner, ingDiner,
       profil, contexte, historique, forceRegen,
       [...ingPetitDej, ...ingDejeuner],
-      [recettePetitDej?.nom, recetteDejeuner?.nom].filter(Boolean) as string[]
+      [recettePetitDej?.nom, recetteDejeuner?.nom].filter(Boolean) as string[],
+      modeRepas
     );
 
     // ========================================================================
@@ -988,19 +1061,19 @@ serve(async (req) => {
 
     if (!recetteEstValide(recettePetitDej)) {
       console.warn('[VALIDATION] Petit-déjeuner vide ou incomplet → fallback par défaut');
-      recettePetitDejFinal = genererRecetteParDefaut('petit-dejeuner', ingPetitDej);
+      recettePetitDejFinal = genererRecetteParDefaut('petit-dejeuner', ingPetitDej, modeRepas);
     }
     if (!recetteEstValide(recetteDejeuner)) {
       console.warn('[VALIDATION] Déjeuner vide ou incomplet → fallback par défaut');
-      recetteDejeunerFinal = genererRecetteParDefaut('dejeuner', ingDejeuner);
+      recetteDejeunerFinal = genererRecetteParDefaut('dejeuner', ingDejeuner, modeRepas);
     }
     if (!recetteEstValide(recetteDiner)) {
       console.warn('[VALIDATION] Dîner vide ou incomplet → fallback par défaut');
-      recetteDinerFinal = genererRecetteParDefaut('diner', ingDiner);
+      recetteDinerFinal = genererRecetteParDefaut('diner', ingDiner, modeRepas);
     }
     if (!pauseEstValide(recettePause)) {
       console.warn('[VALIDATION] Pause vide ou incomplète → fallback pool statique');
-      recettePauseFinal = recettePauseParDefaut(contexte.objectif_principal || 'vitalite');
+      recettePauseFinal = recettePauseParDefaut(contexte.objectif_principal || 'vitalite', modeRepas);
     }
 
     console.log(`[VALIDATION] Petit-dej OK=${recetteEstValide(recettePetitDejFinal)} | Déjeuner OK=${recetteEstValide(recetteDejeunerFinal)} | Dîner OK=${recetteEstValide(recetteDinerFinal)} | Pause OK=${pauseEstValide(recettePauseFinal)}`);
@@ -1013,6 +1086,7 @@ serve(async (req) => {
       profil_id,
       objectif:  contexte.objectif_principal || 'bien-etre-general',
       symptomes: contexte.symptomes_declares  || [],
+      mode_repas: modeRepas,
 
       petit_dejeuner: recettePetitDejFinal,
       dejeuner:       recetteDejeunerFinal,

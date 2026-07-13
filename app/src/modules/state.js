@@ -19,6 +19,7 @@ export const st = {
   selectedSymptoms:         ['vitalite', 'serenite'],
   selectedRegimes:          [],
   selectedBudget:           'moyen',
+  modeRepas:                'chaud',
   profilTempsCuisineCourant: 30,
   profilAllergiesCourantes: [],
   currentActiveAllies:      [],

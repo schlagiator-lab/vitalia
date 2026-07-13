@@ -8,7 +8,7 @@ import {
 import {
   ouvrirConfig, fermerConfig, ouvrirProfilPanel, fermerProfilPanel, fermerTout,
   switchTab, switchAtfaireSection,
-  toggleSymptom, toggleSharedRegime, selectSharedTemps, selectSharedBudget,
+  toggleSymptom, toggleSharedRegime, selectSharedTemps, selectSharedBudget, selectSharedMode,
   autoSauvegarderPreferences, autoSauvegarderProfilComplet, syncAllPreferencesChips,
   updateProfilRecaps, updateObjectifPrincipalBadge, appliquerProfil,
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,
@@ -66,7 +66,7 @@ Object.assign(window, {
   // ui
   ouvrirConfig, fermerConfig, ouvrirProfilPanel, fermerProfilPanel, fermerTout,
   switchTab, switchAtfaireSection,
-  toggleSymptom, toggleSharedRegime, selectSharedTemps, selectSharedBudget,
+  toggleSymptom, toggleSharedRegime, selectSharedTemps, selectSharedBudget, selectSharedMode,
   autoSauvegarderPreferences, autoSauvegarderProfilComplet, syncAllPreferencesChips,
   updateProfilRecaps, updateObjectifPrincipalBadge,
   chargerProfilUI, toggleProfilObjectif, toggleProfilRegime, toggleProfilAllergie,

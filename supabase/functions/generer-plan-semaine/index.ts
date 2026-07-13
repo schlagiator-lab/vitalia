@@ -86,7 +86,8 @@ function recetteFallbackUnitaire(
   typeRepas: string,
   proteineAssignee: string | null,
   styleCulinaire: string,
-  jourIndex: number
+  jourIndex: number,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): any {
   if (typeRepas === 'collation') {
     const COLLATIONS_FB = [
@@ -104,36 +105,40 @@ function recetteFallbackUnitaire(
 
   if (typeRepas === 'petit-dejeuner') {
     const PETIT_DEJ_FALLBACKS = [
-      { nom: 'Porridge Avoine Banane & Amandes',
+      { nom: 'Porridge Avoine Banane & Amandes', froid: false,
         ingredients: [{ nom: "Flocons d'avoine", quantite: 60, unite: 'g' }, { nom: 'Lait végétal', quantite: 200, unite: 'ml' }, { nom: 'Banane', quantite: 1, unite: 'pièce' }, { nom: 'Amandes effilées', quantite: 15, unite: 'g' }, { nom: 'Miel', quantite: 10, unite: 'g' }],
         instructions: ["Chauffer le lait végétal à feu moyen dans une casserole.", "Ajouter les flocons d'avoine et remuer 3 min jusqu'à consistance crémeuse.", "Verser dans un bol, déposer la banane tranchée, les amandes et le miel."],
         valeurs_nutritionnelles: { calories: 380, proteines: 10, glucides: 62, lipides: 9 } },
-      { nom: 'Smoothie Bowl Fruits Rouges & Granola',
+      { nom: 'Smoothie Bowl Fruits Rouges & Granola', froid: true,
         ingredients: [{ nom: 'Fruits rouges surgelés', quantite: 150, unite: 'g' }, { nom: 'Banane congelée', quantite: 1, unite: 'pièce' }, { nom: 'Lait végétal', quantite: 80, unite: 'ml' }, { nom: 'Granola', quantite: 40, unite: 'g' }],
         instructions: ["Mixer les fruits rouges, la banane congelée et le lait végétal jusqu'à texture épaisse.", "Verser dans un bol large.", "Parsemer de granola et servir immédiatement."],
         valeurs_nutritionnelles: { calories: 360, proteines: 8, glucides: 58, lipides: 10 } },
-      { nom: 'Tartines Avocat & Citron',
+      { nom: 'Tartines Avocat & Citron', froid: true,
         ingredients: [{ nom: 'Pain complet', quantite: 2, unite: 'tranches' }, { nom: 'Avocat mûr', quantite: 1, unite: 'pièce' }, { nom: 'Citron', quantite: 0.5, unite: 'pièce' }],
         instructions: ["Toaster le pain 2 min au grille-pain.", "Écraser la chair de l'avocat avec le jus de citron, sel et poivre.", "Tartiner généreusement sur les toasts."],
         valeurs_nutritionnelles: { calories: 340, proteines: 9, glucides: 38, lipides: 18 } },
-      { nom: 'Overnight Oats Mangue & Coco',
+      { nom: 'Overnight Oats Mangue & Coco', froid: true,
         ingredients: [{ nom: "Flocons d'avoine", quantite: 60, unite: 'g' }, { nom: 'Lait de coco', quantite: 150, unite: 'ml' }, { nom: 'Mangue', quantite: 100, unite: 'g' }],
         instructions: ["La veille : mélanger les flocons avec le lait de coco, couvrir et réfrigérer toute la nuit.", "Le matin : couper la mangue en dés.", "Déposer la mangue sur les oats et servir frais."],
         valeurs_nutritionnelles: { calories: 400, proteines: 9, glucides: 65, lipides: 12 } },
-      { nom: 'Bol Yaourt Kiwi & Graines',
+      { nom: 'Bol Yaourt Kiwi & Graines', froid: true,
         ingredients: [{ nom: 'Yaourt grec', quantite: 150, unite: 'g' }, { nom: 'Kiwi', quantite: 2, unite: 'pièces' }, { nom: 'Graines de courge', quantite: 15, unite: 'g' }],
         instructions: ["Verser le yaourt grec dans un bol.", "Éplucher et trancher les kiwis, disposer sur le yaourt.", "Parsemer de graines de courge et servir."],
         valeurs_nutritionnelles: { calories: 290, proteines: 14, glucides: 35, lipides: 9 } },
-      { nom: 'Crêpe Sarrasin Pomme & Cannelle',
+      { nom: 'Crêpe Sarrasin Pomme & Cannelle', froid: false,
         ingredients: [{ nom: 'Farine de sarrasin', quantite: 60, unite: 'g' }, { nom: 'Lait végétal', quantite: 120, unite: 'ml' }, { nom: 'Pomme', quantite: 1, unite: 'pièce' }],
         instructions: ["Mélanger la farine et le lait jusqu'à pâte lisse.", "Cuire la crêpe 2 min de chaque côté dans une poêle légèrement huilée.", "Garnir de pomme râpée et d'une pincée de cannelle."],
         valeurs_nutritionnelles: { calories: 330, proteines: 8, glucides: 60, lipides: 5 } },
-      { nom: 'Tartine Ricotta & Fraises',
+      { nom: 'Tartine Ricotta & Fraises', froid: true,
         ingredients: [{ nom: 'Pain de campagne', quantite: 2, unite: 'tranches' }, { nom: 'Ricotta', quantite: 80, unite: 'g' }, { nom: 'Fraises fraîches', quantite: 100, unite: 'g' }],
         instructions: ["Toaster le pain 2 min au grille-pain.", "Étaler la ricotta généreusement sur chaque tranche.", "Disposer les fraises coupées en deux et arroser d'un filet de miel."],
         valeurs_nutritionnelles: { calories: 320, proteines: 11, glucides: 45, lipides: 9 } },
     ];
-    const fb = PETIT_DEJ_FALLBACKS[jourIndex % PETIT_DEJ_FALLBACKS.length];
+    const poolPetitDej = modeRepas === 'froid'
+      ? PETIT_DEJ_FALLBACKS.filter(o => o.froid)
+      : PETIT_DEJ_FALLBACKS;
+    const poolPetitDejFinal = poolPetitDej.length > 0 ? poolPetitDej : PETIT_DEJ_FALLBACKS;
+    const fb = poolPetitDejFinal[jourIndex % poolPetitDejFinal.length];
     return {
       nom: fb.nom,
       type_repas: 'petit-dejeuner',
@@ -157,6 +162,43 @@ function recetteFallbackUnitaire(
   let calories = 430, proteines = 28;
 
   let instructions: string[];
+
+  if (modeRepas === 'froid') {
+    if (protLow.includes('maquereau') || protLow.includes('sardine') || protLow.includes('hareng') ||
+        protLow.includes('saumon') || protLow.includes('truite') || protLow.includes('cabillaud') ||
+        protLow.includes('dorade') || protLow.includes('bar') || protLow.includes('thon')) {
+      nom = `Salade Fraîcheur de ${prot} & Agrumes`;
+      ingredients = [{ nom: prot + ' (déjà cuit ou en conserve, froid)', quantite: 150, unite: 'g' }, { nom: 'Salade verte', quantite: 100, unite: 'g' }, { nom: 'Orange ou pamplemousse', quantite: 1, unite: 'pièce' }, { nom: 'Concombre', quantite: 100, unite: 'g' }, { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' }];
+      instructions = ['Émietter ou trancher le poisson déjà cuit et refroidi.', 'Laver la salade, peler et détailler les agrumes en suprêmes, couper le concombre en rondelles.', 'Disposer tous les ingrédients dans un saladier.', "Assaisonner d'huile d'olive et de jus de citron, sel et poivre. Servir bien frais, sans cuisson."];
+      calories = 360; proteines = 28;
+    } else if (protLow.includes('poulet') || protLow.includes('dinde')) {
+      nom = `Salade Fraîcheur de ${prot}, Poivron & Concombre`;
+      ingredients = [{ nom: prot + ' (déjà cuit et refroidi, émincé)', quantite: 150, unite: 'g' }, { nom: 'Poivron rouge', quantite: 120, unite: 'g' }, { nom: 'Concombre', quantite: 120, unite: 'g' }, { nom: 'Tomates cerises', quantite: 100, unite: 'g' }, { nom: "Huile d'olive, vinaigre balsamique", quantite: 15, unite: 'ml' }];
+      instructions = ['Émincer la viande déjà cuite et refroidie en lamelles.', 'Couper le poivron, le concombre et les tomates cerises en morceaux.', 'Mélanger tous les ingrédients dans un grand saladier.', "Assaisonner d'huile d'olive et de vinaigre balsamique. Servir frais, sans réchauffer."];
+      calories = 380; proteines = 32;
+    } else if (protLow.includes('bœuf') || protLow.includes('boeuf') || protLow.includes('steak')) {
+      nom = `Salade Fraîcheur de ${prot}, Tomates & Roquette`;
+      ingredients = [{ nom: prot + ' (déjà cuit et refroidi, tranché fin)', quantite: 130, unite: 'g' }, { nom: 'Roquette', quantite: 80, unite: 'g' }, { nom: 'Tomates', quantite: 150, unite: 'g' }, { nom: 'Copeaux de parmesan', quantite: 20, unite: 'g' }, { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' }];
+      instructions = ['Trancher finement la viande déjà cuite et refroidie.', 'Laver la roquette et couper les tomates en quartiers.', 'Disposer la roquette, les tomates et la viande dans une assiette.', "Parsemer de copeaux de parmesan, arroser d'huile d'olive et de citron. Servir frais."];
+      calories = 420; proteines = 34;
+    } else if (protLow.includes('lentille') || protLow.includes('pois chiche') || protLow.includes('tofu') || protLow.includes('tempeh')) {
+      nom = `Bowl Froid de ${prot} Marinés, Tomates & Concombre`;
+      ingredients = [{ nom: prot + ' (cuits, refroidis)', quantite: 180, unite: 'g' }, { nom: 'Tomates cerises', quantite: 150, unite: 'g' }, { nom: 'Concombre', quantite: 120, unite: 'g' }, { nom: 'Persil, cumin', quantite: 5, unite: 'g' }, { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' }];
+      instructions = ['Rincer et égoutter la protéine déjà cuite.', "La faire mariner 5 min dans l'huile d'olive, le jus de citron et le cumin.", 'Couper les tomates cerises et le concombre en dés.', 'Mélanger tous les ingrédients dans un bowl, parsemer de persil et servir frais.'];
+      calories = 360; proteines = 20;
+    } else {
+      nom = `Assiette Fraîcheur de ${prot} & Crudités`;
+      ingredients = [{ nom: prot + ' (déjà cuit, refroidi)', quantite: 150, unite: 'g' }, { nom: 'Crudités de saison variées', quantite: 250, unite: 'g' }, { nom: "Huile d'olive, vinaigre", quantite: 15, unite: 'ml' }];
+      instructions = ['Couper la protéine déjà cuite et les crudités en morceaux réguliers.', 'Disposer harmonieusement dans une assiette ou un saladier.', "Assaisonner d'huile d'olive et de vinaigre, sel et poivre.", 'Servir frais, sans cuisson.'];
+    }
+    return {
+      nom, type_repas: typeRepas, style_culinaire: styleCulinaire,
+      ingredients, instructions,
+      temps_preparation: 12, temps_cuisson: 0, portions: 2,
+      valeurs_nutritionnelles: { calories, proteines, glucides: 22, lipides: 16 },
+      astuces: [], variantes: [], genere_par_llm: false,
+    };
+  }
 
   if (protLow.includes('maquereau') || protLow.includes('sardine') || protLow.includes('hareng')) {
     nom = `${prot} en papillote aux herbes`;
@@ -205,17 +247,17 @@ function recetteFallbackUnitaire(
   };
 }
 
-function fallbackSemaine(pairesProteines: [string, string][], stylesJours: string[], profilNorm: any): Record<string, any> {
+function fallbackSemaine(pairesProteines: [string, string][], stylesJours: string[], profilNorm: any, modeRepas: 'chaud' | 'froid' = 'chaud'): Record<string, any> {
   const semaine: Record<string, any> = {};
   for (let j = 0; j < 7; j++) {
     const jour = JOURS_SEMAINE[j];
     const style = stylesJours[j];
     const [protDej, protDin] = pairesProteines[j];
     semaine[jour] = {
-      petit_dejeuner: recetteFallbackUnitaire('petit-dejeuner', null, style, j),
-      dejeuner:       recetteFallbackUnitaire('dejeuner', protDej, style, j),
-      diner:          recetteFallbackUnitaire('diner', protDin, style, j),
-      pause:          recetteFallbackUnitaire('collation', null, style, j),
+      petit_dejeuner: recetteFallbackUnitaire('petit-dejeuner', null, style, j, modeRepas),
+      dejeuner:       recetteFallbackUnitaire('dejeuner', protDej, style, j, modeRepas),
+      diner:          recetteFallbackUnitaire('diner', protDin, style, j, modeRepas),
+      pause:          recetteFallbackUnitaire('collation', null, style, j, modeRepas),
     };
   }
   return semaine;
@@ -393,7 +435,8 @@ function construirePromptBatch(
   profilNorm: any,
   symptomes: string[],
   repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner'],
-  nbPersonnes: number = 2
+  nbPersonnes: number = 2,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): string {
   const objectifMap: Record<string, string> = {
     vitalite: 'riche en fer, vitamines B et magnésium',
@@ -446,11 +489,28 @@ function construirePromptBatch(
 ` : '';
 
   const regleAntiRep = [
-    repasInclus.includes('petit_dejeuner') ? '- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, porridge, overnight oats, tartine, crêpe, bol yaourt, granola bowl' : '',
-    avecDejDin ? '- Déjeuner/Dîner : technique de cuisson différente chaque jour (poêlé, rôti, vapeur, mijoté, grillé, papillote, wok)' : '',
+    repasInclus.includes('petit_dejeuner')
+      ? (modeRepas === 'froid'
+          ? '- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, overnight oats, tartine froide, bol yaourt, granola bowl (jamais de porridge chauffé ni de crêpe cuite)'
+          : '- Petit-déjeuner : base différente chaque jour parmi : smoothie bowl, porridge, overnight oats, tartine, crêpe, bol yaourt, granola bowl')
+      : '',
+    avecDejDin
+      ? (modeRepas === 'froid'
+          ? '- Déjeuner/Dîner : technique froide différente chaque jour (salade composée, bowl, verrine, wrap froid, gaspacho, tartare de légumes, ceviche végétal, carpaccio)'
+          : '- Déjeuner/Dîner : technique de cuisson différente chaque jour (poêlé, rôti, vapeur, mijoté, grillé, papillote, wok)')
+      : '',
     '- Aucun ingrédient principal répété plus de 2 fois sur la semaine (hors huile d\'olive, sel, poivre)',
     '- Les noms de plats doivent tous être distincts et créatifs',
   ].filter(Boolean).join('\n');
+
+  const contrainteFroide = modeRepas === 'froid' ? `
+## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
+- INTERDIT d'allumer le four, la cuisinière ou le grill pour TOUS les repas de la semaine — aucune cuisson poêle/casserole/four/mijotage
+- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (poisson en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster bref (≤2 min)
+- Pour les protéines imposées ci-dessous : les utiliser déjà cuites et refroidies (ex : "Poulet déjà cuit, émincé froid"), jamais cuites dans la recette elle-même
+- Chaque "temps_cuisson" DOIT être 0 dans le JSON de sortie (sauf 1-2 min si toast)
+- Tous les plats doivent être servis froids ou à température ambiante
+` : '';
 
   // Format JSON dynamique selon repas inclus
   const exemplePetitDej = repasInclus.includes('petit_dejeuner') ? `
@@ -509,7 +569,7 @@ function construirePromptBatch(
 - Budget repas : ${budgetLabel}
 - Temps de préparation max : ${tempsMax} minutes
 - Portions : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''} (adapter les quantités en conséquence)${consigneProteine}${consigneSansLactose}
-
+${contrainteFroide}
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
 Jour      | Style culinaire | Protéines
 ----------|-----------------|-----------------------------
@@ -529,13 +589,15 @@ ${sectionPetitDej}${sectionCollation}
 }
 
 Macros visées : ${macrosVisees}.
-Règles temps (cohérence obligatoire) :
+${modeRepas === 'froid' ? `Règles temps (cohérence obligatoire, MODE FROID) :
+- Tous les plats : temps_preparation=10 à 15, temps_cuisson=0 (aucune cuisson)
+- Exception toast/grille-pain bref : temps_cuisson=2 maximum` : `Règles temps (cohérence obligatoire) :
 - Poisson poêlé : temps_preparation=8, temps_cuisson=6
 - Poulet rôti : temps_preparation=10, temps_cuisson=30
 - Bœuf sauté wok : temps_preparation=10, temps_cuisson=8
 - Légumes vapeur/mijotés : temps_preparation=10, temps_cuisson=20
 - Salade/cru : temps_preparation=12, temps_cuisson=0
-- Plat mijoté (tajine, curry) : temps_preparation=12, temps_cuisson=35
+- Plat mijoté (tajine, curry) : temps_preparation=12, temps_cuisson=35`}
 Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
 }
 
@@ -545,11 +607,12 @@ async function genererPlanBatch(
   profilNorm: any,
   symptomes: string[],
   repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner', 'pause'],
-  nbPersonnes: number = 2
+  nbPersonnes: number = 2,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<JourSquelette[] | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
-  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus, nbPersonnes);
+  const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus, nbPersonnes, modeRepas);
 
   // 2 tentatives avec backoff sur 429/5xx
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -632,12 +695,13 @@ function squelettVersRepas(
   typeRepas: string,
   styleCulinaire: string,
   proteineAssignee: string | null,
-  jourIndex: number
+  jourIndex: number,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): any {
   // Validation : si invalide → fallback unitaire
   if (!validerRepasSquelette(repasRaw)) {
     console.warn(`[BATCH] Repas invalide (${typeRepas}, jour ${jourIndex + 1}) → fallback`);
-    return recetteFallbackUnitaire(typeRepas, proteineAssignee, styleCulinaire, jourIndex);
+    return recetteFallbackUnitaire(typeRepas, proteineAssignee, styleCulinaire, jourIndex, modeRepas);
   }
 
   // Ingredients : le batch retourne des strings, on les garde tels quels
@@ -663,7 +727,7 @@ function squelettVersRepas(
     temps_preparation: (repasRaw.temps_preparation && repasRaw.temps_preparation > 0)
       ? repasRaw.temps_preparation
       : (typeRepas === 'petit-dejeuner' ? 10 : 15),
-    temps_cuisson: repasRaw.temps_cuisson ?? (typeRepas === 'petit-dejeuner' ? 0 : 20),
+    temps_cuisson: (typeRepas === 'petit-dejeuner' || modeRepas === 'froid') ? 0 : (repasRaw.temps_cuisson ?? 20),
     portions: typeRepas === 'petit-dejeuner' ? 1 : 2,
     valeurs_nutritionnelles: {
       calories: repasRaw.macros.calories || 0,
@@ -742,7 +806,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes, budget_max } = body;
+    const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes, budget_max, mode_repas } = body;
     const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
     const repasInclus: string[] = Array.isArray(repas_inclus) && repas_inclus.length > 0
       ? repas_inclus
@@ -818,6 +882,10 @@ serve(async (req: Request) => {
       .limit(1);
 
     const profil = profils?.[0] || {};
+
+    const modeRepas: 'chaud' | 'froid' = (mode_repas === 'froid' || mode_repas === 'chaud')
+      ? mode_repas
+      : (profil.mode_repas === 'froid' ? 'froid' : 'chaud');
 
     const budgetRepasMap: Record<string, string> = {
       faible: 'moins de 10 CHF par repas (ingrédients économiques : lentilles, oeufs, riz, légumes de saison, boîtes de conserve, flocons d\'avoine — éviter viande rouge, poisson frais noble, noix de cajou)',
@@ -904,7 +972,7 @@ serve(async (req: Request) => {
 
     // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
     const [joursLLM, wellness, motivation] = await Promise.all([
-      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes),
+      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes, modeRepas),
       chargerWellness(supabase, symptomesArr),
       genererMotivation(symptomesArr),
     ]);
@@ -922,15 +990,15 @@ serve(async (req: Request) => {
         const [protDej, protDin] = pairesProteines[j];
         const jourRaw = joursLLM[j];
 
-        const petitDej = squelettVersRepas(jourRaw?.petit_dejeuner, 'petit-dejeuner', style, null, j);
-        const dejeuner = squelettVersRepas(jourRaw?.dejeuner, 'dejeuner', style, protDej, j);
-        const diner = squelettVersRepas(jourRaw?.diner, 'diner', style, protDin, j);
+        const petitDej = squelettVersRepas(jourRaw?.petit_dejeuner, 'petit-dejeuner', style, null, j, modeRepas);
+        const dejeuner = squelettVersRepas(jourRaw?.dejeuner, 'dejeuner', style, protDej, j, modeRepas);
+        const diner = squelettVersRepas(jourRaw?.diner, 'diner', style, protDin, j, modeRepas);
 
         if (petitDej.genere_par_llm) llmCount++; else fallbackCount++;
         if (dejeuner.genere_par_llm) llmCount++; else fallbackCount++;
         if (diner.genere_par_llm) llmCount++; else fallbackCount++;
 
-        const collation = squelettVersRepas(jourRaw?.collation, 'collation', style, null, j);
+        const collation = squelettVersRepas(jourRaw?.collation, 'collation', style, null, j, modeRepas);
         if (collation.genere_par_llm) llmCount++; else fallbackCount++;
 
         semaine[jour] = {
@@ -944,7 +1012,7 @@ serve(async (req: Request) => {
       console.log(`[STATS] LLM=${llmCount}/${totalSlots} | Fallback=${fallbackCount}/${totalSlots}`);
     } else {
       console.warn('[generer-plan-semaine] Batch LLM échoué → fallback semaine complet');
-      semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm);
+      semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm, modeRepas);
       fallbackCount = repasInclus.length * 7;
     }
 
@@ -952,6 +1020,7 @@ serve(async (req: Request) => {
     const reponse = {
       success: true,
       semaine,
+      mode_repas: modeRepas,
       nutraceutiques: wellness.nutraceutiques,
       aromatherapie: wellness.aromatherapie,
       routines: wellness.routines,

@@ -51,7 +51,7 @@ const DETAILS_TOOL = {
 
 // ─── Fallbacks statiques par type de repas ─────────────────────────────────
 
-function instructionsFallback(typeRepas: string, nom: string): {
+function instructionsFallback(typeRepas: string, nom: string, modeRepas: 'chaud' | 'froid' = 'chaud'): {
   instructions: string[];
   astuces: string[];
   message_motivant: string;
@@ -66,6 +66,19 @@ function instructionsFallback(typeRepas: string, nom: string): {
       ],
       astuces: ['Un petit-déjeuner équilibré avec protéines et bons glucides stabilise la glycémie pour toute la matinée.'],
       message_motivant: 'Un bon début de journée commence dans l\'assiette !',
+    };
+  }
+  if (modeRepas === 'froid') {
+    return {
+      instructions: [
+        'Préparer et mesurer tous les ingrédients (crus ou déjà cuits et refroidis).',
+        'Couper les ingrédients en morceaux réguliers.',
+        'Assembler tous les ingrédients dans un saladier ou un bol, sans aucune cuisson.',
+        "Assaisonner d'huile d'olive, vinaigre ou jus de citron, sel et poivre.",
+        'Servir bien frais.',
+      ],
+      astuces: ['Un plat froid préserve toutes les vitamines sensibles à la chaleur — idéal les jours de canicule.'],
+      message_motivant: `${nom} — frais et sans cuisson, parfait pour les jours de chaleur.`,
     };
   }
   return {
@@ -89,7 +102,8 @@ function construirePrompt(
   typeRepas: string,
   macros: any,
   symptomes: string[],
-  nbPersonnes: number = 2
+  nbPersonnes: number = 2,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): string {
   const estPetitDej = typeRepas === 'petit-dejeuner';
 
@@ -138,7 +152,8 @@ ${listeIngredients}
 - Instructions claires, actionnables, avec temps et températures précis
 - Jamais de vague "cuire selon méthode" ou "ajuster selon goût"
 - Astuces en lien direct avec : ${objectif}
-- Message motivant court (max 15 mots)`;
+- Message motivant court (max 15 mots)
+${modeRepas === 'froid' ? '\n## MODE FROID (canicule) — OBLIGATOIRE\nCe plat doit être servi FROID, sans allumer le four, la cuisinière ou la poêle : uniquement assemblage, cru, mixeur, ou toaster bref (≤2 min). temps_cuisson doit rester à 0.\n' : ''}`;
 }
 
 // ─── Handler principal ─────────────────────────────────────────────────────
@@ -150,8 +165,9 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { recette_nom, ingredients, type_repas, macros, symptomes, nb_personnes } = body;
+    const { recette_nom, ingredients, type_repas, macros, symptomes, nb_personnes, mode_repas } = body;
     const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
+    const modeRepas: 'chaud' | 'froid' = mode_repas === 'froid' ? 'froid' : 'chaud';
 
     if (!recette_nom || !type_repas) {
       return new Response(
@@ -163,14 +179,14 @@ serve(async (req: Request) => {
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
 
     if (!ANTHROPIC_API_KEY) {
-      const fb = instructionsFallback(type_repas, recette_nom);
+      const fb = instructionsFallback(type_repas, recette_nom, modeRepas);
       return new Response(
         JSON.stringify({ success: true, ...fb, _source: 'fallback' }),
         { status: 200, headers: CORS_HEADERS }
       );
     }
 
-    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr, nbPersonnes);
+    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr, nbPersonnes, modeRepas);
 
     // 2 tentatives avec backoff
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -232,7 +248,7 @@ serve(async (req: Request) => {
     }
 
     // Fallback si le LLM échoue
-    const fb = instructionsFallback(type_repas, recette_nom);
+    const fb = instructionsFallback(type_repas, recette_nom, modeRepas);
     return new Response(
       JSON.stringify({ success: true, ...fb, _source: 'fallback' }),
       { status: 200, headers: CORS_HEADERS }

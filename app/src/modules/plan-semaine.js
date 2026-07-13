@@ -127,7 +127,7 @@ export async function genererSemaine(forcer) {
     var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan-semaine', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions, budget_max: ({ faible: 8, moyen: 15, eleve: 25 })[st.selectedBudget] || 15 }),
+      body: JSON.stringify({ profil_id: st.profil_id, symptomes: st.selectedSymptoms, force_refresh: forcer === true, repas_inclus: st.semaineRepasInclus, nb_personnes: st.defaultPortions, budget_max: ({ faible: 8, moyen: 15, eleve: 25 })[st.selectedBudget] || 15, mode_repas: st.modeRepas }),
     })
     var data = await resp.json()
     if (data.success && data.semaine) {
@@ -319,6 +319,7 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
         macros:       recette.macros,
         symptomes:    st.selectedSymptoms || [],
         nb_personnes: st.defaultPortions,
+        mode_repas:   st.modeRepas,
       })
     })
     var data = await resp.json()
@@ -368,7 +369,7 @@ async function autoRegenFallbacks(data) {
         var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms, nb_personnes: st.defaultPortions }),
+          body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms, nb_personnes: st.defaultPortions, mode_repas: st.modeRepas }),
         })
         var d = await resp.json()
         if (d.success && d.recette && st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[f.jour]) {

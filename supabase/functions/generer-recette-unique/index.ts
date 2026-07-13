@@ -35,10 +35,35 @@ function checkRateLimit(profilId: string): boolean {
 
 // ─── Fallback recette riche (même logique que generer-plan-semaine) ──────────
 
-function recetteFallback(typeRepas: string, ingredientsFrigo: string[], directiveChef = ''): any {
+function recetteFallback(typeRepas: string, ingredientsFrigo: string[], directiveChef = '', modeRepas: 'chaud' | 'froid' = 'chaud'): any {
   // Essayer d'honorer la directive chef avec des fallbacks ciblés
   if (directiveChef && (typeRepas === 'dejeuner' || typeRepas === 'diner')) {
     const dir = directiveChef.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if ((dir.includes('soupe') || dir.includes('potage') || dir.includes('veloute')) && modeRepas === 'froid') {
+      return {
+        nom: `Gaspacho maison — ${directiveChef}`,
+        type_repas: typeRepas,
+        style_culinaire: 'maison',
+        ingredients: [
+          { nom: 'Tomates bien mûres', quantite: 500, unite: 'g' },
+          { nom: 'Concombre', quantite: 150, unite: 'g' },
+          { nom: 'Poivron rouge', quantite: 100, unite: 'g' },
+          { nom: 'Ail', quantite: 1, unite: 'gousse' },
+          { nom: "Huile d'olive, vinaigre de xérès", quantite: 20, unite: 'ml' },
+        ],
+        instructions: [
+          'Laver et couper grossièrement les tomates, le concombre et le poivron.',
+          "Mixer tous les légumes avec l'ail, l'huile d'olive et le vinaigre jusqu'à texture lisse.",
+          "Rectifier l'assaisonnement (sel, poivre), passer au chinois pour une texture plus fine si besoin.",
+          'Réfrigérer au moins 1h et servir bien frais, sans cuisson.',
+        ],
+        temps_preparation: 15, temps_cuisson: 0, portions: 2,
+        valeurs_nutritionnelles: { calories: 150, proteines: 3, glucides: 16, lipides: 9 },
+        astuces: ['Un gaspacho glacé, riche en antioxydants (lycopène de la tomate) — parfait pour se rafraîchir sans cuisiner.'],
+        variantes: ['Ajoutez de la pastèque pour une version encore plus rafraîchissante.'],
+        genere_par_llm: false,
+      };
+    }
     if (dir.includes('soupe') || dir.includes('potage') || dir.includes('veloute')) {
       return {
         nom: `Soupe maison aux légumes — ${directiveChef}`,
@@ -90,6 +115,32 @@ function recetteFallback(typeRepas: string, ingredientsFrigo: string[], directiv
         genere_par_llm: false,
       };
     }
+  }
+  if (typeRepas === 'patisserie' && modeRepas === 'froid') {
+    return {
+      nom: 'Mousse Chocolat Noir Express (sans cuisson)',
+      type_repas: typeRepas,
+      style_culinaire: 'maison',
+      ingredients: [
+        { nom: 'Chocolat noir 70%', quantite: 120, unite: 'g' },
+        { nom: 'Crème liquide entière bien froide', quantite: 200, unite: 'ml' },
+        { nom: 'Œufs', quantite: 2, unite: 'pièces' },
+        { nom: 'Sucre de coco', quantite: 20, unite: 'g' },
+      ],
+      instructions: [
+        'Faire fondre le chocolat au bain-marie doux (ou 1 min au micro-ondes), laisser tiédir.',
+        'Séparer les blancs des jaunes. Mélanger les jaunes au chocolat fondu.',
+        'Monter les blancs en neige ferme avec le sucre de coco, puis les incorporer délicatement au chocolat.',
+        'Répartir dans des verrines et réfrigérer au moins 3h avant de servir bien frais.',
+      ],
+      temps_preparation: 15,
+      temps_cuisson: 0,
+      portions: 2,
+      valeurs_nutritionnelles: { calories: 390, proteines: 9, glucides: 26, lipides: 27 },
+      astuces: ['Le chocolat noir 70%+ est riche en magnésium et en antioxydants (flavonoïdes) pour la sérénité et la vitalité — sans jamais allumer le four.'],
+      variantes: ['Ajoutez une pointe de café ou de fleur de sel sur le dessus avant de servir.'],
+      genere_par_llm: false,
+    };
   }
   if (typeRepas === 'patisserie') {
     return {
@@ -159,6 +210,101 @@ function recetteFallback(typeRepas: string, ingredientsFrigo: string[], directiv
   const protLow = prot.toLowerCase();
 
   let nom: string, ingredients: any[], instructions: string[], calories = 430, proteines = 28;
+
+  if (modeRepas === 'froid') {
+    if (protLow.includes('saumon') || protLow.includes('cabillaud') || protLow.includes('dorade') || protLow.includes('bar') || protLow.includes('thon')) {
+      nom = `Salade Fraîcheur de ${prot} & Agrumes`;
+      ingredients = [
+        { nom: prot + ' (déjà cuit ou en conserve, froid)', quantite: 150, unite: 'g' }, { nom: 'Salade verte', quantite: 100, unite: 'g' },
+        { nom: 'Orange ou pamplemousse', quantite: 1, unite: 'pièce' }, { nom: 'Concombre', quantite: 100, unite: 'g' },
+        { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Émietter ou trancher le poisson déjà cuit et refroidi.',
+        'Laver la salade, peler et détailler les agrumes en suprêmes, couper le concombre en rondelles.',
+        'Disposer tous les ingrédients dans un saladier.',
+        "Assaisonner d'huile d'olive et de jus de citron, sel et poivre. Servir bien frais, sans cuisson.",
+      ];
+      calories = 360; proteines = 28;
+    } else if (protLow.includes('poulet') || protLow.includes('dinde')) {
+      nom = `Salade Fraîcheur de ${prot}, Poivron & Concombre`;
+      ingredients = [
+        { nom: prot + ' (déjà cuit et refroidi, émincé)', quantite: 150, unite: 'g' }, { nom: 'Poivron rouge', quantite: 120, unite: 'g' },
+        { nom: 'Concombre', quantite: 120, unite: 'g' }, { nom: 'Tomates cerises', quantite: 100, unite: 'g' },
+        { nom: "Huile d'olive, vinaigre balsamique", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Émincer la viande déjà cuite et refroidie en lamelles.',
+        'Couper le poivron, le concombre et les tomates cerises en morceaux.',
+        'Mélanger tous les ingrédients dans un grand saladier.',
+        "Assaisonner d'huile d'olive et de vinaigre balsamique. Servir frais, sans réchauffer.",
+      ];
+      calories = 380; proteines = 32;
+    } else if (protLow.includes('bœuf') || protLow.includes('boeuf') || protLow.includes('haché')) {
+      nom = `Salade Fraîcheur de ${prot}, Tomates & Roquette`;
+      ingredients = [
+        { nom: prot + ' (déjà cuit et refroidi, tranché fin)', quantite: 130, unite: 'g' }, { nom: 'Roquette', quantite: 80, unite: 'g' },
+        { nom: 'Tomates', quantite: 150, unite: 'g' }, { nom: 'Copeaux de parmesan', quantite: 20, unite: 'g' },
+        { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Trancher finement la viande déjà cuite et refroidie.',
+        'Laver la roquette et couper les tomates en quartiers.',
+        'Disposer la roquette, les tomates et la viande dans une assiette.',
+        "Parsemer de copeaux de parmesan, arroser d'huile d'olive et de citron. Servir frais.",
+      ];
+      calories = 420; proteines = 34;
+    } else if (protLow.includes('lentille') || protLow.includes('pois chiche') || protLow.includes('haricot')) {
+      nom = `Bowl Froid de ${prot} Marinés, Tomates & Concombre`;
+      ingredients = [
+        { nom: prot + ' (cuits, refroidis)', quantite: 180, unite: 'g' }, { nom: 'Tomates cerises', quantite: 150, unite: 'g' },
+        { nom: 'Concombre', quantite: 120, unite: 'g' }, { nom: 'Persil, cumin', quantite: 5, unite: 'g' },
+        { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Rincer et égoutter la protéine déjà cuite.',
+        "La faire mariner 5 min dans l'huile d'olive, le jus de citron et le cumin.",
+        'Couper les tomates cerises et le concombre en dés.',
+        'Mélanger tous les ingrédients dans un bowl, parsemer de persil et servir frais.',
+      ];
+      calories = 360; proteines = 20;
+    } else if (protLow.includes('œuf') || protLow.includes('oeuf')) {
+      nom = 'Salade Fraîcheur aux Œufs Durs & Crudités';
+      ingredients = [
+        { nom: 'Œufs durs', quantite: 3, unite: 'pièces' }, { nom: 'Tomates cerises', quantite: 100, unite: 'g' },
+        { nom: 'Concombre', quantite: 100, unite: 'g' }, { nom: 'Salade verte', quantite: 80, unite: 'g' },
+        { nom: "Huile d'olive, jus de citron", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Écaler les œufs durs refroidis et les couper en quartiers.',
+        'Laver et couper les tomates cerises, le concombre et la salade.',
+        'Assembler tous les ingrédients dans un saladier.',
+        "Assaisonner d'huile d'olive et de citron. Servir frais.",
+      ];
+      calories = 340; proteines = 22;
+    } else {
+      nom = `Assiette Fraîcheur de ${prot} & Crudités`;
+      ingredients = [
+        { nom: prot + ' (déjà cuit, refroidi)', quantite: 150, unite: 'g' }, { nom: 'Crudités de saison variées', quantite: 250, unite: 'g' },
+        { nom: "Huile d'olive, vinaigre", quantite: 15, unite: 'ml' },
+      ];
+      instructions = [
+        'Couper la protéine déjà cuite et les crudités en morceaux réguliers.',
+        'Disposer harmonieusement dans une assiette ou un saladier.',
+        "Assaisonner d'huile d'olive et de vinaigre, sel et poivre.",
+        'Servir frais, sans cuisson.',
+      ];
+    }
+    return {
+      nom, type_repas: typeRepas, style_culinaire: 'maison',
+      ingredients, instructions,
+      temps_preparation: 12, temps_cuisson: 0, portions: 2,
+      valeurs_nutritionnelles: { calories, proteines, glucides: 22, lipides: 16 },
+      astuces: ['Un plat frais et complet, sans allumer le four ni la cuisinière — idéal pour les jours de canicule.'],
+      variantes: ['Adaptez les crudités selon la saison et vos goûts.'],
+      genere_par_llm: false,
+    };
+  }
 
   if (protLow.includes('saumon') || protLow.includes('cabillaud') || protLow.includes('dorade') || protLow.includes('bar')) {
     nom = `${prot} poêlé au citron`;
@@ -276,7 +422,8 @@ function construirePrompt(
   symptomes: string[],
   profil: any,
   directiveChef: string = '',
-  nbPersonnes: number = 2
+  nbPersonnes: number = 2,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): string {
 
   const estPetitDej = typeRepas === 'petit-dejeuner' || typeRepas === 'collation';
@@ -358,7 +505,19 @@ function construirePrompt(
     'madeleines au miel et fleur d\'oranger',
     'brownie à la patate douce et pépites de chocolat',
   ];
-  const patisserieInspiration = PATISSERIE_TYPES[Math.floor(Math.random() * PATISSERIE_TYPES.length)];
+  // En mode froid, ne proposer que des pâtisseries sans cuisson au four ou avec cuisson très brève
+  const PATISSERIE_TYPES_FROID = [
+    'panna cotta à la vanille et coulis de fruits rouges',
+    'cheesecake léger à la ricotta et zestes de citron (sans cuisson, pris au frais)',
+    'mousse légère au citron et meringue',
+    'rochers coco chocolat noir (sans cuisson)',
+    'pudding chia aux fruits exotiques',
+    'tarte aux fruits frais sur fond sans cuisson (biscuits émiettés + beurre)',
+    'verrine fraîcheur fruits rouges et crème fouettée',
+    'soufflé glacé aux fruits de la passion',
+  ];
+  const poolPatisserie = modeRepas === 'froid' ? PATISSERIE_TYPES_FROID : PATISSERIE_TYPES;
+  const patisserieInspiration = poolPatisserie[Math.floor(Math.random() * poolPatisserie.length)];
 
   const contraintesPatisserie = estPatisserie ? `
 ## CONTRAINTES PÂTISSERIE — RÈGLES ABSOLUES
@@ -369,13 +528,22 @@ function construirePrompt(
 - Le dessert doit être APPÉTISSANT et GOURMAND tout en étant nutritionnellement valorisé
 - Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT s'ils servent la dimension sucrée
 - Valorise la dimension nutritionnelle dans les "astuces" sans compromettre le côté dessert
-- **DIRECTION CRÉATIVE IMPOSÉE pour cette génération** : crée une recette dans l'esprit de → ${patisserieInspiration}
+${modeRepas === 'froid' ? "- **MODE FROID** : AUCUNE cuisson au four — dessert sans cuisson ou cuisson très brève (≤2 min), servi frais/glacé, temps_cuisson doit être 0\n" : ''}- **DIRECTION CRÉATIVE IMPOSÉE pour cette génération** : crée une recette dans l'esprit de → ${patisserieInspiration}
 - Sois ORIGINAL sur le nom et les détails, ne copie pas mot pour mot la direction, inspire-t'en
 ` : '';
 
   const directiveSection = directiveChef.trim()
     ? `\n## DIRECTIVE DU CHEF — PRIORITÉ ABSOLUE\nL'utilisateur demande SPÉCIFIQUEMENT : "${directiveChef.trim()}"\nTu DOIS créer une recette qui correspond exactement à cette demande. C'est la contrainte la plus importante.\n`
     : '';
+
+  const contrainteFroide = (modeRepas === 'froid' && !estPatisserie) ? `
+## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
+- INTERDIT d'allumer le four, la cuisinière, la plaque ou le grill — aucune cuisson à la poêle, casserole, four ou grill
+- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (thon en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster/grille-pain bref (≤2 min)
+- Techniques attendues : salade composée, bowl, verrine, wrap froid, gaspacho, tartare de légumes, ceviche végétal, sandwich froid, rouleaux de printemps
+- temps_cuisson DOIT être 0 (ou 1-2 max si toast)
+- Le plat doit être servi FROID ou à température ambiante
+` : '';
 
   return `Tu es un chef pâtissier nutritionniste expert. Crée une recette ORIGINALE et CREATIVE.
 
@@ -389,6 +557,7 @@ function construirePrompt(
 **Objectif nutritionnel** : ${estPatisserie ? 'Dessert gourmand avec ingrédients de qualité nutritionnelle (chocolat noir, fruits, oléagineux)' : objectif}
 **Portions** : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''}
 ${directiveSection}
+${contrainteFroide}
 ${frigoSection}
 ${contraintesPetitDej}
 ${contraintesCollation}
@@ -506,7 +675,8 @@ async function genererRecetteIA(
   symptomes: string[],
   profil: any,
   directiveChef: string = '',
-  nbPersonnes: number = 2
+  nbPersonnes: number = 2,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<any | null> {
 
   if (!ANTHROPIC_API_KEY) {
@@ -514,7 +684,7 @@ async function genererRecetteIA(
     return null;
   }
 
-  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil, directiveChef, nbPersonnes);
+  const prompt = construirePrompt(typeRepas, ingredientsFrigo, symptomes, profil, directiveChef, nbPersonnes, modeRepas);
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -565,7 +735,7 @@ async function genererRecetteIA(
       })),
       instructions: recetteJSON.instructions || [],
       temps_preparation: recetteJSON.temps_preparation ?? 15,
-      temps_cuisson: recetteJSON.temps_cuisson ?? 0,
+      temps_cuisson: modeRepas === 'froid' ? Math.min(recetteJSON.temps_cuisson ?? 0, 2) : (recetteJSON.temps_cuisson ?? 0),
       portions: recetteJSON.portions || 2,
       valeurs_nutritionnelles: recetteJSON.valeurs_nutritionnelles || undefined,
       astuces: recetteJSON.astuces || [],
@@ -588,7 +758,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { profil_id, type_repas, ingredients_frigo, symptomes, directive_chef, nb_personnes } = body;
+    const { profil_id, type_repas, ingredients_frigo, symptomes, directive_chef, nb_personnes, mode_repas } = body;
     const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
 
     if (!profil_id || !type_repas) {
@@ -627,6 +797,10 @@ serve(async (req: Request) => {
 
     const profil = profils?.[0] || {};
 
+    const modeRepas: 'chaud' | 'froid' = (mode_repas === 'froid' || mode_repas === 'chaud')
+      ? mode_repas
+      : (profil.mode_repas === 'froid' ? 'froid' : 'chaud');
+
     // Normaliser le profil pour le prompt
     const profilNorm = {
       regime_alimentaire: profil.regimes_alimentaires || profil.regime_alimentaire || [],
@@ -635,15 +809,15 @@ serve(async (req: Request) => {
       budget: profil.budget_complements || profil.budget || 'moyen',
     };
 
-    console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}, directive="${directiveChef}"`);
+    console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}, directive="${directiveChef}", mode=${modeRepas}`);
 
     // Générer la recette via Claude
-    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef, nbPersonnes);
+    let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef, nbPersonnes, modeRepas);
 
     // Fallback si la génération échoue
     if (!recette) {
       console.warn('[WARN] Fallback recette par défaut');
-      recette = recetteFallback(typeRepasNorm, ingredientsFrigo, directiveChef);
+      recette = recetteFallback(typeRepasNorm, ingredientsFrigo, directiveChef, modeRepas);
     }
 
     // Calcul nutrition réelle depuis la table alimentation
@@ -664,7 +838,7 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, recette }),
+      JSON.stringify({ success: true, recette, mode_repas: modeRepas }),
       { status: 200, headers: CORS_HEADERS }
     );
 

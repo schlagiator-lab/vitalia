@@ -118,10 +118,11 @@ export async function genererRecetteLLM(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = []
+  nomsDejaUtilises: string[] = [],
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<RecetteGeneree | null> {
 
-  console.log(`[NIVEAU 3] Génération recette Claude AI (${typeRepas}, ${styleCulinaire})...`);
+  console.log(`[NIVEAU 3] Génération recette Claude AI (${typeRepas}, ${styleCulinaire}, mode=${modeRepas})...`);
 
   if (!ANTHROPIC_API_KEY) {
     console.error('[ERROR] ANTHROPIC_API_KEY non configurée dans les secrets Supabase');
@@ -130,7 +131,7 @@ export async function genererRecetteLLM(
 
   const prompt = construirePromptRecette(
     typeRepas, styleCulinaire, ingredientsObligatoires,
-    profil, contexte, ingredientsAEviter, nomsDejaUtilises
+    profil, contexte, ingredientsAEviter, nomsDejaUtilises, modeRepas
   );
 
   // Retry 1× sur 429 / 5xx
@@ -216,7 +217,7 @@ export async function genererRecetteLLM(
         ingredients:     ingredientsBuilt,
         instructions:    recetteJSON.instructions || [],
         temps_preparation: recetteJSON.temps_preparation ?? 15,
-        temps_cuisson:   typeRepas === 'petit-dejeuner'
+        temps_cuisson:   (typeRepas === 'petit-dejeuner' || modeRepas === 'froid')
           ? Math.min(recetteJSON.temps_cuisson ?? 0, 2)
           : (recetteJSON.temps_cuisson ?? 20),
         portions:        recetteJSON.portions || 2,
@@ -249,7 +250,8 @@ function construirePromptRecette(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = []
+  nomsDejaUtilises: string[] = [],
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): string {
   
   const contraintesRegime: string[] = [];
@@ -335,6 +337,16 @@ function construirePromptRecette(
 - Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe${estSansLactose ? ', bol yaourt, tartine ricotta, fromage blanc' : ''}
 ` : '';
 
+  // Mode froid : canicule / été — aucune cuisson au four, à la poêle ou à la casserole
+  const contrainteFroide = modeRepas === 'froid' ? `
+## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
+- **INTERDIT** : allumer le four, la cuisinière, la plaque, le grill — aucune cuisson à la poêle, casserole, four ou grill
+- **AUTORISÉ** : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (thon en boîte, œufs durs, jambon, feta, légumes blanchis puis refroidis), toaster/grille-pain bref (≤2 min) uniquement si nécessaire
+- **Techniques attendues** : salade composée, bowl (poke/buddha bowl), verrine, wrap froid, gaspacho, tartare de légumes, ceviche végétal, rouleaux de printemps, sandwich froid, carpaccio
+- **temps_cuisson DOIT être 0** (ou 1-2 max si toast/grille-pain)
+- Le plat doit être servi FROID ou à température ambiante, jamais chaud
+` : '';
+
   // Ingrédients déjà utilisés dans les autres repas du plan (éviter la répétition)
   const consigneEviter = ingredientsAEviter.length > 0 ? `
 **Ingrédients à ÉVITER ABSOLUMENT** (déjà utilisés dans d'autres repas du plan — ne pas répéter) :
@@ -356,7 +368,7 @@ Crée quelque chose de complètement différent : autres ingrédients principaux
 **Style culinaire** : ${styleCulinaire}
 **Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
-${consigneNoms}${consigneEviter}
+${contrainteFroide}${consigneNoms}${consigneEviter}
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
@@ -395,7 +407,8 @@ ${contraintesPetitDej}
 
 export async function genererPauseLLM(
   profil: ProfilUtilisateur,
-  contexte: ContexteUtilisateur
+  contexte: ContexteUtilisateur,
+  modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<any | null> {
 
   console.log('[NIVEAU 3] Génération collation 15h30 via Claude AI...');
@@ -436,7 +449,7 @@ export async function genererPauseLLM(
 - Tout produit vendu en pharmacie ou rayon compléments
 
 **AUTORISÉ** : uniquement de la vraie nourriture du quotidien (fruits, légumes, noix, yaourt, pain, chocolat noir, etc.)
-
+${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, aucun aliment réchauffé — uniquement frais ou à température ambiante, zéro cuisson.\n' : ''}
 **Régime** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
 **Allergènes à éviter** : ${(profil.allergenes || []).join(', ') || 'Aucun'}
 **Objectif nutritionnel** : ${objectifTexte}

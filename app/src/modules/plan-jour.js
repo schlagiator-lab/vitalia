@@ -416,6 +416,7 @@ export async function genererPlan(forcer) {
       force_regeneration: forcer === true,
       meme_theme: (document.getElementById('memeThemeToggle') || {}).checked || false,
       nb_personnes: st.defaultPortions,
+      mode_repas: st.modeRepas,
     }
     var res = await authFetch(SUPABASE_URL + '/functions/v1/generer-plan', {
       method: 'POST',

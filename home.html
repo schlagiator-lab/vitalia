@@ -237,6 +237,13 @@
       <div class="chip" onclick="toggleSymptom(this,'hormones')">🌸 Hormones &amp; Longévité</div>
     </div>
   </div>
+  <div class="config-field">
+    <label class="field-label">Aujourd'hui, tu préfères</label>
+    <div class="chips" id="configModeChips">
+      <div class="chip selected" data-val="chaud" onclick="selectSharedMode(this,'chaud')">🔥 Repas chauds</div>
+      <div class="chip" data-val="froid" onclick="selectSharedMode(this,'froid')">❄️ Repas froids (été)</div>
+    </div>
+  </div>
   <!-- Hidden chip containers (sync only, not visible) -->
   <div id="configTempsChips" style="display:none;">
     <div class="chip" data-val="15"></div><div class="chip" data-val="30"></div>
@@ -304,6 +311,15 @@
       <div class="chip" data-val="halal"       onclick="toggleProfilRegime(this,'halal')">☪️ Halal</div>
       <div class="chip" data-val="casher"      onclick="toggleProfilRegime(this,'casher')">✡️ Casher</div>
       <div class="chip" data-val="keto"        onclick="toggleProfilRegime(this,'keto')">🥑 Kéto</div>
+    </div>
+  </div>
+
+  <!-- Préférence saison (chaud/froid) -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--deep-brown);margin-bottom:8px;">Préférence saison</div>
+    <div class="chips" id="profilModeChips">
+      <div class="chip selected" data-val="chaud" onclick="selectSharedMode(this,'chaud')">🔥 Repas chauds</div>
+      <div class="chip" data-val="froid" onclick="selectSharedMode(this,'froid')">❄️ Repas froids (été)</div>
     </div>
   </div>
 
@@ -716,6 +732,13 @@
           <div class="chip" data-val="hormones" onclick="toggleSemaineSymptom(this,'hormones')">🌸 Hormones &amp; Longévité</div>
         </div>
       </div>
+      <div>
+        <div class="field-label">Cette semaine, tu préfères</div>
+        <div class="chips" id="semaineModeChips" style="margin-top:10px;">
+          <div class="chip selected" data-val="chaud" onclick="selectSharedMode(this,'chaud')">🔥 Repas chauds</div>
+          <div class="chip" data-val="froid" onclick="selectSharedMode(this,'froid')">❄️ Repas froids (été)</div>
+        </div>
+      </div>
       <!-- Hidden chip containers (sync only) -->
       <div id="semaineRegimesChips" style="display:none;">
         <div class="chip" data-val="omnivore"></div><div class="chip" data-val="sans_gluten"></div>
@@ -810,6 +833,15 @@
           <div class="chip" data-val="collation" onclick="selectTypeRepas(this,'collation')">🍎 Collation</div>
           <div class="chip" data-val="diner" onclick="selectTypeRepas(this,'diner')">🌙 Dîner</div>
           <div class="chip" data-val="patisserie" onclick="selectTypeRepas(this,'patisserie')" style="margin-left:8px; border-style:dashed;">🧁 Pâtisserie</div>
+        </div>
+      </div>
+
+      <!-- Chaud / froid -->
+      <div>
+        <div class="field-label">Tu préfères</div>
+        <div class="chips" id="recetteModeChips" style="margin-top:10px;">
+          <div class="chip selected" data-val="chaud" onclick="selectSharedMode(this,'chaud')">🔥 Repas chauds</div>
+          <div class="chip" data-val="froid" onclick="selectSharedMode(this,'froid')">❄️ Repas froids (été)</div>
         </div>
       </div>
 

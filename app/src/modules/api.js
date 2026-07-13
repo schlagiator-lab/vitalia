@@ -53,6 +53,7 @@ export async function sauvegarderProfil() {
     st.profilUtilisateur.allergies            = st.profilAllergiesCourantes.slice()
     st.profilUtilisateur.temps_cuisine_max    = st.profilTempsCuisineCourant
     st.profilUtilisateur.budget_complements   = st.selectedBudget
+    st.profilUtilisateur.mode_repas           = st.modeRepas
     localStorage.setItem('vitalia_profil', JSON.stringify(st.profilUtilisateur))
   }
 
@@ -65,6 +66,7 @@ export async function sauvegarderProfil() {
       temps_max:            st.profilTempsCuisineCourant,
       budget_complements:   st.selectedBudget,
       budget_max:           _budgetMaxMap[st.selectedBudget] || 15,
+      mode_repas:           st.modeRepas,
     }).eq('id', st.profil_id)
     if (result.error) {
       afficherToast('Erreur sauvegarde : ' + result.error.message)

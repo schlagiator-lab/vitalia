@@ -99,6 +99,7 @@ export interface PlanGenere {
   conseil_du_jour?: string;
   conseils_generaux?: string[];
   score_nutritionnel?: number;
+  mode_repas?: 'chaud' | 'froid';
 
   genere_le: string;
   expire_le?: string;
