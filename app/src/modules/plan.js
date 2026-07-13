@@ -402,7 +402,6 @@ export function noterPlan(note) {
 export async function genererPlan(forcer) {
   fermerConfig()
   if (forcer) {
-    sessionStorage.removeItem('vitalia_plan_session_home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   if (!st.profil_id || st.profil_id === 'new') { window.location.href = 'onboarding.html'; return }
