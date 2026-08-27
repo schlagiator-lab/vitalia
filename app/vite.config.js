@@ -54,6 +54,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
+        index:      resolve(__dirname, '../index.html'),
         home:       resolve(__dirname, '../home.html'),
         onboarding: resolve(__dirname, '../onboarding.html'),
       }
