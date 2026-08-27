@@ -1,0 +1,17 @@
+# Configuration Cloudflare Pages — Vitalia
+#
+# Compte cible : NOUVEAU compte Cloudflare, dédié à Vitalia et séparé du
+# compte utilisé pour laydevant-app. Ne jamais coller ici l'account_id de
+# laydevant-app.
+name = "vitalia-app"
+compatibility_date = "2026-08-26"
+
+# Dossier de build Vite (voir vite.config.js → build.outDir = resolve(__dirname, '../dist'),
+# donc le build sort à la racine du repo : "../dist" ici puisque ce fichier est dans app/).
+pages_build_output_dir = "../dist"
+
+# L'account_id n'est PAS supporté dans ce fichier pour les projets Pages
+# (wrangler le rejette : "Configuration file for Pages projects does not
+# support 'account_id'"). Il est passé via la variable d'environnement
+# CLOUDFLARE_ACCOUNT_ID dans le script "deploy" de package.json — ID du
+# compte Cloudflare "Vitalia", surtout PAS celui de laydevant-app.

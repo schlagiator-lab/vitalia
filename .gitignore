@@ -7,3 +7,6 @@ app/node_modules/
 dist/
 .vite/
 home.html.bak
+
+# Wrangler (Cloudflare)
+.wrangler/
