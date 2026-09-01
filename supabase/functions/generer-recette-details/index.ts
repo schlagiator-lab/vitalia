@@ -200,7 +200,6 @@ serve(async (req: Request) => {
         body: JSON.stringify({
           model: MODEL_RECETTE,
           max_tokens: 800,
-          temperature: 0.7,
           tools: [DETAILS_TOOL],
           tool_choice: { type: 'tool', name: 'detailler_recette' },
           messages: [{ role: 'user', content: prompt }],

@@ -22,6 +22,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
 };
 
+// Profils de test exemptés des limites [GUARD] (rate-limit + budget journalier)
+const PROFILS_EXEMPTES = new Set<string>([
+  'db82135e-0270-4113-90c1-9204a1c4d909',
+]);
+
 // ─── Rate limiting : 10 générations/heure par utilisateur ──────────────────
 const _planRateLimitMap = new Map<string, number[]>();
 const PLAN_RATE_LIMIT_MAX = 10;
@@ -628,7 +633,6 @@ async function genererPlanBatch(
         body: JSON.stringify({
           model: MODEL_RECETTE,
           max_tokens: 8000,
-          temperature: 0.8,
           messages: [{ role: 'user', content: prompt }],
         }),
       });
@@ -846,19 +850,24 @@ serve(async (req: Request) => {
     }
 
     // ── PROTECTION COÛTS : rate limit persistant + budget cap ───────────────
+    const exempte = PROFILS_EXEMPTES.has(profil_id);
+    if (exempte) {
+      console.log(`[GUARD] profil ${profil_id} exempté — limites ignorées`);
+    }
+
     const [rateLimit, budget] = await Promise.all([
       verifierRateLimitSemaine(supabase, profil_id),
       verifierBudgetJournalier(supabase),
     ]);
 
-    if (!rateLimit.autorise) {
+    if (!exempte && !rateLimit.autorise) {
       console.warn(`[GUARD] Rate limit semaine profil ${profil_id} : ${rateLimit.raison}`);
       return new Response(
         JSON.stringify({ success: false, error: rateLimit.raison || 'Limite hebdomadaire atteinte.' }),
         { status: 429, headers: CORS_HEADERS }
       );
     }
-    if (!budget.sousLimite) {
+    if (!exempte && !budget.sousLimite) {
       console.error(`[GUARD] Budget journalier dépassé : $${budget.coutJour.toFixed(4)}`);
       return new Response(
         JSON.stringify({ success: false, error: 'Service temporairement indisponible, réessayez demain.' }),

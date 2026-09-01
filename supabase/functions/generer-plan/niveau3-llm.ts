@@ -147,7 +147,6 @@ export async function genererRecetteLLM(
         body: JSON.stringify({
           model: MODEL_RECETTE,
           max_tokens: 2000,
-          temperature: 0.8,
           tools: [RECETTE_TOOL],
           tool_choice: { type: 'tool', name: 'creer_recette' },
           messages: [{ role: 'user', content: prompt }]

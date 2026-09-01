@@ -669,6 +669,49 @@ async function calculerNutritionReelle(
 
 // ─── Appel Claude AI ───────────────────────────────────────────────────────
 
+// Tool_use structuré : garantit un JSON 100% valide sans parsing fragile (même pattern que generer-plan/niveau3-llm.ts)
+const RECETTE_TOOL = {
+  name: 'creer_recette',
+  description: 'Crée une recette nutritive originale selon les contraintes demandées',
+  input_schema: {
+    type: 'object',
+    properties: {
+      nom: { type: 'string', description: 'Nom créatif et appétissant de la recette' },
+      ingredients: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nom:      { type: 'string' },
+            quantite: { type: 'number' },
+            unite:    { type: 'string' }
+          },
+          required: ['nom', 'quantite', 'unite']
+        },
+        minItems: 3
+      },
+      instructions:       { type: 'array', items: { type: 'string' }, minItems: 3, maxItems: 7 },
+      temps_preparation:  { type: 'integer' },
+      temps_cuisson:      { type: 'integer' },
+      portions:           { type: 'integer' },
+      valeurs_nutritionnelles: {
+        type: 'object',
+        properties: {
+          calories:  { type: 'integer' },
+          proteines: { type: 'number' },
+          glucides:  { type: 'number' },
+          lipides:   { type: 'number' }
+        },
+        required: ['calories', 'proteines', 'glucides', 'lipides']
+      },
+      astuces:   { type: 'array', items: { type: 'string' } },
+      variantes: { type: 'array', items: { type: 'string' } }
+    },
+    required: ['nom', 'ingredients', 'instructions', 'temps_preparation', 'temps_cuisson',
+               'portions', 'valeurs_nutritionnelles', 'astuces', 'variantes']
+  }
+};
+
 async function genererRecetteIA(
   typeRepas: string,
   ingredientsFrigo: string[],
@@ -697,7 +740,8 @@ async function genererRecetteIA(
       body: JSON.stringify({
         model: MODEL_RECETTE,
         max_tokens: 1500,
-        temperature: 0.9,
+        tools: [RECETTE_TOOL],
+        tool_choice: { type: 'tool', name: 'creer_recette' },
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -708,16 +752,10 @@ async function genererRecetteIA(
     }
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || '';
 
-    // Parse JSON (blocs ```json ou brut)
-    let recetteJSON: any = null;
-    const jsonBlock = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlock) { try { recetteJSON = JSON.parse(jsonBlock[1]); } catch (_) {} }
-    if (!recetteJSON) {
-      const jsonRaw = text.match(/\{[\s\S]*\}/);
-      if (jsonRaw) { try { recetteJSON = JSON.parse(jsonRaw[0]); } catch (_) {} }
-    }
+    // tool_use : l'API garantit un JSON valide — pas de regex fragile
+    const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
+    const recetteJSON = toolUse?.input;
 
     if (!recetteJSON?.nom || !Array.isArray(recetteJSON?.ingredients) || !Array.isArray(recetteJSON?.instructions)) {
       console.error('[ERROR] JSON LLM invalide');
