@@ -1,6 +1,9 @@
 {
-  "name": "Mon projet avec RTK",
+  "name": "Vitalia",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-  "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
-  "remoteUser": "vscode"
+  "postCreateCommand": "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh && curl -fsSL https://raw.githubusercontent.com/supabase/cli/main/install | bash",
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin"
+  }
 }
