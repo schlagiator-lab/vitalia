@@ -10,7 +10,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const MODEL_RECETTE = 'claude-sonnet-5';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -695,7 +695,7 @@ async function genererRecetteIA(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: MODEL_RECETTE,
         max_tokens: 1500,
         temperature: 0.9,
         messages: [{ role: 'user', content: prompt }],

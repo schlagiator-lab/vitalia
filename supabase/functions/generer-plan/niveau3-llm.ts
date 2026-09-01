@@ -1,7 +1,7 @@
 // supabase/functions/generer-plan/niveau3-llm.ts
 // VERSION CORRIGÉE V2 :
-// - FIX P2 : Model string corrigé → 'claude-opus-4-5-20251022' (Sonnet 4.5)
-//            L'ancien 'claude-sonnet-4-20250514' n'existe pas → erreur 400 Anthropic
+// - Modèles : MODEL_RECETTE (Sonnet 5) pour la génération de recettes/collations complexes,
+//             MODEL_LEGER (Haiku 4.5) pour les tâches légères (motivation, conseil du jour)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
@@ -18,9 +18,9 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// FIX P2 : Identifiant de modèle valide
-// Utiliser claude-haiku-4-5-20251001 pour coût réduit, ou claude-sonnet-4-5-20251022 pour qualité
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+// Génération complexe (recette, collation) → Sonnet 5. Tâches légères (motivation, conseil) → Haiku 4.5.
+const MODEL_RECETTE = 'claude-sonnet-5';
+const MODEL_LEGER   = 'claude-haiku-4-5-20251001';
 
 // ─── Tool_use structuré : garantit un JSON 100% valide sans parsing fragile ─
 const RECETTE_TOOL = {
@@ -145,7 +145,7 @@ export async function genererRecetteLLM(
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
+          model: MODEL_RECETTE,
           max_tokens: 2000,
           temperature: 0.8,
           tools: [RECETTE_TOOL],
@@ -175,7 +175,7 @@ export async function genererRecetteLLM(
           profilId:  profil.id,
           fonction:  'generer-plan',
           appel:     'recette-' + typeRepas,
-          model:     ANTHROPIC_MODEL,
+          model:     MODEL_RECETTE,
           tokensIn:  data.usage.input_tokens,
           tokensOut: data.usage.output_tokens,
           succes:    true,
@@ -467,7 +467,7 @@ ${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, 
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: MODEL_LEGER,
         max_tokens: 800,
         temperature: 0.9,
         tools: [PAUSE_TOOL],
@@ -490,7 +490,7 @@ ${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, 
         profilId:  profil.id,
         fonction:  'generer-plan',
         appel:     'pause',
-        model:     ANTHROPIC_MODEL,
+        model:     MODEL_LEGER,
         tokensIn:  data.usage.input_tokens,
         tokensOut: data.usage.output_tokens,
         succes:    true,
@@ -552,13 +552,13 @@ Règles :
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: MODEL_LEGER,
         max_tokens: 150,
         temperature: 0.9,
         messages: [{ role: 'user', content: prompt }]
       })
     });
-    
+
     if (!response.ok) {
       return "Prends soin de toi avec ce plan sur mesure ! 🌿";
     }
@@ -571,7 +571,7 @@ Règles :
         profilId,
         fonction:  'generer-plan',
         appel:     'motivation',
-        model:     ANTHROPIC_MODEL,
+        model:     MODEL_LEGER,
         tokensIn:  data.usage.input_tokens,
         tokensOut: data.usage.output_tokens,
         succes:    true,
@@ -646,7 +646,7 @@ Règles STRICTES :
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
+        model: MODEL_LEGER,
         max_tokens: 120,
         temperature: 1.0,
         messages: [{ role: 'user', content: prompt }]
@@ -663,7 +663,7 @@ Règles STRICTES :
         profilId,
         fonction:  'generer-plan',
         appel:     'conseil-du-jour',
-        model:     ANTHROPIC_MODEL,
+        model:     MODEL_LEGER,
         tokensIn:  data.usage.input_tokens,
         tokensOut: data.usage.output_tokens,
         succes:    true,

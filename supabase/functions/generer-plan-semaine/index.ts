@@ -12,7 +12,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const MODEL_RECETTE = 'claude-sonnet-5';            // génération du plan hebdomadaire (batch 21 repas)
+const MODEL_LEGER   = 'claude-haiku-4-5-20251001';  // message motivation + conseil du jour
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -369,7 +370,7 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 250, temperature: 0.9, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: MODEL_LEGER, max_tokens: 250, temperature: 0.9, messages: [{ role: 'user', content: prompt }] }),
     });
 
     if (!response.ok) return { message: fallbackMessage, conseil: fallbackConseil };
@@ -381,7 +382,7 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
       loggerAppelLLM(_supaLog, {
         fonction:  'generer-plan-semaine',
         appel:     'motivation',
-        model:     ANTHROPIC_MODEL,
+        model:     MODEL_LEGER,
         tokensIn:  data.usage.input_tokens,
         tokensOut: data.usage.output_tokens,
         succes:    true,
@@ -625,7 +626,7 @@ async function genererPlanBatch(
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
+          model: MODEL_RECETTE,
           max_tokens: 8000,
           temperature: 0.8,
           messages: [{ role: 'user', content: prompt }],
@@ -652,7 +653,7 @@ async function genererPlanBatch(
         loggerAppelLLM(_supaLog, {
           fonction:  'generer-plan-semaine',
           appel:     'batch-7-jours',
-          model:     ANTHROPIC_MODEL,
+          model:     MODEL_RECETTE,
           tokensIn:  data.usage.input_tokens,
           tokensOut: data.usage.output_tokens,
           succes:    true,

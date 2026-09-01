@@ -9,7 +9,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const MODEL_RECETTE = 'claude-sonnet-5';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ serve(async (req: Request) => {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
+          model: MODEL_RECETTE,
           max_tokens: 800,
           temperature: 0.7,
           tools: [DETAILS_TOOL],
