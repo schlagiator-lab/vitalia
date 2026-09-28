@@ -45,6 +45,17 @@ import {
   verifierBudgetJournalier,
   LIMITS,
 } from '../_shared/llm-guard.ts';
+import {
+  ProfilSecurite,
+  ErreurSecurite,
+  chargerProfilSecurite,
+  filtrerIngredients,
+  verifierRecette,
+  decrireViolations,
+  recetteGeneriqueSure,
+  reponseErreurSecurite,
+  MESSAGE_COMPLEMENTS_MEDECIN,
+} from '../_shared/securite.ts';
 
 // ============================================================================
 // CONFIGURATION
@@ -64,6 +75,9 @@ const CORS_HEADERS = {
 const PROFILS_EXEMPTES = new Set<string>([
   'db82135e-0270-4113-90c1-9204a1c4d909',
 ]);
+
+// Conseil de secours si le conseil LLM viole le profil (vérifié sûr pour toutes les restrictions)
+const CONSEIL_NEUTRE = 'Une alimentation colorée et variée est la base d\'une bonne santé : chaque couleur apporte des nutriments différents.';
 
 // ─── Rate limiting : 10 générations/heure par utilisateur ──────────────────
 const _planRateLimitMap = new Map<string, number[]>();
@@ -116,11 +130,6 @@ const PETIT_DEJ_POOL: string[] = [
   "yaourt grec", "fromage blanc", "ricotta", "abricots secs", "raisins secs"
 ];
 
-// Ingrédients contenant du gluten dans les pools statiques
-const GLUTEN_FALLBACK = new Set(['pâtes complètes', "flocons d'avoine", 'pain complet', 'seigle', 'orge', 'épeautre', 'couscous', 'boulgour']);
-// Ingrédients poisson/fruits de mer dans PROTEINES_FALLBACK_ANIMALES
-const POISSON_FALLBACK = new Set(['pavé de saumon', 'filet de cabillaud', 'thon en conserve', 'maquereau', 'crevettes']);
-
 // Sélectionne les ingrédients pour les 3 repas du jour (fallback BDD vide)
 // Déjeuner & dîner : toujours 1 protéine + 1 légume + 1 féculent pour garantir
 // une recette nourrissante (évite "noix + cerises" comme repas principal).
@@ -129,34 +138,24 @@ function selectionnerIngredientsTroisRepas(
   objectif: string,
   besoinsActifs: string[],
   ingredientsBanis: Set<string> = new Set(),
-  profil?: any
+  profil: any
 ): { petitDej: string[]; dejeuner: string[]; diner: string[] } {
-  // Extraire les allergènes déclarés pour filtrer les pools statiques
-  const allergenes: string[] = (profil?.allergenes || []).map((a: string) => a.toLowerCase());
-  const estSansGluten  = allergenes.includes('gluten');
-  const estSansPoisson = allergenes.includes('poisson') || allergenes.includes('fruits de mer');
+  const securite: ProfilSecurite = profil.securite;
 
-  // Pool protéines adapté au régime alimentaire ET aux allergies
+  // Pool protéines adapté au régime alimentaire
   const estVegan      = profil?.regime_alimentaire?.some((r: string) => ['vegan', 'végétalien'].includes(r.toLowerCase())) ?? false;
   const estVegetarien = profil?.regime_alimentaire?.some((r: string) => ['vegetarien', 'végétarien'].includes(r.toLowerCase())) ?? false;
 
-  let proteinesAnimales = PROTEINES_FALLBACK_ANIMALES;
-  if (estSansPoisson) {
-    proteinesAnimales = proteinesAnimales.filter(p => !POISSON_FALLBACK.has(p.toLowerCase()));
-  }
   // Omnivore → animal proteins ONLY (never mix with vegetale in the same pool)
   // Mixing caused ~43% chance of selecting a vegetable protein for omnivore profiles
-  const proteinesPool = (estVegan || estVegetarien)
-    ? PROTEINES_FALLBACK_VEGETALES
-    : proteinesAnimales;
-
-  // Pool féculents filtré pour l'allergie gluten
-  let feculentsPool = FECULENTS_FALLBACK;
-  if (estSansGluten) {
-    feculentsPool = feculentsPool.filter(f => !GLUTEN_FALLBACK.has(f.toLowerCase()));
-    // Dernier recours si tout est filtré
-    if (feculentsPool.length === 0) feculentsPool = ['Quinoa', 'Riz basmati'];
-  }
+  // Tous les pools passent par le niveau 1 (allergies, régimes, grossesse…) — un pool vide
+  // donne simplement moins d'ingrédients imposés, jamais un pool non filtré.
+  const proteinesPool = filtrerIngredients(
+    (estVegan || estVegetarien) ? PROTEINES_FALLBACK_VEGETALES : PROTEINES_FALLBACK_ANIMALES,
+    securite, 'Pool protéines statique'
+  ).autorises;
+  const legumesPool   = filtrerIngredients(LEGUMES_FALLBACK, securite, 'Pool légumes statique').autorises;
+  const feculentsPool = filtrerIngredients(FECULENTS_FALLBACK, securite, 'Pool féculents statique').autorises;
 
   // Piocher un élément au hasard en excluant les bannis
   function piocher(pool: string[], exclu: Set<string>): string | undefined {
@@ -167,7 +166,7 @@ function selectionnerIngredientsTroisRepas(
 
   // Déjeuner : 1 protéine + 1 légume + 1 féculent
   const protDej     = piocher(proteinesPool, ingredientsBanis);
-  const legumeDej   = piocher(LEGUMES_FALLBACK, ingredientsBanis);
+  const legumeDej   = piocher(legumesPool, ingredientsBanis);
   const feculentDej = piocher(feculentsPool, ingredientsBanis);
   const dejeuner    = [protDej, legumeDej, feculentDej].filter(Boolean) as string[];
 
@@ -178,7 +177,7 @@ function selectionnerIngredientsTroisRepas(
     ...(legumeDej ? [legumeDej.toLowerCase()]  : []),
   ]);
   const protDin     = piocher(proteinesPool, excluDiner);
-  const legumeDin   = piocher(LEGUMES_FALLBACK, excluDiner);
+  const legumeDin   = piocher(legumesPool, excluDiner);
   const feculentDin = piocher(feculentsPool, ingredientsBanis);
   const diner       = [protDin, legumeDin, feculentDin].filter(Boolean) as string[];
 
@@ -333,7 +332,42 @@ function genererRecetteParDefaut(typeRepas: string, _ingredients: string[], mode
   };
 }
 
-// Génération recette avec cascade : (cache) → LLM → BDD → défaut
+// Contrôle post-génération niveau 1 : renvoie la recette si sûre, sinon null (+ log [SECURITE])
+function recetteSureOuNull(recette: any, securite: ProfilSecurite, source: string, typeRepas: string): any | null {
+  if (!recette) return null;
+  const violations = verifierRecette(recette, securite);
+  if (violations.length === 0) return recette;
+  console.warn(`[SECURITE] Recette ${typeRepas} (${source}) « ${recette.nom} » rejetée — ${decrireViolations(violations)} → fallback`);
+  return null;
+}
+
+// Plan en cache encore sûr pour le profil actuel ? Renvoie la raison d'invalidité, ou null.
+function planEnCacheInvalide(planJson: any, securite: ProfilSecurite): string | null {
+  const p = planJson?.plan;
+  if (!p) return null;
+  for (const [cle, repas] of Object.entries({
+    petit_dejeuner: p.petit_dejeuner || p.matin, dejeuner: p.dejeuner || p.midi,
+    diner: p.diner || p.soir, pause: p.pause || p.collation || p.apres_midi,
+  })) {
+    const v = verifierRecette(repas, securite);
+    if (v.length > 0) return `${cle} : ${decrireViolations(v)}`;
+  }
+  // Les produits en cache n'ont plus leurs contre-indications : toute situation excluant
+  // d'office compléments/HE invalide un plan qui en contient.
+  const aDesProduits = (p.nutraceutiques || []).length > 0 || (p.aromatherapie || []).length > 0;
+  if (aDesProduits && (securite.enceinte || securite.allaitement || securite.medicaments.length > 0)) {
+    return 'compléments/HE présents alors que le profil les exclut';
+  }
+  return null;
+}
+
+// Recette par défaut, vérifiée ; si elle viole le profil → recette générique sûre
+function recetteParDefautSure(typeRepas: string, ingredients: string[], modeRepas: 'chaud' | 'froid', securite: ProfilSecurite): any {
+  return recetteSureOuNull(genererRecetteParDefaut(typeRepas, ingredients, modeRepas), securite, 'défaut', typeRepas)
+    ?? recetteGeneriqueSure(typeRepas, modeRepas, securite);
+}
+
+// Génération recette avec cascade : (cache) → LLM → BDD → défaut — chaque étape vérifiée (niveau 1)
 // force_regeneration=true : ignore le cache, toujours appeler le LLM
 // formatPlat : format de plat imposé (distinct par repas, choisi en niveau 2) — anti-doublon de concept
 async function genererRecetteAvecFallback(
@@ -347,17 +381,20 @@ async function genererRecetteAvecFallback(
   forceRegeneration: boolean = false,
   ingredientsAEviter: string[] = [],
   formatPlat: string = '',
-  modeRepas: 'chaud' | 'froid' = 'chaud'
+  modeRepas: 'chaud' | 'froid' = 'chaud',
+  recettesSures: any[] = []
 ): Promise<any> {
+  const securite = profil.securite as ProfilSecurite;
 
   // 1. Cache — skippé si force_regeneration
   if (!forceRegeneration) {
     const recetteCache = await chercherRecetteCache(
       supabase, ingredientsObligatoires, styleCulinaire, typeRepas, profil.id
     );
-    if (recetteCache) {
+    const recetteCacheSure = recetteSureOuNull(recetteCache ? transformerRecetteBDD(recetteCache) : null, securite, 'cache', typeRepas);
+    if (recetteCacheSure) {
       console.log(`[CACHE] Recette ${typeRepas} depuis cache profil`);
-      return transformerRecetteBDD(recetteCache);
+      return recetteCacheSure;
     }
   } else {
     console.log(`[FORCE] Régénération forcée — cache ignoré pour ${typeRepas}`);
@@ -378,7 +415,7 @@ async function genererRecetteAvecFallback(
       );
     if (recettePauvre) {
       console.warn(`[QUALITE] Recette ${typeRepas} insuffisante (${recetteLLM.ingredients.length} ings, ${recetteLLM.instructions.length} steps) → fallback`);
-    } else {
+    } else if (recetteSureOuNull(recetteLLM, securite, 'LLM', typeRepas)) {
       console.log(`[LLM] Recette ${typeRepas} générée : ${recetteLLM.nom}`);
       return recetteLLM;
     }
@@ -386,22 +423,24 @@ async function genererRecetteAvecFallback(
 
   // 3. BDD — la table `recettes` n'a pas de métadonnée chaud/froid : sautée en mode froid
   // pour éviter de servir un plat chaud (poêlé/rôti/mijoté) qui contredirait le choix utilisateur.
+  // Uniquement parmi les recettes ayant passé le niveau 1 (recettesSures).
   if (modeRepas !== 'froid') {
     console.log(`[FALLBACK-BDD] Recette ${typeRepas}...`);
     const { petitDej, dejeuner, diner } = await selectionnerRecettes(
-      supabase, profil, styleCulinaire, historique
+      recettesSures, styleCulinaire, historique
     );
     const recetteBDD = typeRepas === 'petit-dejeuner' ? petitDej
                      : typeRepas === 'dejeuner'       ? dejeuner
                      : diner;
-    if (recetteBDD) return transformerRecetteBDD(recetteBDD);
+    const recetteBDDSure = recetteSureOuNull(recetteBDD ? transformerRecetteBDD(recetteBDD) : null, securite, 'BDD', typeRepas);
+    if (recetteBDDSure) return recetteBDDSure;
   } else {
     console.log(`[FALLBACK-BDD] Sauté (mode froid, table recettes non annotée chaud/froid) pour ${typeRepas}`);
   }
 
-  // 4. Défaut absolu
+  // 4. Défaut absolu (vérifié, sinon recette générique sûre)
   console.log(`[DEFAULT] Recette ${typeRepas} par défaut (mode=${modeRepas})`);
-  return genererRecetteParDefaut(typeRepas, ingredientsObligatoires, modeRepas);
+  return recetteParDefautSure(typeRepas, ingredientsObligatoires, modeRepas, securite);
 }
 
 // Pool de pauses par objectif — 3 options par besoin, sélection aléatoire à chaque génération.
@@ -590,7 +629,8 @@ async function genererPauseAvecFallback(
   const objectif = contexte.objectif_principal || 'vitalite';
 
   // 1. LLM — prompt interdit explicitement tout complément alimentaire
-  const pauseLLM = await genererPauseLLM(profil, contexte, modeRepas);
+  const securite = profil.securite as ProfilSecurite;
+  const pauseLLM = recetteSureOuNull(await genererPauseLLM(profil, contexte, modeRepas), securite, 'LLM', 'collation');
   if (pauseLLM) return pauseLLM;
 
   // 2. Fallback : pool statique garanti sans NAC
@@ -619,7 +659,9 @@ async function genererPauseAvecFallback(
     });
   }
 
-  return recette;
+  // Pool statique vérifié (niveau 1) — sinon collation générique sûre
+  return recetteSureOuNull(recette, securite, 'pool statique', 'collation')
+    ?? recetteGeneriqueSure('collation', modeRepas, securite);
 }
 
 // ============================================================================
@@ -659,6 +701,10 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // ── NIVEAU 1 : profil de sécurité (FAIL CLOSED) ─────────────────────────
+    // Chargé AVANT tout : sans champs de sécurité lisibles, ni cache ni génération.
+    const securite = await chargerProfilSecurite(supabase, profil_id);
+
     // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
     // Activé si force_regeneration !== true
     // ── Lecture cache ──────────────────────────────────────────────────────
@@ -672,7 +718,14 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      if (cached?.plan_json && !force_regeneration) {
+      // Le plan en cache a pu être généré avant un changement de profil (nouvelle allergie,
+      // grossesse…) : il est revérifié, et régénéré s'il n'est plus sûr.
+      const raisonCacheInvalide = cached?.plan_json ? planEnCacheInvalide(cached.plan_json, securite) : null;
+      if (raisonCacheInvalide) {
+        console.warn(`[SECURITE] Plan en cache invalidé pour ${profil_id} — ${raisonCacheInvalide} → régénération`);
+      }
+
+      if (cached?.plan_json && !force_regeneration && !raisonCacheInvalide) {
         const planData = { ...cached.plan_json } as any;
 
         // Recalculer score_nutritionnel si absent (plans générés avant cette fonctionnalité)
@@ -800,6 +853,7 @@ serve(async (req) => {
       styles_cuisines_exclus:  profilBDD.styles_cuisines_exclus || [],
       niveau_variete:          profilBDD.niveau_variete         || 'moyenne',
       nb_personnes:            nb_personnes || profilBDD.nb_personnes || 2,
+      securite,
     };
 
     // ── Construire le contexte ───────────────────────────────────────────────
@@ -839,10 +893,10 @@ serve(async (req) => {
     console.log('\n[NIVEAU 1] === FILTRAGE SECURITE ===');
 
     const [produitsSurs, recettesSures, routinesSures, alimentsBesoins] = await Promise.all([
-      filtrerProduitsSecurite(supabase, profil, besoinsUtilises),
-      filtrerRecettesSecurite(supabase, profil),
-      filtrerRoutinesSecurite(supabase, profil, besoinsUtilises),
-      filtrerAlimentsBesoins(supabase, profil, besoinsUtilises)
+      filtrerProduitsSecurite(supabase, securite, besoinsUtilises),
+      filtrerRecettesSecurite(supabase, profil, securite),
+      filtrerRoutinesSecurite(supabase, securite, besoinsUtilises),
+      filtrerAlimentsBesoins(supabase, securite, besoinsUtilises)
     ]);
 
     console.log(`[NIVEAU 1] ${produitsSurs.length} produits | ${recettesSures.length} recettes | ${routinesSures.length} routines | ${alimentsBesoins.length} aliments sûrs`);
@@ -964,15 +1018,17 @@ serve(async (req) => {
 
     if (protDej) {
       // At least one animal protein from DB — supplement other ingredient from static pool if needed
-      const legumesDispos = LEGUMES_FALLBACK.filter(l => !ingredientsBanis.has(l.toLowerCase()));
-      const legumeFallback = () => {
-        const pool = legumesDispos.length > 0 ? legumesDispos : LEGUMES_FALLBACK;
-        return pool[Math.floor(Math.random() * pool.length)];
+      // Pool légumes statique filtré niveau 1 (vide → pas de légume imposé, jamais de pool non filtré)
+      const legumesSurs    = filtrerIngredients(LEGUMES_FALLBACK, securite, 'Pool légumes statique').autorises;
+      const legumesDispos  = legumesSurs.filter(l => !ingredientsBanis.has(l.toLowerCase()));
+      const legumeFallback = (): string | undefined => {
+        const pool = legumesDispos.length > 0 ? legumesDispos : legumesSurs;
+        return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : undefined;
       };
       const suppDej = autreDej || legumeFallback();
-      ingDejeuner = [protDej, suppDej];
+      ingDejeuner = [protDej, suppDej].filter(Boolean) as string[];
       const suppDin = autreDin || legumeFallback();
-      ingDiner = protDin ? [protDin, suppDin] : ingDejeuner;
+      ingDiner = protDin ? [protDin, suppDin].filter(Boolean) as string[] : ingDejeuner;
       console.log(`[NIVEAU 2] Protéines DB — Déjeuner: ${protDej} | Dîner: ${protDin || protDej}`);
     } else {
       // Fallback pool statique si pas assez d'aliments BDD
@@ -988,16 +1044,8 @@ serve(async (req) => {
     }
 
     // Petit-déjeuner : toujours depuis PETIT_DEJ_POOL (fruité/sucré, jamais protéines animales)
-    // Filtrage allergies : lactose ET gluten retirés selon le profil
-    const estSansLactose = profil.allergenes?.includes('lactose') ||
-      profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
-    const estSansGlutenProfil = profil.allergenes?.includes('gluten') ||
-      profil.regime_alimentaire?.includes('sans-gluten');
-    const LAITIERS_PETIT_DEJ = new Set(['yaourt grec', 'fromage blanc', 'ricotta']);
-    const GLUTEN_PETIT_DEJ   = new Set(["flocons d'avoine", 'granola']);
-    let poolPetitDej = PETIT_DEJ_POOL;
-    if (estSansLactose)    poolPetitDej = poolPetitDej.filter(item => !LAITIERS_PETIT_DEJ.has(item));
-    if (estSansGlutenProfil) poolPetitDej = poolPetitDej.filter(item => !GLUTEN_PETIT_DEJ.has(item));
+    // Filtrage niveau 1 complet (allergies, régimes, grossesse…) — vide → aucun ingrédient imposé
+    const poolPetitDej = filtrerIngredients(PETIT_DEJ_POOL, securite, 'Pool petit-déjeuner').autorises;
     const shuffledPetitDej = [...poolPetitDej].sort(() => Math.random() - 0.5);
     ingPetitDej = shuffledPetitDej.slice(0, 3);
 
@@ -1015,11 +1063,20 @@ serve(async (req) => {
     const forceRegen = force_regeneration === true;
 
     // Lancer pause + motivation + conseil en parallèle (indépendants des recettes)
-    const [recettePause, messageMotivation, conseilDuJour] = await Promise.all([
+    const [recettePause, messageMotivationBrut, conseilDuJourBrut] = await Promise.all([
       genererPauseAvecFallback(profil, contexte, modeRepas),
       genererMessageMotivation(contexte, {}, profil_id),
       genererConseilDuJour(contexte, profil_id)
     ]);
+    // Textes libres LLM vérifiés aussi (ex. « les sardines riches en oméga-3 » pour une allergie poisson)
+    const texteSur = (texte: string, neutre: string, source: string) => {
+      const v = verifierRecette({ astuces: [texte] }, securite);
+      if (v.length === 0) return texte;
+      console.warn(`[SECURITE] ${source} rejeté — ${decrireViolations(v)} → texte neutre`);
+      return neutre;
+    };
+    const messageMotivation = texteSur(messageMotivationBrut, 'Prends soin de toi avec ce plan sur mesure ! 🌿', 'Message motivation');
+    const conseilDuJour     = texteSur(conseilDuJourBrut, CONSEIL_NEUTRE, 'Conseil du jour');
 
     // Générer les 3 repas EN PARALLÈLE : l'anti-doublon de concept passe par un format de plat
     // distinct par repas (choisi en niveau 2) au lieu des noms déjà générés.
@@ -1031,21 +1088,24 @@ serve(async (req) => {
         profil, contexte, historique, forceRegen,
         [...ingDejeuner, ...ingDiner],
         formats.petitDej,
-        modeRepas
+        modeRepas,
+        recettesSures
       ),
       genererRecetteAvecFallback(
         supabase, 'dejeuner', styleDejeuner, ingDejeuner,
         profil, contexte, historique, forceRegen,
         [...ingPetitDej, ...ingDiner],
         formats.dejeuner,
-        modeRepas
+        modeRepas,
+        recettesSures
       ),
       genererRecetteAvecFallback(
         supabase, 'diner', styleDiner, ingDiner,
         profil, contexte, historique, forceRegen,
         [...ingPetitDej, ...ingDejeuner],
         formats.diner,
-        modeRepas
+        modeRepas,
+        recettesSures
       ),
     ]);
     [resPetitDej, resDejeuner, resDiner].forEach((r, i) => {
@@ -1085,22 +1145,34 @@ serve(async (req) => {
     let recetteDinerFinal     = recetteDiner;
     let recettePauseFinal     = recettePause;
 
+    // Fallback par défaut vérifié (niveau 1) ; s'il est lui-même incomplet → recette générique sûre
+    const fallbackValideSur = (type: string, ings: string[]) => {
+      const r = recetteParDefautSure(type, ings, modeRepas, securite);
+      return recetteEstValide(r) ? r : recetteGeneriqueSure(type, modeRepas, securite);
+    };
     if (!recetteEstValide(recettePetitDej)) {
       console.warn('[VALIDATION] Petit-déjeuner vide ou incomplet → fallback par défaut');
-      recettePetitDejFinal = genererRecetteParDefaut('petit-dejeuner', ingPetitDej, modeRepas);
+      recettePetitDejFinal = fallbackValideSur('petit-dejeuner', ingPetitDej);
     }
     if (!recetteEstValide(recetteDejeuner)) {
       console.warn('[VALIDATION] Déjeuner vide ou incomplet → fallback par défaut');
-      recetteDejeunerFinal = genererRecetteParDefaut('dejeuner', ingDejeuner, modeRepas);
+      recetteDejeunerFinal = fallbackValideSur('dejeuner', ingDejeuner);
     }
     if (!recetteEstValide(recetteDiner)) {
       console.warn('[VALIDATION] Dîner vide ou incomplet → fallback par défaut');
-      recetteDinerFinal = genererRecetteParDefaut('diner', ingDiner, modeRepas);
+      recetteDinerFinal = fallbackValideSur('diner', ingDiner);
     }
     if (!pauseEstValide(recettePause)) {
       console.warn('[VALIDATION] Pause vide ou incomplète → fallback pool statique');
-      recettePauseFinal = recettePauseParDefaut(contexte.objectif_principal || 'vitalite', modeRepas);
+      recettePauseFinal = recetteSureOuNull(recettePauseParDefaut(contexte.objectif_principal || 'vitalite', modeRepas), securite, 'pool statique', 'collation')
+        ?? recetteGeneriqueSure('collation', modeRepas, securite);
     }
+
+    // Filet de sécurité final : aucun repas ne sort sans avoir passé le contrôle niveau 1
+    recettePetitDejFinal = recetteSureOuNull(recettePetitDejFinal, securite, 'final', 'petit-dejeuner') ?? recetteGeneriqueSure('petit-dejeuner', modeRepas, securite);
+    recetteDejeunerFinal = recetteSureOuNull(recetteDejeunerFinal, securite, 'final', 'dejeuner')      ?? recetteGeneriqueSure('dejeuner', modeRepas, securite);
+    recetteDinerFinal    = recetteSureOuNull(recetteDinerFinal, securite, 'final', 'diner')            ?? recetteGeneriqueSure('diner', modeRepas, securite);
+    recettePauseFinal    = recetteSureOuNull(recettePauseFinal, securite, 'final', 'collation')        ?? recetteGeneriqueSure('collation', modeRepas, securite);
 
     console.log(`[VALIDATION] Petit-dej OK=${recetteEstValide(recettePetitDejFinal)} | Déjeuner OK=${recetteEstValide(recetteDejeunerFinal)} | Dîner OK=${recetteEstValide(recetteDinerFinal)} | Pause OK=${pauseEstValide(recettePauseFinal)}`);
 
@@ -1156,6 +1228,9 @@ serve(async (req) => {
       message_motivation: messageMotivation,
       conseil_du_jour: conseilDuJour,
       conseils_generaux: [conseilDuJour],
+      // Compléments et HE exclus d'office (grossesse, allaitement, médicament) → orienter vers un pro
+      ...((securite.enceinte || securite.allaitement || securite.medicaments.length > 0)
+        ? { message_complements: MESSAGE_COMPLEMENTS_MEDECIN } : {}),
 
       score_nutritionnel: (() => {
         const ingUniques = new Set<string>();
@@ -1264,6 +1339,11 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    // Niveau 1 : profil de sécurité manquant/illisible → refus clair de générer (fail closed)
+    if (error instanceof ErreurSecurite) {
+      console.error(`[SECURITE] Génération refusée (${error.code}) : ${error.message}`);
+      return reponseErreurSecurite(error, CORS_HEADERS);
+    }
     console.error('[ERROR] Erreur génération plan:', error);
     return new Response(
       JSON.stringify(formaterErreurAPI(

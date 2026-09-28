@@ -5,6 +5,10 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  ErreurSecurite, chargerProfilSecurite, filtrerIngredients, ingredientEstSur, verifierRecette,
+  decrireViolations, recetteGeneriqueSure, consignesPrompt, reponseErreurSecurite,
+} from '../_shared/securite.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -516,30 +520,30 @@ function construirePrompt(
     'verrine fraîcheur fruits rouges et crème fouettée',
     'soufflé glacé aux fruits de la passion',
   ];
-  const poolPatisserie = modeRepas === 'froid' ? PATISSERIE_TYPES_FROID : PATISSERIE_TYPES;
-  const patisserieInspiration = poolPatisserie[Math.floor(Math.random() * poolPatisserie.length)];
+  // Inspirations filtrées niveau 1 (ex. frangipane amandes exclue si allergie fruits à coque) — aucune sûre → pas d'inspiration imposée
+  const poolPatisserie = filtrerIngredients(modeRepas === 'froid' ? PATISSERIE_TYPES_FROID : PATISSERIE_TYPES, profil.securite, 'Inspirations pâtisserie').autorises;
+  const patisserieInspiration = poolPatisserie.length > 0 ? poolPatisserie[Math.floor(Math.random() * poolPatisserie.length)] : '';
 
   const contraintesPatisserie = estPatisserie ? `
 ## CONTRAINTES PÂTISSERIE — RÈGLES ABSOLUES
 - C'est un DESSERT GOURMAND, PAS un plat principal
 - INTERDIT ABSOLUMENT : légumes salés, viandes, poissons, fruits de mer, protéines animales brutes
 - INTERDIT : recettes salées ou plats de résistance sous quelque forme que ce soit
-- Saveurs UNIQUEMENT sucrées : fruits, vanille, caramel, cannelle, noisette, agrumes, coco, chocolat...
+- Saveurs UNIQUEMENT sucrées : fruits, vanille, caramel, cannelle, noisette, agrumes, coco, chocolat... (uniquement ceux compatibles avec la sécurité alimentaire)
 - Le dessert doit être APPÉTISSANT et GOURMAND tout en étant nutritionnellement valorisé
-- Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT s'ils servent la dimension sucrée
+- Tu peux utiliser des ingrédients nutritifs (patate douce, avocat, amandes, dattes) UNIQUEMENT s'ils servent la dimension sucrée et respectent la sécurité alimentaire
 - Valorise la dimension nutritionnelle dans les "astuces" sans compromettre le côté dessert
-${modeRepas === 'froid' ? "- **MODE FROID** : AUCUNE cuisson au four — dessert sans cuisson ou cuisson très brève (≤2 min), servi frais/glacé, temps_cuisson doit être 0\n" : ''}- **DIRECTION CRÉATIVE IMPOSÉE pour cette génération** : crée une recette dans l'esprit de → ${patisserieInspiration}
-- Sois ORIGINAL sur le nom et les détails, ne copie pas mot pour mot la direction, inspire-t'en
+${modeRepas === 'froid' ? "- **MODE FROID** : AUCUNE cuisson au four — dessert sans cuisson ou cuisson très brève (≤2 min), servi frais/glacé, temps_cuisson doit être 0\n" : ''}${patisserieInspiration ? `- **DIRECTION CRÉATIVE IMPOSÉE pour cette génération** : crée une recette dans l'esprit de → ${patisserieInspiration}\n` : ''}- Sois ORIGINAL sur le nom et les détails, ne copie pas mot pour mot la direction, inspire-t'en
 ` : '';
 
   const directiveSection = directiveChef.trim()
-    ? `\n## DIRECTIVE DU CHEF — PRIORITÉ ABSOLUE\nL'utilisateur demande SPÉCIFIQUEMENT : "${directiveChef.trim()}"\nTu DOIS créer une recette qui correspond exactement à cette demande. C'est la contrainte la plus importante.\n`
+    ? `\n## DIRECTIVE DU CHEF — PRIORITAIRE (après la sécurité alimentaire)\nL'utilisateur demande SPÉCIFIQUEMENT : "${directiveChef.trim()}"\nTu DOIS créer une recette qui correspond à cette demande, SANS JAMAIS enfreindre la sécurité alimentaire ci-dessous.\n`
     : '';
 
   const contrainteFroide = (modeRepas === 'froid' && !estPatisserie) ? `
 ## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
 - INTERDIT d'allumer le four, la cuisinière, la plaque ou le grill — aucune cuisson à la poêle, casserole, four ou grill
-- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (thon en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster/grille-pain bref (≤2 min)
+- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (ex. — si compatibles avec la sécurité alimentaire : thon en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster/grille-pain bref (≤2 min)
 - Techniques attendues : salade composée, bowl, verrine, wrap froid, gaspacho, tartare de légumes, ceviche végétal, sandwich froid, rouleaux de printemps
 - temps_cuisson DOIT être 0 (ou 1-2 max si toast)
 - Le plat doit être servi FROID ou à température ambiante
@@ -552,6 +556,7 @@ ${modeRepas === 'froid' ? "- **MODE FROID** : AUCUNE cuisson au four — dessert
 **Type de repas** : ${estPatisserie ? 'DESSERT / PÂTISSERIE GOURMANDE' : typeRepas}
 **Régime** : ${regimes.join(', ') || 'Aucune restriction'}
 **Allergènes à éviter** : ${allergenes.join(', ') || 'Aucun'}
+${profil.securite ? consignesPrompt(profil.securite) : ''}
 **Temps max** : ${estPetitDej ? 15 : tempsMax} minutes
 **Budget** : ${budgetLabel}
 **Objectif nutritionnel** : ${estPatisserie ? 'Dessert gourmand avec ingrédients de qualité nutritionnelle (chocolat noir, fruits, oléagineux)' : objectif}
@@ -819,14 +824,26 @@ serve(async (req: Request) => {
       .replace('dîner', 'diner')
       .replace('petit-déjeuner', 'petit-dejeuner');
 
-    const ingredientsFrigo: string[] = Array.isArray(ingredients_frigo)
+    const ingredientsFrigoBruts: string[] = Array.isArray(ingredients_frigo)
       ? ingredients_frigo.slice(0, 10)
       : [];
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
-    const directiveChef: string = typeof directive_chef === 'string' ? directive_chef.slice(0, 120) : '';
+    const directiveBrute: string = typeof directive_chef === 'string' ? directive_chef.slice(0, 120) : '';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ── NIVEAU 1 : profil de sécurité (FAIL CLOSED) — avant toute génération ──
+    const securite = await chargerProfilSecurite(supabase, profil_id);
+
+    // Saisies libres de l'utilisateur filtrées : un ingrédient interdit n'est jamais imposé au LLM
+    const { autorises: ingredientsFrigo, exclus: frigoExclus } = filtrerIngredients(ingredientsFrigoBruts, securite, 'Frigo utilisateur');
+    const directiveDecision = directiveBrute ? ingredientEstSur(directiveBrute, securite) : { sur: true };
+    const directiveChef = directiveDecision.sur ? directiveBrute : '';
+    if (!directiveDecision.sur) {
+      console.warn(`[SECURITE] Directive du chef ignorée « ${directiveBrute} » — ${directiveDecision.raison}`);
+    }
 
     // Charger le profil utilisateur
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: profils } = await supabase
       .from('profils_utilisateurs')
       .select('*')
@@ -845,6 +862,7 @@ serve(async (req: Request) => {
       allergenes: profil.allergies || profil.allergenes || [],
       temps_preparation: profil.temps_cuisine_max || profil.temps_preparation || 45,
       budget: profil.budget_complements || profil.budget || 'moyen',
+      securite,   // profil de sécurité niveau 1 (consignes prompt, inspirations filtrées)
     };
 
     console.log(`[generer-recette-unique] type=${typeRepasNorm}, frigo=${ingredientsFrigo.length} ingrédients, symptomes=${symptomesArr.join(',')}, directive="${directiveChef}", mode=${modeRepas}`);
@@ -852,10 +870,29 @@ serve(async (req: Request) => {
     // Générer la recette via Claude
     let recette = await genererRecetteIA(typeRepasNorm, ingredientsFrigo, symptomesArr, profilNorm, directiveChef, nbPersonnes, modeRepas);
 
-    // Fallback si la génération échoue
+    // Contrôle post-génération niveau 1 : violation → fallback
+    if (recette) {
+      const violations = verifierRecette(recette, securite);
+      if (violations.length > 0) {
+        console.warn(`[SECURITE] Recette ${typeRepasNorm} (LLM) « ${recette.nom} » rejetée — ${decrireViolations(violations)} → fallback`);
+        recette = null;
+      }
+    }
+
+    // Fallback si la génération échoue — vérifié (pool à protéine aléatoire : plusieurs tirages),
+    // sinon recette générique sûre
     if (!recette) {
       console.warn('[WARN] Fallback recette par défaut');
-      recette = recetteFallback(typeRepasNorm, ingredientsFrigo, directiveChef, modeRepas);
+      for (let essai = 0; essai < 6 && !recette; essai++) {
+        const candidat = recetteFallback(typeRepasNorm, ingredientsFrigo, directiveChef, modeRepas);
+        const v = verifierRecette(candidat, securite);
+        if (v.length === 0) recette = candidat;
+        else if (essai === 0) console.warn(`[SECURITE] Fallback « ${candidat.nom} » rejeté — ${decrireViolations(v)} → nouvel essai`);
+      }
+      if (!recette) {
+        console.warn(`[SECURITE] Aucun fallback sûr (${typeRepasNorm}) → recette générique`);
+        recette = recetteGeneriqueSure(typeRepasNorm, modeRepas, securite);
+      }
     }
 
     // Calcul nutrition réelle depuis la table alimentation
@@ -876,11 +913,21 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, recette, mode_repas: modeRepas }),
+      JSON.stringify({
+        success: true, recette, mode_repas: modeRepas,
+        // Saisies retirées pour raison de sécurité (affichées au frontend)
+        ingredients_exclus: frigoExclus.map(e => e.nom),
+        directive_ignoree: !directiveDecision.sur,
+      }),
       { status: 200, headers: CORS_HEADERS }
     );
 
   } catch (error: any) {
+    // Niveau 1 : profil de sécurité manquant/illisible → refus clair de générer (fail closed)
+    if (error instanceof ErreurSecurite) {
+      console.error(`[SECURITE] Génération refusée (${error.code}) : ${error.message}`);
+      return reponseErreurSecurite(error, CORS_HEADERS);
+    }
     console.error('[ERROR] Exception principale:', error);
     return new Response(
       JSON.stringify({ success: false, error: error?.message || 'Erreur inconnue' }),

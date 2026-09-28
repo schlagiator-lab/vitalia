@@ -317,6 +317,7 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + st.authToken },
       body: JSON.stringify({
+        profil_id:    st.profil_id,   // obligatoire : contrôle sécurité niveau 1 côté serveur
         recette_nom:  recette.nom || recette.titre,
         ingredients:  recette.ingredients || [],
         type_repas:   typeRepas,
@@ -347,6 +348,7 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
       stepsDiv.innerHTML = html
     } else {
       stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
+      if (typeof data.error === 'string') afficherToast(data.error)
     }
   } catch(e) {
     stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }

@@ -86,6 +86,12 @@ export async function genererRecetteUnique() {
     if (data.success && data.recette) {
       st.recetteCourante = data.recette
       afficherRecetteUnique(data.recette)
+      // Saisies retirées par le contrôle de sécurité (allergies, régime, grossesse…)
+      if (data.ingredients_exclus && data.ingredients_exclus.length) {
+        afficherToast('Retiré pour ton profil : ' + data.ingredients_exclus.join(', '))
+      } else if (data.directive_ignoree) {
+        afficherToast('Ta demande au chef a été ignorée : elle n\'est pas compatible avec ton profil')
+      }
       try { localStorage.setItem('vitalia_recette_session', JSON.stringify({ recette: data.recette, type: st.recetteTypeRepas })) } catch(e) {}
     } else { afficherToast('Erreur lors de la génération') }
   } catch(err) { afficherToast('Erreur réseau : ' + err.message)

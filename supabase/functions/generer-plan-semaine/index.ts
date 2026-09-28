@@ -7,6 +7,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifierRateLimitSemaine, verifierBudgetJournalier, loggerAppelLLM, LIMITS } from '../_shared/llm-guard.ts';
+import {
+  ProfilSecurite, ErreurSecurite, chargerProfilSecurite, alimentEstSur, produitEstSur, routineEstSure,
+  filtrerIngredients, verifierRecette, decrireViolations, recetteGeneriqueSure, consignesPrompt,
+  reponseErreurSecurite, MESSAGE_COMPLEMENTS_MEDECIN,
+} from '../_shared/securite.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -78,12 +83,6 @@ function normaliserArray(valeur: any): string[] {
 function estPoisson(nom: string): boolean {
   const n = nom.toLowerCase();
   return ['saumon', 'maquereau', 'sardine', 'thon', 'truite', 'cabillaud', 'dorade', 'flétan', 'bar', 'sole'].some(p => n.includes(p));
-}
-
-function estCategorieAnimale(cat: string): boolean {
-  const c = cat.toLowerCase();
-  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
-    'abats', 'gibier', 'œuf', 'oeuf', 'produit laitier', 'fromage', 'laitier'].some(m => c.includes(m));
 }
 
 function estViandePoissonCrustace(cat: string): boolean {
@@ -260,17 +259,37 @@ function recetteFallbackUnitaire(
   };
 }
 
-function fallbackSemaine(pairesProteines: [string, string][], stylesJours: string[], profilNorm: any, modeRepas: 'chaud' | 'froid' = 'chaud'): Record<string, any> {
+// Fallback unitaire vérifié (niveau 1) : si la variante du jour viole le profil, on essaie les
+// autres variantes du pool (décalage d'index), puis la recette générique sûre.
+function fallbackUnitaireSur(
+  typeRepas: string,
+  proteineAssignee: string | null,
+  styleCulinaire: string,
+  jourIndex: number,
+  modeRepas: 'chaud' | 'froid',
+  securite: ProfilSecurite
+): any {
+  for (let decalage = 0; decalage < 8; decalage++) {
+    const r = recetteFallbackUnitaire(typeRepas, proteineAssignee, styleCulinaire, jourIndex + decalage, modeRepas);
+    const v = verifierRecette(r, securite);
+    if (v.length === 0) return r;
+    if (decalage === 0) console.warn(`[SECURITE] Fallback ${typeRepas} jour ${jourIndex + 1} « ${r.nom} » rejeté — ${decrireViolations(v)} → autre variante`);
+  }
+  console.warn(`[SECURITE] Aucune variante de fallback sûre (${typeRepas}, jour ${jourIndex + 1}) → recette générique`);
+  return recetteGeneriqueSure(typeRepas, modeRepas, securite);
+}
+
+function fallbackSemaine(pairesProteines: [string | null, string | null][], stylesJours: string[], profilNorm: any, modeRepas: 'chaud' | 'froid' = 'chaud', securite: ProfilSecurite): Record<string, any> {
   const semaine: Record<string, any> = {};
   for (let j = 0; j < 7; j++) {
     const jour = JOURS_SEMAINE[j];
     const style = stylesJours[j];
     const [protDej, protDin] = pairesProteines[j];
     semaine[jour] = {
-      petit_dejeuner: recetteFallbackUnitaire('petit-dejeuner', null, style, j, modeRepas),
-      dejeuner:       recetteFallbackUnitaire('dejeuner', protDej, style, j, modeRepas),
-      diner:          recetteFallbackUnitaire('diner', protDin, style, j, modeRepas),
-      pause:          recetteFallbackUnitaire('collation', null, style, j, modeRepas),
+      petit_dejeuner: fallbackUnitaireSur('petit-dejeuner', null, style, j, modeRepas, securite),
+      dejeuner:       fallbackUnitaireSur('dejeuner', protDej, style, j, modeRepas, securite),
+      diner:          fallbackUnitaireSur('diner', protDin, style, j, modeRepas, securite),
+      pause:          fallbackUnitaireSur('collation', null, style, j, modeRepas, securite),
     };
   }
   return semaine;
@@ -278,7 +297,7 @@ function fallbackSemaine(pairesProteines: [string, string][], stylesJours: strin
 
 // ─── Chargement aliments depuis BDD ────────────────────────────────────────
 
-async function chargerAliments(supabase: any, besoins: string[], profilNorm: any): Promise<any[]> {
+async function chargerAliments(supabase: any, besoins: string[], securite: ProfilSecurite): Promise<any[]> {
   const besoinsActifs = besoins.length > 0
     ? besoins
     : ['vitalite', 'serenite', 'sommeil', 'digestion', 'mobilite', 'hormones'];
@@ -304,28 +323,20 @@ async function chargerAliments(supabase: any, besoins: string[], profilNorm: any
     }
   }
 
-  let aliments = Array.from(alimentMap.values());
+  const aliments = Array.from(alimentMap.values());
 
-  if (profilNorm.estVegan) {
-    aliments = aliments.filter(a => !estCategorieAnimale(a.categorie || ''));
-  } else if (profilNorm.estVegetarien) {
-    aliments = aliments.filter(a => !estViandePoissonCrustace(a.categorie || ''));
+  // Décision sécurité unique (régimes, allergies, grossesse, médicaments) — _shared/securite.ts
+  const surs = aliments.filter(a => alimentEstSur(a, securite).sur);
+  if (surs.length < aliments.length) {
+    const exclus = aliments.filter(a => !surs.includes(a)).map(a => `${a.nom} [${alimentEstSur(a, securite).raison}]`);
+    console.log(`[SECURITE] Niveau 1 aliments : ${exclus.length}/${aliments.length} exclu(s) — ${exclus.slice(0, 12).join(', ')}${exclus.length > 12 ? ` … (+${exclus.length - 12})` : ''}`);
   }
-  if (profilNorm.estSansLactose) {
-    aliments = aliments.filter(a => {
-      const cat = (a.categorie || '').toLowerCase();
-      const nom = (a.nom || '').toLowerCase();
-      return !cat.includes('laitier') && !cat.includes('fromage') && !cat.includes('yaourt')
-        && !nom.includes('yaourt') && !nom.includes('fromage') && !nom.includes('ricotta');
-    });
-  }
-
-  return aliments;
+  return surs;
 }
 
 // ─── Wellness depuis BDD ───────────────────────────────────────────────────
 
-async function chargerWellness(supabase: any, besoins: string[]): Promise<{
+async function chargerWellness(supabase: any, besoins: string[], securite: ProfilSecurite): Promise<{
   nutraceutiques: any[], aromatherapie: any[], routines: any[]
 }> {
   const besoinsActifs = besoins.length > 0
@@ -351,13 +362,20 @@ async function chargerWellness(supabase: any, besoins: string[]): Promise<{
     return Array.from(map.values());
   }
 
-  const nutraceutiques = deduper(resNutra.data || [], 'nutraceutiques')
+  // Niveau 1 AVANT la sélection : seuls les produits/routines sûrs pour ce profil sont candidats
+  const garderSurs = (items: any[], contexte: string, decider: (x: any) => { sur: boolean; raison?: string }) => {
+    const exclus = items.filter(x => !decider(x).sur);
+    if (exclus.length > 0) console.log(`[SECURITE] Niveau 1 ${contexte} : ${exclus.length}/${items.length} exclu(s) — ${exclus.slice(0, 12).map(x => `${x.nom} [${decider(x).raison}]`).join(', ')}`);
+    return items.filter(x => decider(x).sur);
+  };
+
+  const nutraceutiques = garderSurs(deduper(resNutra.data || [], 'nutraceutiques'), 'nutraceutiques', p => produitEstSur(p, 'nutraceutique', securite))
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
-  const aromatherapie = deduper(resAro.data || [], 'aromatherapie')
+  const aromatherapie = garderSurs(deduper(resAro.data || [], 'aromatherapie'), 'aromathérapie', p => produitEstSur(p, 'aromatherapie', securite))
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
-  const routines = deduper(resRoutines.data || [], 'routines')
+  const routines = garderSurs(deduper(resRoutines.data || [], 'routines'), 'routines', r => routineEstSure(r, securite))
     .sort((a: any, b: any) => (b.besoin_score || 0) - (a.besoin_score || 0))
     .slice(0, 1);
 
@@ -505,7 +523,7 @@ function construireToolPlanSemaine(repasInclus: string[]) {
 }
 
 function construirePromptBatch(
-  pairesProteines: [string, string][],
+  pairesProteines: [string | null, string | null][],
   stylesJours: string[],
   profilNorm: any,
   symptomes: string[],
@@ -536,7 +554,7 @@ function construirePromptBatch(
     const jour = JOURS_SEMAINE[i];
     const style = stylesJours[i];
     const proteines = omnivore
-      ? `déjeuner=${pd} | dîner=${pn}`
+      ? `déjeuner=${pd ?? "protéine au choix (respecter la sécurité alimentaire)"} | dîner=${pn ?? "protéine au choix (respecter la sécurité alimentaire)"}`
       : `source végétale variée`;
     return `${jour.padEnd(9)} | ${style.padEnd(14)} | ${proteines}`;
   }).join('\n');
@@ -581,7 +599,7 @@ function construirePromptBatch(
   const contrainteFroide = modeRepas === 'froid' ? `
 ## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
 - INTERDIT d'allumer le four, la cuisinière ou le grill pour TOUS les repas de la semaine — aucune cuisson poêle/casserole/four/mijotage
-- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (poisson en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster bref (≤2 min)
+- AUTORISÉ : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (ex. — si compatibles avec la sécurité alimentaire : poisson en boîte, œufs durs, jambon, feta, légumes blanchis refroidis), toaster bref (≤2 min)
 - Pour les protéines imposées ci-dessous : les utiliser déjà cuites et refroidies (ex : "Poulet déjà cuit, émincé froid"), jamais cuites dans la recette elle-même
 - Chaque "temps_cuisson" DOIT être 0 dans le JSON de sortie (sauf 1-2 min si toast)
 - Tous les plats doivent être servis froids ou à température ambiante
@@ -591,14 +609,14 @@ function construirePromptBatch(
   const exemplePetitDej = repasInclus.includes('petit_dejeuner') ? `
       "petit_dejeuner": {
         "nom": "Nom créatif du plat",
-        "ingredients": ["200g de flocons d'avoine", "1 banane mûre", "150ml de lait d'amande"],
+        "ingredients": ["40g de flocons de riz", "1 banane mûre", "100g de myrtilles"],
         "macros": { "calories": 350, "proteines": 12, "glucides": 45, "lipides": 10 }
       },` : '';
 
   const exempleDejeuner = repasInclus.includes('dejeuner') ? `
       "dejeuner": {
         "nom": "Nom créatif du plat",
-        "ingredients": ["160g de Saumon", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
+        "ingredients": ["160g de <protéine du planning>", "200g de courgette", "1 citron", "15ml d'huile d'olive"],
         "macros": { "calories": 450, "proteines": 30, "glucides": 35, "lipides": 18 },
         "temps_preparation": 10,
         "temps_cuisson": 6
@@ -607,7 +625,7 @@ function construirePromptBatch(
   const exempleDiner = repasInclus.includes('diner') ? `
       "diner": {
         "nom": "Nom créatif du plat",
-        "ingredients": ["160g de Poulet", "150g de haricots verts", "2 gousses d'ail"],
+        "ingredients": ["160g de <protéine du planning>", "150g de haricots verts", "2 gousses d'ail"],
         "macros": { "calories": 420, "proteines": 28, "glucides": 40, "lipides": 14 },
         "temps_preparation": 10,
         "temps_cuisson": 25
@@ -616,7 +634,7 @@ function construirePromptBatch(
   const exempleCollation = repasInclus.includes('pause') ? `
       "collation": {
         "nom": "Nom court et appétissant",
-        "ingredients": ["1 pomme", "20g de beurre d'amande"],
+        "ingredients": ["1 pomme", "2 galettes de riz"],
         "macros": { "calories": 190, "proteines": 4, "glucides": 24, "lipides": 9 }
       }` : '';
 
@@ -644,13 +662,13 @@ function construirePromptBatch(
 - Budget repas : ${budgetLabel}
 - Temps de préparation max : ${tempsMax} minutes
 - Portions : ${nbPersonnes} personne${nbPersonnes > 1 ? 's' : ''} (adapter les quantités en conséquence)${consigneProteine}${consigneSansLactose}
-${contrainteFroide}
+${contrainteFroide}${profilNorm.securite ? consignesPrompt(profilNorm.securite) : ''}
 ## PLANNING IMPOSÉ (respecter style et protéines à la lettre)
 Jour      | Style culinaire | Protéines
 ----------|-----------------|-----------------------------
 ${lignesPlanning}
 
-## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES)
+## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES — uniquement parmi les options compatibles avec la sécurité alimentaire)
 ${regleAntiRep}
 ${sectionPetitDej}${sectionCollation}
 ## FORMAT DE SORTIE : appeler l'outil creer_plan_semaine avec exactement 7 jours, selon cette structure
@@ -676,7 +694,7 @@ ${modeRepas === 'froid' ? `Règles temps (cohérence obligatoire, MODE FROID) :
 }
 
 async function genererPlanBatch(
-  pairesProteines: [string, string][],
+  pairesProteines: [string | null, string | null][],
   stylesJours: string[],
   profilNorm: any,
   symptomes: string[],
@@ -797,12 +815,13 @@ function squelettVersRepas(
   styleCulinaire: string,
   proteineAssignee: string | null,
   jourIndex: number,
-  modeRepas: 'chaud' | 'froid' = 'chaud'
+  modeRepas: 'chaud' | 'froid' = 'chaud',
+  securite: ProfilSecurite
 ): any {
-  // Validation : si invalide → fallback unitaire
+  // Validation : si invalide → fallback unitaire (vérifié niveau 1)
   if (!validerRepasSquelette(repasRaw)) {
     console.warn(`[BATCH] Repas invalide (${typeRepas}, jour ${jourIndex + 1}) → fallback`);
-    return recetteFallbackUnitaire(typeRepas, proteineAssignee, styleCulinaire, jourIndex, modeRepas);
+    return fallbackUnitaireSur(typeRepas, proteineAssignee, styleCulinaire, jourIndex, modeRepas, securite);
   }
 
   // Ingredients : le batch retourne des strings, on les garde tels quels
@@ -819,7 +838,7 @@ function squelettVersRepas(
     return { nom: ing.trim(), quantite: 1, unite: 'portion' };
   });
 
-  return {
+  const repas = {
     nom: repasRaw.nom.trim(),
     type_repas: typeRepas,
     style_culinaire: styleCulinaire,
@@ -840,6 +859,36 @@ function squelettVersRepas(
     variantes: [],
     genere_par_llm: true,
   };
+
+  // Contrôle post-génération niveau 1 : violation → fallback unitaire vérifié
+  const violations = verifierRecette(repas, securite);
+  if (violations.length > 0) {
+    console.warn(`[SECURITE] Repas ${typeRepas} jour ${jourIndex + 1} « ${repas.nom} » rejeté — ${decrireViolations(violations)} → fallback`);
+    return fallbackUnitaireSur(typeRepas, proteineAssignee, styleCulinaire, jourIndex, modeRepas, securite);
+  }
+  return repas;
+}
+
+// Semaine en cache encore sûre pour le profil actuel ? Renvoie la raison d'invalidité, ou null.
+function semaineEnCacheInvalide(planJson: any, securite: ProfilSecurite): string | null {
+  for (const [jour, repasDuJour] of Object.entries(planJson?.semaine || {})) {
+    for (const [cle, repas] of Object.entries((repasDuJour || {}) as Record<string, any>)) {
+      const v = verifierRecette(repas, securite);
+      if (v.length > 0) return `${jour}/${cle} : ${decrireViolations(v)}`;
+    }
+  }
+  const aDesProduits = (planJson?.nutraceutiques || []).length > 0 || (planJson?.aromatherapie || []).length > 0;
+  if (aDesProduits && (securite.enceinte || securite.allaitement || securite.medicaments.length > 0)) {
+    return 'compléments/HE présents alors que le profil les exclut';
+  }
+  // Produits et routines en cache : revérifiés avec leurs données complètes (objets BDD)
+  const produitInterdit = [
+    ...(planJson?.nutraceutiques || []).map((p: any) => produitEstSur(p, 'nutraceutique', securite)),
+    ...(planJson?.aromatherapie || []).map((p: any) => produitEstSur(p, 'aromatherapie', securite)),
+    ...(planJson?.routines || []).map((r: any) => routineEstSure(r, securite)),
+  ].find(d => !d.sur);
+  if (produitInterdit) return `produit/routine : ${produitInterdit.raison}`;
+  return null;
 }
 
 // ─── Cache : lecture et écriture ───────────────────────────────────────────
@@ -925,6 +974,10 @@ serve(async (req: Request) => {
     const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // ── NIVEAU 1 : profil de sécurité (FAIL CLOSED) ─────────────────────────
+    // Chargé AVANT tout : sans champs de sécurité lisibles, ni cache ni génération.
+    const securite = await chargerProfilSecurite(supabase, profil_id);
+
     // ── 1. LECTURE CACHE ──────────────────────────────────────────────────
     try {
       const { data: cachedRow } = await supabase
@@ -936,7 +989,13 @@ serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
-      if (cachedRow?.plan_json && !force_refresh) {
+      // Semaine en cache revérifiée contre le profil actuel (allergie ajoutée, grossesse…)
+      const raisonCacheInvalide = cachedRow?.plan_json ? semaineEnCacheInvalide(cachedRow.plan_json, securite) : null;
+      if (raisonCacheInvalide) {
+        console.warn(`[SECURITE] Semaine en cache invalidée pour ${profil_id} — ${raisonCacheInvalide} → régénération`);
+      }
+
+      if (cachedRow?.plan_json && !force_refresh && !raisonCacheInvalide) {
         console.log('[generer-plan-semaine] Retour depuis le cache');
         return new Response(
           JSON.stringify({ ...cachedRow.plan_json, _source: 'cache' }),
@@ -1026,6 +1085,7 @@ serve(async (req: Request) => {
         normaliserArray(profil.regimes_alimentaires || profil.regime_alimentaire)
           .some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase())),
       contraintesRegime: [] as string[],
+      securite,   // profil de sécurité niveau 1 (consignes prompt)
     };
 
     if (profilNorm.estVegan) profilNorm.contraintesRegime.push('100% VEGANE');
@@ -1038,7 +1098,7 @@ serve(async (req: Request) => {
     console.log(`[generer-plan-semaine] GÉNÉRATION profil=${profil_id}, force=${force_refresh}, symptomes=${symptomesArr.join(',')}`);
 
     // ── 3. PRÉPARATION PROTÉINES ET STYLES ────────────────────────────────
-    const aliments = await chargerAliments(supabase, symptomesArr, profilNorm);
+    const aliments = await chargerAliments(supabase, symptomesArr, securite);
 
     let proteinesDisponibles: string[] = [];
     if (!profilNorm.estVegan && !profilNorm.estVegetarien) {
@@ -1057,16 +1117,20 @@ serve(async (req: Request) => {
     }
 
     const proteinesUniques = [...new Set(proteinesDisponibles)];
+    // Complément en dur (si < 7) : filtré niveau 1 comme le reste — jamais ajouté tel quel
     const proteinesPool = proteinesUniques.length >= 7
       ? shuffleArray(proteinesUniques)
-      : shuffleArray([...proteinesUniques, 'Poulet', 'Saumon', 'Boeuf', 'Thon', 'Crevettes', 'Dinde', 'Maquereau']
-          .filter((v, i, a) => a.indexOf(v) === i));
+      : shuffleArray([...proteinesUniques, ...filtrerIngredients(
+          ['Poulet', 'Saumon', 'Boeuf', 'Thon', 'Crevettes', 'Dinde', 'Maquereau'], securite, 'Protéines complémentaires semaine'
+        ).autorises].filter((v, i, a) => a.indexOf(v) === i));
 
     // Paires protéines : 2 par jour, jamais 2 poissons le même jour
-    const pairesProteines: [string, string][] = [];
+    // Pool vide (profil très restreint) → null : « protéine au choix » dans le prompt, contrôlée après génération
+    const pairesProteines: [string | null, string | null][] = [];
     const proteinesShuffled = shuffleArray(proteinesPool);
     let idx = 0;
-    for (let j = 0; j < 7; j++) {
+    for (let j = 0; j < 7 && proteinesShuffled.length === 0; j++) pairesProteines.push([null, null]);
+    for (let j = 0; j < 7 && proteinesShuffled.length > 0; j++) {
       const prot1 = proteinesShuffled[idx % proteinesShuffled.length]; idx++;
       let prot2 = proteinesShuffled[idx % proteinesShuffled.length];
       if (estPoisson(prot1) && estPoisson(prot2)) {
@@ -1082,7 +1146,7 @@ serve(async (req: Request) => {
     // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
     const [joursLLM, wellness, motivation] = await Promise.all([
       genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes, modeRepas, profil_id, debutRequete),
-      chargerWellness(supabase, symptomesArr),
+      chargerWellness(supabase, symptomesArr, securite),
       genererMotivation(symptomesArr, profil_id),
     ]);
 
@@ -1099,15 +1163,15 @@ serve(async (req: Request) => {
         const [protDej, protDin] = pairesProteines[j];
         const jourRaw = joursLLM[j];
 
-        const petitDej = squelettVersRepas(jourRaw?.petit_dejeuner, 'petit-dejeuner', style, null, j, modeRepas);
-        const dejeuner = squelettVersRepas(jourRaw?.dejeuner, 'dejeuner', style, protDej, j, modeRepas);
-        const diner = squelettVersRepas(jourRaw?.diner, 'diner', style, protDin, j, modeRepas);
+        const petitDej = squelettVersRepas(jourRaw?.petit_dejeuner, 'petit-dejeuner', style, null, j, modeRepas, securite);
+        const dejeuner = squelettVersRepas(jourRaw?.dejeuner, 'dejeuner', style, protDej, j, modeRepas, securite);
+        const diner = squelettVersRepas(jourRaw?.diner, 'diner', style, protDin, j, modeRepas, securite);
 
         if (petitDej.genere_par_llm) llmCount++; else fallbackCount++;
         if (dejeuner.genere_par_llm) llmCount++; else fallbackCount++;
         if (diner.genere_par_llm) llmCount++; else fallbackCount++;
 
-        const collation = squelettVersRepas(jourRaw?.collation, 'collation', style, null, j, modeRepas);
+        const collation = squelettVersRepas(jourRaw?.collation, 'collation', style, null, j, modeRepas, securite);
         if (collation.genere_par_llm) llmCount++; else fallbackCount++;
 
         semaine[jour] = {
@@ -1121,11 +1185,18 @@ serve(async (req: Request) => {
       console.log(`[STATS] LLM=${llmCount}/${totalSlots} | Fallback=${fallbackCount}/${totalSlots}`);
     } else {
       console.warn('[generer-plan-semaine] Batch LLM échoué → fallback semaine complet');
-      semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm, modeRepas);
+      semaine = fallbackSemaine(pairesProteines, stylesJours, profilNorm, modeRepas, securite);
       fallbackCount = repasInclus.length * 7;
     }
 
     // ── 6. RÉPONSE FINALE ─────────────────────────────────────────────────
+    // Textes libres LLM vérifiés aussi (niveau 1) — violation → texte neutre
+    const texteSur = (texte: string, neutre: string, source: string) => {
+      const v = verifierRecette({ astuces: [texte] }, securite);
+      if (v.length === 0) return texte;
+      console.warn(`[SECURITE] ${source} rejeté — ${decrireViolations(v)} → texte neutre`);
+      return neutre;
+    };
     const reponse = {
       success: true,
       semaine,
@@ -1133,8 +1204,11 @@ serve(async (req: Request) => {
       nutraceutiques: wellness.nutraceutiques,
       aromatherapie: wellness.aromatherapie,
       routines: wellness.routines,
-      message_motivation: motivation.message,
-      conseil_du_jour: motivation.conseil,
+      message_motivation: texteSur(motivation.message, 'Votre plan de la semaine est prêt ! Chaque jour est une nouvelle occasion de prendre soin de vous.', 'Message motivation'),
+      conseil_du_jour: texteSur(motivation.conseil, 'Une alimentation colorée et variée est la base d\'une bonne santé : chaque couleur apporte des nutriments différents.', 'Conseil du jour'),
+      // Compléments et HE exclus d'office (grossesse, allaitement, médicament) → orienter vers un pro
+      ...((securite.enceinte || securite.allaitement || securite.medicaments.length > 0)
+        ? { message_complements: MESSAGE_COMPLEMENTS_MEDECIN } : {}),
       _stats: { llm: llmCount, fallback: fallbackCount, total: 21, mode: 'batch_v2' },
       _source: 'generated',
     };
@@ -1150,6 +1224,11 @@ serve(async (req: Request) => {
     );
 
   } catch (error: any) {
+    // Niveau 1 : profil de sécurité manquant/illisible → refus clair de générer (fail closed)
+    if (error instanceof ErreurSecurite) {
+      console.error(`[SECURITE] Génération refusée (${error.code}) : ${error.message}`);
+      return reponseErreurSecurite(error, CORS_HEADERS);
+    }
     console.error('[ERROR] Exception principale:', error);
     console.log(`[DUREE] generer-plan-semaine ${Date.now() - debutRequete} ms — source=erreur`);
     return new Response(

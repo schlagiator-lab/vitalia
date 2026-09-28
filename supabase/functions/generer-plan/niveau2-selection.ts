@@ -338,9 +338,9 @@ export function selectionnerFormatsPlats(
 // SÉLECTION RECETTES
 // ============================================================================
 
+// recettesSures : recettes BDD ayant passé le niveau 1 (filtrerRecettesSecurite) — plus de requête directe
 export async function selectionnerRecettes(
-  supabase: SupabaseClient,
-  _profil: ProfilUtilisateur,
+  recettesSures: any[],
   styleCulinaire: string,
   historique: HistoriqueRotation
 ): Promise<{ petitDej: any; dejeuner: any; diner: any }> {
@@ -375,19 +375,13 @@ export async function selectionnerRecettes(
   };
 
   try {
-    const { data: recettes, error } = await supabase
-      .from('recettes')
-      .select('*')
-      .eq('categorie', styleCulinaire);
+    const recettes = recettesSures.filter((r: any) => r.categorie === styleCulinaire);
 
-    if (error || !recettes?.length) {
-      // Fallback : toutes les recettes disponibles tous styles confondus
-      const { data: toutesRecettes } = await supabase
-        .from('recettes')
-        .select('*')
-        .limit(50);
+    if (!recettes.length) {
+      // Fallback : toutes les recettes sûres tous styles confondus
+      const toutesRecettes = recettesSures;
 
-      if (!toutesRecettes?.length) return vide;
+      if (!toutesRecettes.length) return vide;
 
       return {
         petitDej: filtrerEtShuffler(toutesRecettes, 'petit-dejeuner')[0] || null,

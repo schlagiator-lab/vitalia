@@ -6,6 +6,29 @@
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ProfilUtilisateur, ProduitFiltre } from './types.ts';
+import {
+  ProfilSecurite, Decision, produitEstSur, routineEstSure, recetteBddEstSure, alimentEstSur,
+} from '../_shared/securite.ts';
+
+// Filtre + log des exclusions (les décisions viennent TOUTES de _shared/securite.ts)
+function filtrerAvecJournal<T extends { nom?: string; id?: string }>(
+  contexte: string,
+  items: T[],
+  decider: (item: T) => Decision
+): T[] {
+  const garde: T[] = [];
+  const exclus: string[] = [];
+  for (const item of items) {
+    const d = decider(item);
+    if (d.sur) garde.push(item);
+    else exclus.push(`${item.nom ?? item.id} [${d.raison}]`);
+  }
+  if (exclus.length > 0) {
+    const apercu = exclus.slice(0, 12).join(', ') + (exclus.length > 12 ? ` … (+${exclus.length - 12})` : '');
+    console.log(`[SECURITE] ${contexte} : ${exclus.length}/${items.length} exclu(s) — ${apercu}`);
+  }
+  return garde;
+}
 
 // ============================================================================
 // FILTRAGE NUTRACEUTIQUES + AROMATHÉRAPIE via tables junction
@@ -13,7 +36,7 @@ import { ProfilUtilisateur, ProduitFiltre } from './types.ts';
 
 export async function filtrerProduitsSecurite(
   supabase: SupabaseClient,
-  profil: ProfilUtilisateur,
+  securite: ProfilSecurite,
   besoins: string[] = []
 ): Promise<ProduitFiltre[]> {
 
@@ -99,7 +122,7 @@ export async function filtrerProduitsSecurite(
     }
 
     const totalAvant = tousLesProduits.length;
-    const produitsFiltres = tousLesProduits.filter(p => appliquerFiltresSecurite(p, profil));
+    const produitsFiltres = filtrerAvecJournal('Niveau 1 produits', tousLesProduits, p => produitEstSur(p, p.type as 'nutraceutique' | 'aromatherapie', securite));
 
     console.log(`[NIVEAU 1] Nutraceutiques : ${nutraceutiques.length} | Aromathérapie : ${aromatherapies.length}`);
     console.log(`[NIVEAU 1] Filtrés : ${produitsFiltres.length}/${totalAvant} produits sûrs`);
@@ -142,46 +165,6 @@ async function fetchProduitsDirect(supabase: SupabaseClient): Promise<ProduitFil
   return [...nutraceutiques, ...aromatherapies];
 }
 
-// ============================================================================
-// LOGIQUE DE FILTRAGE SÉCURITÉ (partagée nutraceutiques + HE)
-// ============================================================================
-
-function appliquerFiltresSecurite(p: any, profil: ProfilUtilisateur): boolean {
-
-  // 1. Contre-indication grossesse
-  if (profil.grossesse && p.populations_risque.some((r: string) =>
-    ['grossesse', 'enceinte', 'femme enceinte'].includes(r.toLowerCase())
-  )) {
-    return false;
-  }
-
-  // 2. Contre-indication allaitement
-  if (profil.allaitement && p.populations_risque.some((r: string) =>
-    ['allaitement', 'allaitante'].includes(r.toLowerCase())
-  )) {
-    return false;
-  }
-
-  // 3. Contre-indications pathologies
-  if (profil.pathologies && profil.pathologies.length > 0) {
-    const pathologiesLower = profil.pathologies.map((pp: string) => pp.toLowerCase());
-    const ciLower = p.contre_indications.map((ci: string) => ci.toLowerCase());
-    if (pathologiesLower.some(pp => ciLower.some(ci => ci.includes(pp)))) {
-      return false;
-    }
-  }
-
-  // 4. Interactions médicamenteuses
-  if (profil.medications && profil.medications.length > 0) {
-    const medsLower = profil.medications.map((m: string) => m.toLowerCase());
-    const interLower = p.interactions_medicaments.map((i: string) => i.toLowerCase());
-    if (medsLower.some(med => interLower.some(inter => inter.includes(med)))) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 function extrairePopulationsRisqueHE(he: any): string[] {
   const texte = (he.contre_indications_majeures || '').toLowerCase();
@@ -201,7 +184,8 @@ function extrairePopulationsRisqueHE(he: any): string[] {
 
 export async function filtrerRecettesSecurite(
   supabase: SupabaseClient,
-  profil: ProfilUtilisateur
+  profil: ProfilUtilisateur,
+  securite: ProfilSecurite
 ): Promise<any[]> {
 
   console.log('[NIVEAU 1] Filtrage recettes sécurité...');
@@ -225,8 +209,10 @@ export async function filtrerRecettesSecurite(
       return [];
     }
 
-    console.log(`[NIVEAU 1] Recettes : ${recettes?.length || 0} sûres`);
-    return recettes || [];
+    // Pré-filtre SQL ci-dessus (préférences) + décision sécurité unique (_shared/securite.ts)
+    const recettesSures = filtrerAvecJournal('Niveau 1 recettes BDD', recettes || [], r => recetteBddEstSure(r, securite));
+    console.log(`[NIVEAU 1] Recettes : ${recettesSures.length}/${recettes?.length || 0} sûres`);
+    return recettesSures;
 
   } catch (error) {
     console.error('[ERROR] Exception filtrerRecettesSecurite:', error);
@@ -240,7 +226,7 @@ export async function filtrerRecettesSecurite(
 
 export async function filtrerRoutinesSecurite(
   supabase: SupabaseClient,
-  profil: ProfilUtilisateur,
+  securite: ProfilSecurite,
   besoins: string[] = []
 ): Promise<any[]> {
 
@@ -289,16 +275,8 @@ export async function filtrerRoutinesSecurite(
       routines = Array.from(routineMap.values());
     }
 
-    // Filtrer routines contre-indiquées
-    const routinesFiltrees = routines.filter((r: any) => {
-      const ci = normaliserArray(r.contre_indications);
-      if (!ci.length || !profil.pathologies?.length) return true;
-
-      const pathologiesLower = profil.pathologies.map((p: string) => p.toLowerCase());
-      const ciLower = ci.map((c: string) => c.toLowerCase());
-
-      return !pathologiesLower.some(pp => ciLower.some(c => c.includes(pp)));
-    });
+    // Filtrer routines contre-indiquées (grossesse, allaitement, pathologies — _shared/securite.ts)
+    const routinesFiltrees = filtrerAvecJournal('Niveau 1 routines', routines, (r: any) => routineEstSure(r, securite));
 
     console.log(`[NIVEAU 1] Routines : ${routinesFiltrees.length}/${routines.length} sûres`);
     return routinesFiltrees;
@@ -315,7 +293,7 @@ export async function filtrerRoutinesSecurite(
 
 export async function filtrerAlimentsBesoins(
   supabase: SupabaseClient,
-  profil: ProfilUtilisateur,
+  securite: ProfilSecurite,
   besoins: string[]
 ): Promise<any[]> {
 
@@ -354,31 +332,8 @@ export async function filtrerAlimentsBesoins(
 
     let aliments = Array.from(alimentMap.values());
 
-    // Filtrer selon régime alimentaire
-    const estVegan = profil.regime_alimentaire?.some(r =>
-      ['vegan', 'végétalien'].includes(r.toLowerCase())
-    ) ?? false;
-    const estVegetarien = profil.regime_alimentaire?.some(r =>
-      ['vegetarien', 'végétarien'].includes(r.toLowerCase())
-    ) ?? false;
-
-    if (estVegan) {
-      aliments = aliments.filter(a => !estCategorieAnimale(a.categorie || ''));
-    } else if (estVegetarien) {
-      aliments = aliments.filter(a => !estViandePoissonCrustace(a.categorie || ''));
-    }
-
-    // Allergènes basiques — vérifie 'lactose' dans allergenes ET 'sans_lactose'/'sans-lactose' dans regime
-    const estSansLactose = profil.allergenes?.includes('lactose') ||
-      profil.regime_alimentaire?.some((r: string) => ['sans_lactose', 'sans-lactose'].includes(r.toLowerCase()));
-    if (estSansLactose) {
-      aliments = aliments.filter(a => {
-        const cat = (a.categorie || '').toLowerCase();
-        const nom = (a.nom || '').toLowerCase();
-        return !cat.includes('laitier') && !cat.includes('fromage') && !cat.includes('yaourt') && !cat.includes('lait')
-          && !nom.includes('yaourt') && !nom.includes('fromage') && !nom.includes('ricotta') && !nom.includes('lait');
-      });
-    }
+    // Décision sécurité unique (régimes, allergies, grossesse, médicaments) — _shared/securite.ts
+    aliments = filtrerAvecJournal('Niveau 1 aliments', aliments, a => alimentEstSur(a, securite));
 
     console.log(`[NIVEAU 1] Aliments chargés : ${aliments.length}`);
     return aliments;
@@ -387,20 +342,6 @@ export async function filtrerAlimentsBesoins(
     console.error('[ERROR] Exception filtrerAlimentsBesoins:', err);
     return [];
   }
-}
-
-// Catégories protéines animales complètes (viande + poisson + œufs + laitiers)
-function estCategorieAnimale(categorie: string): boolean {
-  const cat = categorie.toLowerCase();
-  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
-    'abats', 'gibier', 'œuf', 'oeuf', 'produit laitier', 'fromage', 'laitier'].some(m => cat.includes(m));
-}
-
-// Viande + poisson + crustacés seulement (végétariens gardent œufs/laitiers)
-function estViandePoissonCrustace(categorie: string): boolean {
-  const cat = categorie.toLowerCase();
-  return ['viande', 'volaille', 'poisson', 'fruits de mer', 'crustacé', 'mollusque',
-    'abats', 'gibier'].some(m => cat.includes(m));
 }
 
 // ============================================================================

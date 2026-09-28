@@ -1,5 +1,7 @@
 // supabase/functions/generer-plan/types.ts
 
+import type { ProfilSecurite } from '../_shared/securite.ts';
+
 export interface ProfilUtilisateur {
   id: string;
   age?: number;
@@ -25,6 +27,9 @@ export interface ProfilUtilisateur {
   styles_cuisines_favoris?: string[];
   styles_cuisines_exclus?: string[];
   niveau_variete?: 'faible' | 'moyenne' | 'elevee';
+
+  // Profil de sécurité niveau 1 (source de vérité : _shared/securite.ts)
+  securite?: ProfilSecurite;
 }
 
 export interface ContexteUtilisateur {
@@ -98,6 +103,7 @@ export interface PlanGenere {
   message_motivation?: string;
   conseil_du_jour?: string;
   conseils_generaux?: string[];
+  message_complements?: string; // présent si compléments/HE exclus d'office (grossesse, allaitement, médicament)
   score_nutritionnel?: number;
   mode_repas?: 'chaud' | 'froid';
 

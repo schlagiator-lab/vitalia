@@ -1,12 +1,19 @@
 // supabase/functions/generer-recette-details/index.ts
 // Lazy loading des instructions d'une recette générée en batch.
 // Appelée depuis le frontend quand l'utilisateur tape sur une recette.
-// Input  : { recette_nom, ingredients, type_repas, macros, profil, symptomes }
+// Input  : { profil_id (obligatoire — niveau 1), recette_nom, ingredients, type_repas, macros, symptomes }
 // Output : { instructions, astuces, message_motivant }
-// Modèle : Haiku (rapide + économique — instructions simples)
+// Modèle : Sonnet 5 (MODEL_RECETTE)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  ProfilSecurite, ErreurSecurite, chargerProfilSecurite, verifierRecette, decrireViolations,
+  consignesPrompt, reponseErreurSecurite,
+} from '../_shared/securite.ts';
 
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL_RECETTE = 'claude-sonnet-5';
@@ -103,7 +110,8 @@ function construirePrompt(
   macros: any,
   symptomes: string[],
   nbPersonnes: number = 2,
-  modeRepas: 'chaud' | 'froid' = 'chaud'
+  modeRepas: 'chaud' | 'froid' = 'chaud',
+  securite: ProfilSecurite
 ): string {
   const estPetitDej = typeRepas === 'petit-dejeuner';
 
@@ -153,7 +161,8 @@ ${listeIngredients}
 - Jamais de vague "cuire selon méthode" ou "ajuster selon goût"
 - Astuces en lien direct avec : ${objectif}
 - Message motivant court (max 15 mots)
-${modeRepas === 'froid' ? '\n## MODE FROID (canicule) — OBLIGATOIRE\nCe plat doit être servi FROID, sans allumer le four, la cuisinière ou la poêle : uniquement assemblage, cru, mixeur, ou toaster bref (≤2 min). temps_cuisson doit rester à 0.\n' : ''}`;
+- N'ajoute AUCUN ingrédient absent de la liste ci-dessus (hors sel, poivre, eau, huile d'olive)
+${consignesPrompt(securite)}${modeRepas === 'froid' ? '\n## MODE FROID (canicule) — OBLIGATOIRE\nCe plat doit être servi FROID, sans allumer le four, la cuisinière ou la poêle : uniquement assemblage, cru, mixeur, ou toaster bref (≤2 min). temps_cuisson doit rester à 0.\n' : ''}`;
 }
 
 // ─── Handler principal ─────────────────────────────────────────────────────
@@ -165,7 +174,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { recette_nom, ingredients, type_repas, macros, symptomes, nb_personnes, mode_repas } = body;
+    const { profil_id, recette_nom, ingredients, type_repas, macros, symptomes, nb_personnes, mode_repas } = body;
     const nbPersonnes: number = (typeof nb_personnes === 'number' && nb_personnes > 0) ? nb_personnes : 2;
     const modeRepas: 'chaud' | 'froid' = mode_repas === 'froid' ? 'froid' : 'chaud';
 
@@ -176,17 +185,42 @@ serve(async (req: Request) => {
       );
     }
 
-    const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
+    // ── NIVEAU 1 : profil de sécurité (FAIL CLOSED — profil_id obligatoire) ──
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const securite = await chargerProfilSecurite(supabase, profil_id);
 
-    if (!ANTHROPIC_API_KEY) {
+    // La recette reçue (issue d'un plan, éventuellement ancien) doit elle-même être sûre
+    const violationsEntree = verifierRecette({ nom: recette_nom, ingredients: ingredients || [] }, securite);
+    if (violationsEntree.length > 0) {
+      console.warn(`[SECURITE] Recette reçue « ${recette_nom} » incompatible — ${decrireViolations(violationsEntree)} → refus`);
+      return new Response(
+        JSON.stringify({ success: false, code: 'RECETTE_INCOMPATIBLE', error: 'Cette recette n\'est pas compatible avec ton profil. Régénère-la pour en obtenir une adaptée.' }),
+        { status: 422, headers: CORS_HEADERS }
+      );
+    }
+
+    // Instructions de secours, vérifiées elles aussi
+    const reponseFallback = () => {
       const fb = instructionsFallback(type_repas, recette_nom, modeRepas);
+      const v = verifierRecette(fb, securite);
+      if (v.length > 0) {
+        console.error(`[SECURITE] Instructions de secours non conformes — ${decrireViolations(v)} → refus`);
+        return new Response(
+          JSON.stringify({ success: false, code: 'AUCUNE_INSTRUCTION_SURE', error: 'Impossible de proposer des étapes sûres pour cette recette.' }),
+          { status: 422, headers: CORS_HEADERS }
+        );
+      }
       return new Response(
         JSON.stringify({ success: true, ...fb, _source: 'fallback' }),
         { status: 200, headers: CORS_HEADERS }
       );
-    }
+    };
 
-    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr, nbPersonnes, modeRepas);
+    const symptomesArr: string[] = Array.isArray(symptomes) ? symptomes : [];
+
+    if (!ANTHROPIC_API_KEY) return reponseFallback();
+
+    const prompt = construirePrompt(recette_nom, ingredients || [], type_repas, macros, symptomesArr, nbPersonnes, modeRepas, securite);
 
     // 2 tentatives avec backoff
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -232,6 +266,13 @@ serve(async (req: Request) => {
         break;
       }
 
+      // Contrôle post-génération niveau 1 (étapes, astuces, message) : violation → instructions de secours
+      const violations = verifierRecette(result, securite);
+      if (violations.length > 0) {
+        console.warn(`[SECURITE] Étapes « ${recette_nom} » rejetées — ${decrireViolations(violations)} → fallback`);
+        break;
+      }
+
       console.log(`[generer-recette-details] Instructions générées pour "${recette_nom}" (${result.instructions.length} étapes)`);
 
       return new Response(
@@ -246,14 +287,15 @@ serve(async (req: Request) => {
       );
     }
 
-    // Fallback si le LLM échoue
-    const fb = instructionsFallback(type_repas, recette_nom, modeRepas);
-    return new Response(
-      JSON.stringify({ success: true, ...fb, _source: 'fallback' }),
-      { status: 200, headers: CORS_HEADERS }
-    );
+    // Fallback si le LLM échoue ou viole le profil (vérifié)
+    return reponseFallback();
 
   } catch (error: any) {
+    // Niveau 1 : profil de sécurité manquant/illisible (ou profil_id absent) → refus clair (fail closed)
+    if (error instanceof ErreurSecurite) {
+      console.error(`[SECURITE] Génération refusée (${error.code}) : ${error.message}`);
+      return reponseErreurSecurite(error, CORS_HEADERS);
+    }
     console.error('[ERROR] generer-recette-details:', error);
     return new Response(
       JSON.stringify({ success: false, error: error?.message || 'Erreur inconnue' }),

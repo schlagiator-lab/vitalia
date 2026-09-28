@@ -12,6 +12,7 @@ import {
 } from './types.ts';
 import { calculerNutritionReelle } from './utils.ts';
 import { loggerAppelLLM } from '../_shared/llm-guard.ts';
+import { consignesPrompt } from '../_shared/securite.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -326,7 +327,7 @@ function construirePromptRecette(
   // Protéine animale : uniquement déjeuner & dîner (pas petit-dej → conflit avec contrainte sucrée)
   // La protéine est sélectionnée depuis la BDD et passée via ingredientsObligatoires — ne pas hardcoder.
   const proteineAnimaleConsigne = (estOmnivore && !estPetitDej)
-    ? '\n**PROTÉINE ANIMALE OBLIGATOIRE** : utiliser la protéine animale présente dans les ingrédients obligatoires ci-dessus. Ne pas la remplacer. Dans le JSON de sortie, le champ "nom" de cet ingrédient DOIT être EXACTEMENT le même mot que dans la liste (ex: si la liste dit "Maquereau", écrire "Maquereau" — pas "Filets de maquereau", pas "Maquereau grillé").'
+    ? '\n**PROTÉINE ANIMALE** : si une protéine animale figure dans les ingrédients obligatoires ci-dessus, l\'utiliser telle quelle, sans la remplacer. Dans le JSON de sortie, le champ "nom" de cet ingrédient DOIT être EXACTEMENT le même mot que dans la liste (ex: si la liste dit "Maquereau", écrire "Maquereau" — pas "Filets de maquereau", pas "Maquereau grillé").'
     : '';
 
   // Nombre d'étapes aléatoire entre 3 et 5 pour le petit-déjeuner
@@ -345,7 +346,7 @@ function construirePromptRecette(
 - **EXACTEMENT ${nbEtapesPetitDej} étapes** dans les instructions (ni plus, ni moins — respecter ce nombre précisément)
 - **Temps total ≤ 10 minutes**
 - **temps_cuisson = 0** si smoothie/bowl/overnight oats/tartine/açaï bowl (pas de cuisson réelle)
-- Exemples acceptables : bol de fruits + granola, smoothie bowl, overnight oats${estSansLactose ? ', tartine fruits + beurre d\'amande, açaï bowl' : ', tartine fruits + ricotta, bol de fruits + yaourt + granola, açaï bowl'}
+- Exemples acceptables (uniquement si compatibles avec la sécurité alimentaire) : bol de fruits + granola, smoothie bowl, overnight oats${estSansLactose ? ', tartine fruits + beurre d\'amande, açaï bowl' : ', tartine fruits + ricotta, bol de fruits + yaourt + granola, açaï bowl'}
 - Exemples INTERDITS : omelette aux légumes, toast avocat-tomate, salade, soupe${estSansLactose ? ', bol yaourt, tartine ricotta, fromage blanc' : ''}
 ` : '';
 
@@ -353,7 +354,7 @@ function construirePromptRecette(
   const contrainteFroide = modeRepas === 'froid' ? `
 ## MODE FROID — CANICULE / ÉTÉ (CONTRAINTE ABSOLUE, PRIORITAIRE SUR TOUT LE RESTE)
 - **INTERDIT** : allumer le four, la cuisinière, la plaque, le grill — aucune cuisson à la poêle, casserole, four ou grill
-- **AUTORISÉ** : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (thon en boîte, œufs durs, jambon, feta, légumes blanchis puis refroidis), toaster/grille-pain bref (≤2 min) uniquement si nécessaire
+- **AUTORISÉ** : cru, mixeur/blender, assemblage, marinade, ingrédients déjà cuits et servis froids (ex. — si compatibles avec la sécurité alimentaire : thon en boîte, œufs durs, jambon, feta, légumes blanchis puis refroidis), toaster/grille-pain bref (≤2 min) uniquement si nécessaire
 - **Techniques attendues** : salade composée, bowl (poke/buddha bowl), verrine, wrap froid, gaspacho, tartare de légumes, ceviche végétal, rouleaux de printemps, sandwich froid, carpaccio
 - **temps_cuisson DOIT être 0** (ou 1-2 max si toast/grille-pain)
 - Le plat doit être servi FROID ou à température ambiante, jamais chaud
@@ -379,6 +380,7 @@ La recette DOIT prendre ce format. Les contraintes de régime, d'allergènes${mo
 **Style culinaire** : ${styleCulinaire}
 **Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
+${profil.securite ? consignesPrompt(profil.securite) : ''}
 ${contrainteFroide}${consigneFormat}${consigneEviter}
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
@@ -463,6 +465,7 @@ export async function genererPauseLLM(
 ${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, aucun aliment réchauffé — uniquement frais ou à température ambiante, zéro cuisson.\n' : ''}
 **Régime** : ${contraintesRegime.join(', ') || 'Aucune restriction'}
 **Allergènes à éviter** : ${(profil.allergenes || []).join(', ') || 'Aucun'}
+${profil.securite ? consignesPrompt(profil.securite) : ''}
 **Objectif nutritionnel** : ${objectifTexte}
 **Temps de préparation max** : 5 minutes, sans cuisson ou cuisson très rapide
 **Portions** : 1 personne
