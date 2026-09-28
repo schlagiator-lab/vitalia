@@ -84,10 +84,13 @@ export async function genererSemaine(forcer) {
   if (!silentMode && progressCont) progressCont.style.display = 'block'
   var progressTimers = []
   var etapes = [
-    { pct: 15, label: 'Sélection des aliments…',           delai: 1000,  stage: 1 },
-    { pct: 35, label: 'Génération des recettes en cours…', delai: 3000,  stage: 2 },
-    { pct: 70, label: 'Création des plats…',               delai: 15000, stage: 3 },
-    { pct: 90, label: 'Finalisation…',                     delai: 30000, stage: 3 },
+    // Étalé sur ~2 min (génération Sonnet 5 : 60-140s) pour ne pas rester bloqué à 90%
+    { pct: 10, label: 'Sélection des aliments…',           delai: 1000,   stage: 1 },
+    { pct: 25, label: 'Génération des recettes en cours…', delai: 5000,   stage: 2 },
+    { pct: 45, label: 'Création des plats…',               delai: 25000,  stage: 3 },
+    { pct: 65, label: 'Création des plats…',               delai: 50000,  stage: 3 },
+    { pct: 80, label: 'Ajustement des recettes…',          delai: 80000,  stage: 3 },
+    { pct: 92, label: 'Finalisation…',                     delai: 110000, stage: 3 },
   ]
   function switchProgStage(stage) {
     var stages = ['prog-stage-0','prog-stage-1','prog-stage-2','prog-stage-3','prog-stage-done']
@@ -150,7 +153,8 @@ export async function genererSemaine(forcer) {
   }
 }
 
-export function afficherSemaine(data) {
+// options.sansRegen : semaine restaurée depuis le stockage → pas d'auto-régénération des recettes de secours
+export function afficherSemaine(data, options) {
   var JOURS  = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche']
   var LABELS = { lundi:'Lundi', mardi:'Mardi', mercredi:'Mercredi', jeudi:'Jeudi',
                  vendredi:'Vendredi', samedi:'Samedi', dimanche:'Dimanche' }
@@ -282,7 +286,7 @@ export function afficherSemaine(data) {
   if (!data._regenRefresh) {
     st.semaineJourOuvert = jourCible
     toggleDay(jourCible)
-    autoRegenFallbacks(data)
+    if (!(options && options.sansRegen)) autoRegenFallbacks(data)
   } else {
     toggleDay(st.semaineJourOuvert)
   }
@@ -350,6 +354,13 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
 }
 
 // ── Régénération automatique des recettes de secours ──
+// Garde-fous coûts (chaque régénération = 1 appel Sonnet) :
+// - max 3 régénérations par chargement de page, exécutées une par une
+// - une recette déjà revenue en fallback (genere_par_llm:false) dans cette session n'est jamais relancée
+var MAX_REGEN_PAR_CHARGEMENT = 3
+var _nbRegenCeChargement     = 0
+var _recettesFallbackRetournees = new Set()
+
 async function autoRegenFallbacks(data) {
   var JOURS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche']
   var MEAL_TYPES = { petit_dejeuner:'petit-dejeuner', dejeuner:'dejeuner', diner:'diner' }
@@ -357,27 +368,33 @@ async function autoRegenFallbacks(data) {
   JOURS.forEach(function(jour) {
     Object.keys(MEAL_TYPES).forEach(function(mealKey) {
       var r = data.semaine && data.semaine[jour] && data.semaine[jour][mealKey]
-      if (r && r.genere_par_llm === false) fallbacks.push({ jour: jour, mealKey: mealKey, typeRepas: MEAL_TYPES[mealKey] })
+      if (r && r.genere_par_llm === false && !_recettesFallbackRetournees.has(r.nom || r.titre)) {
+        fallbacks.push({ jour: jour, mealKey: mealKey, typeRepas: MEAL_TYPES[mealKey] })
+      }
     })
   })
-  if (!fallbacks.length) return
+  var restant = MAX_REGEN_PAR_CHARGEMENT - _nbRegenCeChargement
+  if (!fallbacks.length || restant <= 0) return
+  fallbacks = fallbacks.slice(0, restant)
+  _nbRegenCeChargement += fallbacks.length
+  console.log('[autoRegen] ' + fallbacks.length + ' recette(s) de secours à régénérer (' + _nbRegenCeChargement + '/' + MAX_REGEN_PAR_CHARGEMENT + ' ce chargement)')
 
-  for (var bi = 0; bi < fallbacks.length; bi += 3) {
-    var batch = fallbacks.slice(bi, bi + 3)
-    await Promise.all(batch.map(async function(f) {
-      try {
-        var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms, nb_personnes: st.defaultPortions, mode_repas: st.modeRepas }),
-        })
-        var d = await resp.json()
-        if (d.success && d.recette && st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[f.jour]) {
-          st.semainePlanData.semaine[f.jour][f.mealKey] = d.recette
-        }
-      } catch(e) {}
-    }))
-    if (bi + 3 < fallbacks.length) await new Promise(function(r) { setTimeout(r, 500) })
+  for (var i = 0; i < fallbacks.length; i++) {
+    var f = fallbacks[i]
+    try {
+      var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-unique', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + st.authToken, 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ profil_id: st.profil_id, type_repas: f.typeRepas, ingredients_frigo: [], symptomes: st.selectedSymptoms, nb_personnes: st.defaultPortions, mode_repas: st.modeRepas }),
+      })
+      var d = await resp.json()
+      if (d.success && d.recette && d.recette.genere_par_llm === false) {
+        _recettesFallbackRetournees.add(d.recette.nom || d.recette.titre)
+      }
+      if (d.success && d.recette && st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[f.jour]) {
+        st.semainePlanData.semaine[f.jour][f.mealKey] = d.recette
+      }
+    } catch(e) {}
   }
 
   try { localStorage.setItem('vitalia_semaine_session', JSON.stringify(st.semainePlanData)) } catch(e) {}

@@ -36,6 +36,9 @@ export async function authFetch(url, options) {
 
   var controller = new AbortController()
   var timeoutMs  = isFunctionUrl ? 45000 : 15000
+  // TEMP — replaced by async generation (batch 3)
+  // Génération plan jour / semaine (Sonnet 5) : 150s = limite wall-clock Supabase FREE
+  if (/\/functions\/v1\/(generer-plan|generer-plan-semaine)(\?|$)/.test(url)) timeoutMs = 150000
   var timer      = setTimeout(function() { controller.abort() }, timeoutMs)
 
   var opts = Object.assign({}, options, {

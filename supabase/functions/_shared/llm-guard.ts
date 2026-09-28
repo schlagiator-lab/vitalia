@@ -61,22 +61,48 @@ export function loggerAppelLLM(supabase: SupabaseClient, params: UsageParams): v
   });
 }
 
+// ─── Minuit Europe/Zurich (en UTC) — le quota se réinitialise à minuit heure suisse ──
+function decalageZurichMs(instant: Date): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Zurich', hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(instant).map(x => [x.type, x.value])
+  );
+  const commeUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return Math.round((commeUtc - instant.getTime()) / 60000) * 60000;
+}
+
+function debutJourZurich(): Date {
+  const maintenant = new Date();
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(maintenant).map(x => [x.type, x.value])
+  );
+  const minuitCommeUtc = Date.UTC(+p.year, +p.month - 1, +p.day);
+  // 2 passes : le décalage est recalculé à minuit même (correct les jours de changement d'heure)
+  let debut = new Date(minuitCommeUtc - decalageZurichMs(maintenant));
+  debut = new Date(minuitCommeUtc - decalageZurichMs(debut));
+  return debut;
+}
+
 // ─── Vérification rate limit plan journalier ─────────────────────────────────
+// Compte les PLANS générés (lignes plans_generes), pas les appels LLM :
+// un plan = ~6 appels LLM, compter llm_usage bloquait dès le 1er plan.
 export async function verifierRateLimitJournalier(
   supabase: SupabaseClient,
   profilId: string
 ): Promise<RateLimitResult> {
   try {
-    const debutJour = new Date();
-    debutJour.setHours(0, 0, 0, 0);
+    const debutJour = debutJourZurich();
 
     const { count, error } = await supabase
-      .from('llm_usage')
+      .from('plans_generes')
       .select('id', { count: 'exact', head: true })
       .eq('profil_id', profilId)
-      .eq('fonction', 'generer-plan')
-      .eq('succes', true)
-      .gte('cree_le', debutJour.toISOString());
+      .gte('genere_le', debutJour.toISOString());
 
     if (error) {
       console.warn('[LLM-GUARD] Erreur vérif rate limit (permissif):', error.message);
@@ -99,6 +125,8 @@ export async function verifierRateLimitJournalier(
 }
 
 // ─── Vérification rate limit plan semaine ────────────────────────────────────
+// Compte les SEMAINES générées : uniquement l'appel batch réussi (appel='batch-7-jours',
+// succes=true). La motivation et les batchs tombés en fallback ne sont pas comptés.
 export async function verifierRateLimitSemaine(
   supabase: SupabaseClient,
   profilId: string
@@ -111,6 +139,7 @@ export async function verifierRateLimitSemaine(
       .select('id', { count: 'exact', head: true })
       .eq('profil_id', profilId)
       .eq('fonction', 'generer-plan-semaine')
+      .eq('appel', 'batch-7-jours')
       .eq('succes', true)
       .gte('cree_le', il7Jours);
 

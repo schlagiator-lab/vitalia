@@ -67,7 +67,7 @@ export function switchTab(name) {
 
   if (name === 'semaine') {
     // Import dynamique pour éviter la circularité au chargement
-    import('./plan.js').then(function(m) {
+    import('./plan-semaine.js').then(function(m) {
       m.syncSemaineChips()
       if (!st.semaineCheckedThisSession) {
         st.semaineCheckedThisSession = true

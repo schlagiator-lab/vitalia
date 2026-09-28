@@ -6,7 +6,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { verifierRateLimitSemaine, verifierBudgetJournalier, loggerAppelLLM } from '../_shared/llm-guard.ts';
+import { verifierRateLimitSemaine, verifierBudgetJournalier, loggerAppelLLM, LIMITS } from '../_shared/llm-guard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -14,6 +14,13 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL_RECETTE = 'claude-sonnet-5';            // génération du plan hebdomadaire (batch 21 repas)
 const MODEL_LEGER   = 'claude-haiku-4-5-20251001';  // message motivation + conseil du jour
+
+// ─── Budget temps (plan Supabase FREE : 150s wall-clock max par invocation) ──
+const TIMEOUT_RECETTE_MS   = 100_000; // timeout max d'un appel Sonnet batch
+const TIMEOUT_LEGER_MS     = 20_000;  // timeout appel Haiku (motivation)
+const DEADLINE_MS          = 140_000; // la réponse doit partir avant 140s après l'entrée
+const MARGE_FIN_MS         = 15_000;  // réservé à l'écriture cache + envoi réponse
+const RESTANT_MIN_RETRY_MS = 60_000;  // pas de retry s'il resterait moins de 60s
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -359,7 +366,7 @@ async function chargerWellness(supabase: any, besoins: string[]): Promise<{
 
 // ─── Génération motivation (inchangée, tourne en parallèle) ────────────────
 
-async function genererMotivation(symptomes: string[]): Promise<{ message: string; conseil: string }> {
+async function genererMotivation(symptomes: string[], profilId: string): Promise<{ message: string; conseil: string }> {
   const fallbackMessage = 'Votre plan de la semaine est prêt ! Chaque jour est une nouvelle opportunité de prendre soin de vous.';
   const fallbackConseil = 'Une alimentation colorée et variée est la base d\'une bonne santé — chaque couleur apporte des nutriments uniques.';
 
@@ -376,6 +383,7 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: MODEL_LEGER, max_tokens: 250, temperature: 0.9, messages: [{ role: 'user', content: prompt }] }),
+      signal: AbortSignal.timeout(TIMEOUT_LEGER_MS),
     });
 
     if (!response.ok) return { message: fallbackMessage, conseil: fallbackConseil };
@@ -385,6 +393,7 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
     if (data.usage) {
       const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       loggerAppelLLM(_supaLog, {
+        profilId,
         fonction:  'generer-plan-semaine',
         appel:     'motivation',
         model:     MODEL_LEGER,
@@ -403,7 +412,11 @@ Format : JSON strict {"message": "...", "conseil": "..."}`;
         conseil: parsed.conseil || fallbackConseil,
       };
     }
-  } catch (_) {}
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      console.error(`[TIMEOUT] Motivation : pas de réponse Claude en ${TIMEOUT_LEGER_MS / 1000}s → fallback`);
+    }
+  }
 
   return { message: fallbackMessage, conseil: fallbackConseil };
 }
@@ -433,6 +446,62 @@ function validerRepasSquelette(repas: any): repas is RepasSquelette {
     repas.macros &&
     typeof repas.macros.calories === 'number' &&
     typeof repas.macros.proteines === 'number';
+}
+
+// ─── Tool_use structuré : remplace l'extraction regex + JSON.parse (même pattern que generer-recette-unique) ─
+function construireToolPlanSemaine(repasInclus: string[]) {
+  const repasSchema = (avecTemps: boolean) => ({
+    type: 'object',
+    properties: {
+      nom:         { type: 'string' },
+      ingredients: { type: 'array', items: { type: 'string' }, minItems: 2 },
+      macros: {
+        type: 'object',
+        properties: {
+          calories:  { type: 'number' },
+          proteines: { type: 'number' },
+          glucides:  { type: 'number' },
+          lipides:   { type: 'number' },
+        },
+        required: ['calories', 'proteines', 'glucides', 'lipides'],
+      },
+      ...(avecTemps ? { temps_preparation: { type: 'integer' }, temps_cuisson: { type: 'integer' } } : {}),
+    },
+    required: ['nom', 'ingredients', 'macros'],
+  });
+
+  // 'pause' côté frontend = clé 'collation' dans la sortie LLM
+  const repasCles: Record<string, { cle: string; avecTemps: boolean }> = {
+    petit_dejeuner: { cle: 'petit_dejeuner', avecTemps: false },
+    dejeuner:       { cle: 'dejeuner',       avecTemps: true },
+    diner:          { cle: 'diner',          avecTemps: true },
+    pause:          { cle: 'collation',      avecTemps: false },
+  };
+  const inclus = repasInclus.map(r => repasCles[r]).filter(Boolean);
+
+  return {
+    name: 'creer_plan_semaine',
+    description: 'Enregistre le plan alimentaire complet des 7 jours (lundi → dimanche)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        jours: {
+          type: 'array',
+          minItems: 7,
+          maxItems: 7,
+          items: {
+            type: 'object',
+            properties: {
+              jour: { type: 'string' },
+              ...Object.fromEntries(inclus.map(r => [r.cle, repasSchema(r.avecTemps)])),
+            },
+            required: ['jour', ...inclus.map(r => r.cle)],
+          },
+        },
+      },
+      required: ['jours'],
+    },
+  };
 }
 
 function construirePromptBatch(
@@ -584,7 +653,7 @@ ${lignesPlanning}
 ## RÈGLES ANTI-RÉPÉTITION (OBLIGATOIRES)
 ${regleAntiRep}
 ${sectionPetitDej}${sectionCollation}
-## FORMAT DE SORTIE : JSON strict uniquement, sans backticks, sans commentaire
+## FORMAT DE SORTIE : appeler l'outil creer_plan_semaine avec exactement 7 jours, selon cette structure
 {
   "jours": [
     {
@@ -603,8 +672,7 @@ ${modeRepas === 'froid' ? `Règles temps (cohérence obligatoire, MODE FROID) :
 - Bœuf sauté wok : temps_preparation=10, temps_cuisson=8
 - Légumes vapeur/mijotés : temps_preparation=10, temps_cuisson=20
 - Salade/cru : temps_preparation=12, temps_cuisson=0
-- Plat mijoté (tajine, curry) : temps_preparation=12, temps_cuisson=35`}
-Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
+- Plat mijoté (tajine, curry) : temps_preparation=12, temps_cuisson=35`}`;
 }
 
 async function genererPlanBatch(
@@ -614,14 +682,25 @@ async function genererPlanBatch(
   symptomes: string[],
   repasInclus: string[] = ['petit_dejeuner', 'dejeuner', 'diner', 'pause'],
   nbPersonnes: number = 2,
-  modeRepas: 'chaud' | 'froid' = 'chaud'
+  modeRepas: 'chaud' | 'froid' = 'chaud',
+  profilId: string = '',
+  debutRequete: number = Date.now()
 ): Promise<JourSquelette[] | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
   const prompt = construirePromptBatch(pairesProteines, stylesJours, profilNorm, symptomes, repasInclus, nbPersonnes, modeRepas);
+  const tool = construireToolPlanSemaine(repasInclus);
+  // Temps restant avant la deadline globale (DEADLINE_MS après l'entrée de la requête)
+  const restantMs = () => DEADLINE_MS - (Date.now() - debutRequete);
 
-  // 2 tentatives avec backoff sur 429/5xx
+  // 2 tentatives avec backoff sur 429/5xx — la 2e seulement s'il reste assez de temps
   for (let attempt = 0; attempt < 2; attempt++) {
+    // Timeout de l'appel : jamais au-delà de la deadline (marge réservée à l'écriture cache + réponse)
+    const timeoutMs = Math.min(TIMEOUT_RECETTE_MS, restantMs() - MARGE_FIN_MS);
+    if (timeoutMs <= 0) {
+      console.warn(`[BATCH] Plus de temps disponible (restant ${Math.round(restantMs() / 1000)}s) → fallback`);
+      return null;
+    }
     try {
       const response = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
@@ -633,15 +712,23 @@ async function genererPlanBatch(
         body: JSON.stringify({
           model: MODEL_RECETTE,
           max_tokens: 8000,
+          tools: [tool],
+          tool_choice: { type: 'tool', name: 'creer_plan_semaine' },
           messages: [{ role: 'user', content: prompt }],
         }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (response.status === 429 || response.status >= 500) {
-        const waitMs = attempt === 0 ? 8000 : 15000;
-        console.warn(`[BATCH] HTTP ${response.status} (tentative ${attempt + 1}/2) — attente ${waitMs / 1000}s...`);
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
+        const waitMs = 8000;
+        const restantApresAttente = restantMs() - waitMs;
+        if (attempt === 0 && restantApresAttente >= RESTANT_MIN_RETRY_MS) {
+          console.warn(`[BATCH] HTTP ${response.status} (tentative 1/2) — attente ${waitMs / 1000}s puis retry (restant ${Math.round(restantApresAttente / 1000)}s)`);
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        console.error(`[BATCH] HTTP ${response.status} (tentative ${attempt + 1}/2) — pas de retry (restant ${Math.round(restantMs() / 1000)}s) → fallback`);
+        return null;
       }
 
       if (!response.ok) {
@@ -652,40 +739,49 @@ async function genererPlanBatch(
 
       const data = await response.json();
 
-      if (data.usage) {
+      // Log tokens : succes=true UNIQUEMENT si le batch est exploitable (semaine générée).
+      // Le guard hebdomadaire compte ces lignes (appel='batch-7-jours', succes=true).
+      const loggerBatch = (succes: boolean) => {
+        if (!data.usage) return;
         const _supaLog = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
         loggerAppelLLM(_supaLog, {
+          profilId,
           fonction:  'generer-plan-semaine',
           appel:     'batch-7-jours',
           model:     MODEL_RECETTE,
           tokensIn:  data.usage.input_tokens,
           tokensOut: data.usage.output_tokens,
-          succes:    true,
+          succes,
         });
-      }
+      };
 
-      const text = data.content?.[0]?.text || '';
-
-      // Extraction JSON : chercher le premier { ... } valide
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error('[BATCH] Pas de JSON détecté dans la réponse');
+      // Sortie tronquée : le tool_use est incomplet → fallback
+      if (data.stop_reason === 'max_tokens') {
+        console.error(`[TRUNCATED] Batch semaine coupé à max_tokens (out=${data.usage?.output_tokens ?? '?'} tokens, repas=${repasInclus.join(',')}) → fallback`);
+        loggerBatch(false);
         return null;
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      const jours: JourSquelette[] = parsed?.jours;
+      // tool_use : l'API garantit un JSON valide — pas de regex fragile
+      const toolUse = data.content?.find((c: any) => c.type === 'tool_use');
+      const jours: JourSquelette[] = toolUse?.input?.jours;
 
       if (!Array.isArray(jours) || jours.length < 7) {
-        console.error(`[BATCH] Structure invalide : ${jours?.length ?? 0} jours reçus`);
+        console.error(`[BATCH] Structure invalide : ${jours?.length ?? 0} jours reçus (stop_reason=${data.stop_reason}, content=${data.content?.map((c: any) => c.type).join(',')})`);
+        loggerBatch(false);
         return null;
       }
 
-      console.log(`[BATCH] ${jours.length} jours reçus du LLM`);
+      loggerBatch(true);
+      console.log(`[BATCH] ${jours.length} jours reçus du LLM (out=${data.usage?.output_tokens ?? '?'} tokens)`);
       return jours;
 
     } catch (error) {
-      console.error('[BATCH] Exception:', error);
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        console.error(`[TIMEOUT] Batch semaine : pas de réponse Claude en ${Math.round(timeoutMs / 1000)}s → fallback`);
+      } else {
+        console.error('[BATCH] Exception:', error);
+      }
       return null;
     }
   }
@@ -809,6 +905,8 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: CORS_HEADERS });
   }
 
+  const debutRequete = Date.now(); // deadline globale + mesure [DUREE]
+
   try {
     const body = await req.json();
     const { profil_id, symptomes, force_refresh = false, repas_inclus, nb_personnes, budget_max, mode_repas } = body;
@@ -859,6 +957,7 @@ serve(async (req: Request) => {
       verifierRateLimitSemaine(supabase, profil_id),
       verifierBudgetJournalier(supabase),
     ]);
+    console.log(`[GUARD] profil ${profil_id}: ${rateLimit.nbDuJour ?? '?'} semaine(s) générée(s) sur 7 jours (max ${LIMITS.PLANS_SEMAINE_PAR_PROFIL})`);
 
     if (!exempte && !rateLimit.autorise) {
       console.warn(`[GUARD] Rate limit semaine profil ${profil_id} : ${rateLimit.raison}`);
@@ -982,9 +1081,9 @@ serve(async (req: Request) => {
 
     // ── 4. APPELS EN PARALLÈLE : batch LLM + wellness + motivation ─────────
     const [joursLLM, wellness, motivation] = await Promise.all([
-      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes, modeRepas),
+      genererPlanBatch(pairesProteines, stylesJours, profilNorm, symptomesArr, repasInclus, nbPersonnes, modeRepas, profil_id, debutRequete),
       chargerWellness(supabase, symptomesArr),
-      genererMotivation(symptomesArr),
+      genererMotivation(symptomesArr, profil_id),
     ]);
 
     // ── 5. CONSTRUCTION SEMAINE (LLM ou fallback complet) ─────────────────
@@ -1043,6 +1142,8 @@ serve(async (req: Request) => {
     // ── 7. SAUVEGARDE CACHE (await obligatoire — Deno coupe les promesses en suspend) ──
     await ecrireCachePlan(supabase, profil_id, symptomesArr, reponse);
 
+    console.log(`[DUREE] generer-plan-semaine ${Date.now() - debutRequete} ms — source=${joursLLM && joursLLM.length >= 7 ? 'llm' : 'fallback'} (LLM=${llmCount} / fallback=${fallbackCount})`);
+
     return new Response(
       JSON.stringify(reponse),
       { status: 200, headers: CORS_HEADERS }
@@ -1050,6 +1151,7 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error('[ERROR] Exception principale:', error);
+    console.log(`[DUREE] generer-plan-semaine ${Date.now() - debutRequete} ms — source=erreur`);
     return new Response(
       JSON.stringify({ success: false, error: error?.message || 'Erreur inconnue' }),
       { status: 500, headers: CORS_HEADERS }

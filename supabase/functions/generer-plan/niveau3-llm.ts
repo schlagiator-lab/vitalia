@@ -22,6 +22,10 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MODEL_RECETTE = 'claude-sonnet-5';
 const MODEL_LEGER   = 'claude-haiku-4-5-20251001';
 
+// Timeouts des appels Anthropic : dépassement = échec → les fallbacks existants prennent le relais
+const TIMEOUT_RECETTE_MS = 60_000;
+const TIMEOUT_LEGER_MS   = 20_000;
+
 // ─── Tool_use structuré : garantit un JSON 100% valide sans parsing fragile ─
 const RECETTE_TOOL = {
   name: 'creer_recette',
@@ -118,7 +122,7 @@ export async function genererRecetteLLM(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = [],
+  formatPlat: string = '',
   modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<RecetteGeneree | null> {
 
@@ -131,7 +135,7 @@ export async function genererRecetteLLM(
 
   const prompt = construirePromptRecette(
     typeRepas, styleCulinaire, ingredientsObligatoires,
-    profil, contexte, ingredientsAEviter, nomsDejaUtilises, modeRepas
+    profil, contexte, ingredientsAEviter, formatPlat, modeRepas
   );
 
   // Retry 1× sur 429 / 5xx
@@ -150,13 +154,18 @@ export async function genererRecetteLLM(
           tools: [RECETTE_TOOL],
           tool_choice: { type: 'tool', name: 'creer_recette' },
           messages: [{ role: 'user', content: prompt }]
-        })
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_RECETTE_MS)
       });
 
       if (response.status === 429 || response.status >= 500) {
-        console.warn(`[WARN] Claude ${response.status} (tentative ${attempt + 1}/2) — attente 3s...`);
-        await new Promise(r => setTimeout(r, 3000));
-        continue;
+        if (attempt === 0) {
+          console.warn(`[WARN] Claude ${response.status} (tentative 1/2) — attente 3s...`);
+          await new Promise(r => setTimeout(r, 3000));
+          continue;
+        }
+        console.error(`[ERROR] Claude ${response.status} (tentative 2/2) — abandon, fallback`);
+        return null;
       }
 
       if (!response.ok) {
@@ -230,7 +239,11 @@ export async function genererRecetteLLM(
       return recette;
 
     } catch (error) {
-      console.error('[ERROR] Exception génération Claude AI:', error);
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        console.error(`[TIMEOUT] Recette ${typeRepas} : pas de réponse Claude en ${TIMEOUT_RECETTE_MS / 1000}s → fallback`);
+      } else {
+        console.error('[ERROR] Exception génération Claude AI:', error);
+      }
       return null;
     }
   }
@@ -249,7 +262,7 @@ function construirePromptRecette(
   profil: ProfilUtilisateur,
   contexte: ContexteUtilisateur,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = [],
+  formatPlat: string = '',
   modeRepas: 'chaud' | 'froid' = 'chaud'
 ): string {
   
@@ -352,11 +365,10 @@ function construirePromptRecette(
 ${ingredientsAEviter.map(i => `- ${i}`).join('\n')}
 ` : '';
 
-  // Recettes déjà générées dans le même plan (éviter les doublons de concept)
-  const consigneNoms = nomsDejaUtilises.length > 0 ? `
-**RECETTES DÉJÀ CRÉÉES DANS CE PLAN (interdites — ne pas reproduire ni imiter) :**
-${nomsDejaUtilises.map(n => `- "${n}"`).join('\n')}
-Crée quelque chose de complètement différent : autres ingrédients principaux, autre technique, autre concept.
+  // Format de plat imposé (distinct pour chaque repas du plan → pas de doublon de concept)
+  const consigneFormat = formatPlat ? `
+**FORMAT DU PLAT IMPOSÉ** : ${formatPlat}
+La recette DOIT prendre ce format. Les contraintes de régime, d'allergènes${modeRepas === 'froid' ? ' et du mode froid' : ''} restent prioritaires sur le format.
 ` : '';
 
   return `Tu es un chef expert en nutrition bien-être. Crée une recette ORIGINALE et CREATIVE.
@@ -367,7 +379,7 @@ Crée quelque chose de complètement différent : autres ingrédients principaux
 **Style culinaire** : ${styleCulinaire}
 **Régime alimentaire** : ${contraintesRegime.join(', ') || 'Aucune restriction'}${proteineAnimaleConsigne}
 **Allergènes à ÉVITER ABSOLUMENT** : ${allergenes.join(', ') || 'Aucun'}
-${contrainteFroide}${consigneNoms}${consigneEviter}
+${contrainteFroide}${consigneFormat}${consigneEviter}
 **Ingrédients OBLIGATOIRES à inclure** :
 ${ingredientsObligatoires.map(i => `- ${i}`).join('\n')}
 
@@ -472,7 +484,8 @@ ${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, 
         tools: [PAUSE_TOOL],
         tool_choice: { type: 'tool', name: 'creer_collation' },
         messages: [{ role: 'user', content: prompt }]
-      })
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_LEGER_MS)
     });
 
     if (!response.ok) {
@@ -508,7 +521,11 @@ ${modeRepas === 'froid' ? '\n**MODE FROID (canicule)** : aucune boisson chaude, 
     return { ...pauseJSON, genere_par_llm: true };
 
   } catch (error) {
-    console.error('[ERROR] Exception génération pause LLM:', error);
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      console.error(`[TIMEOUT] Pause : pas de réponse Claude en ${TIMEOUT_LEGER_MS / 1000}s → fallback`);
+    } else {
+      console.error('[ERROR] Exception génération pause LLM:', error);
+    }
     return null;
   }
 }
@@ -555,7 +572,8 @@ Règles :
         max_tokens: 150,
         temperature: 0.9,
         messages: [{ role: 'user', content: prompt }]
-      })
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_LEGER_MS)
     });
 
     if (!response.ok) {
@@ -583,7 +601,11 @@ Règles :
     return message;
     
   } catch (error) {
-    console.error('[ERROR] Erreur génération message:', error);
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      console.error(`[TIMEOUT] Motivation : pas de réponse Claude en ${TIMEOUT_LEGER_MS / 1000}s → fallback`);
+    } else {
+      console.error('[ERROR] Erreur génération message:', error);
+    }
     return "Prends soin de toi avec ce plan sur mesure ! 🌿";
   }
 }
@@ -649,7 +671,8 @@ Règles STRICTES :
         max_tokens: 120,
         temperature: 1.0,
         messages: [{ role: 'user', content: prompt }]
-      })
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_LEGER_MS)
     });
 
     if (!response.ok) return fallback;
@@ -674,7 +697,11 @@ Règles STRICTES :
     return conseil;
 
   } catch (error) {
-    console.error('[ERROR] Erreur génération conseil:', error);
+    if (error instanceof DOMException && error.name === 'TimeoutError') {
+      console.error(`[TIMEOUT] Conseil : pas de réponse Claude en ${TIMEOUT_LEGER_MS / 1000}s → fallback`);
+    } else {
+      console.error('[ERROR] Erreur génération conseil:', error);
+    }
     return fallback;
   }
 }

@@ -22,7 +22,8 @@ import {
   selectionnerRoutines,
   selectionnerNutraceutiques,
   selectionnerAromatherapie,
-  getIngredientsBanis
+  getIngredientsBanis,
+  selectionnerFormatsPlats
 } from './niveau2-selection.ts';
 import {
   genererRecetteLLM,
@@ -42,6 +43,7 @@ import {
 import {
   verifierRateLimitJournalier,
   verifierBudgetJournalier,
+  LIMITS,
 } from '../_shared/llm-guard.ts';
 
 // ============================================================================
@@ -333,7 +335,7 @@ function genererRecetteParDefaut(typeRepas: string, _ingredients: string[], mode
 
 // Génération recette avec cascade : (cache) → LLM → BDD → défaut
 // force_regeneration=true : ignore le cache, toujours appeler le LLM
-// nomsDejaUtilises : noms des repas déjà générés dans la même journée (à éviter)
+// formatPlat : format de plat imposé (distinct par repas, choisi en niveau 2) — anti-doublon de concept
 async function genererRecetteAvecFallback(
   supabase: any,
   typeRepas: string,
@@ -344,7 +346,7 @@ async function genererRecetteAvecFallback(
   historique: any,
   forceRegeneration: boolean = false,
   ingredientsAEviter: string[] = [],
-  nomsDejaUtilises: string[] = [],
+  formatPlat: string = '',
   modeRepas: 'chaud' | 'froid' = 'chaud'
 ): Promise<any> {
 
@@ -363,7 +365,7 @@ async function genererRecetteAvecFallback(
 
   // 2. LLM
   const recetteLLM = await genererRecetteLLM(
-    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter, nomsDejaUtilises, modeRepas
+    typeRepas, styleCulinaire, ingredientsObligatoires, profil, contexte, ingredientsAEviter, formatPlat, modeRepas
   );
   if (recetteLLM) {
     // Validation qualité : rejeter les recettes trop pauvres ou vagues
@@ -657,32 +659,6 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ── PROTECTION COÛTS : rate limit + budget cap ──────────────────────────
-    const exempte = PROFILS_EXEMPTES.has(profil_id);
-    if (exempte) {
-      console.log(`[GUARD] profil ${profil_id} exempté — limites ignorées`);
-    }
-
-    const [rateLimit, budget] = await Promise.all([
-      verifierRateLimitJournalier(supabase, profil_id),
-      verifierBudgetJournalier(supabase),
-    ]);
-
-    if (!exempte && !rateLimit.autorise) {
-      console.warn(`[GUARD] Rate limit profil ${profil_id} : ${rateLimit.raison}`);
-      return new Response(
-        JSON.stringify(formaterErreurAPI(rateLimit.raison || 'Limite journalière atteinte', 'RATE_LIMIT')),
-        { status: 429, headers: CORS_HEADERS }
-      );
-    }
-    if (!exempte && !budget.sousLimite) {
-      console.error(`[GUARD] Budget journalier dépassé : $${budget.coutJour.toFixed(4)}`);
-      return new Response(
-        JSON.stringify(formaterErreurAPI('Service temporairement indisponible, réessayez demain', 'BUDGET_CAP')),
-        { status: 503, headers: CORS_HEADERS }
-      );
-    }
-
     // ── CACHE JOURNALIER : retour immédiat si plan existant ─────────────────
     // Activé si force_regeneration !== true
     // ── Lecture cache ──────────────────────────────────────────────────────
@@ -738,6 +714,34 @@ serve(async (req) => {
       }
     } catch (cacheErr) {
       console.warn('[CACHE] Lecture cache journalier échouée (non bloquant):', cacheErr);
+    }
+
+    // ── PROTECTION COÛTS : rate limit + budget cap ──────────────────────────
+    // Placé APRÈS la lecture cache : un plan servi depuis le cache n'est jamais bloqué.
+    const exempte = PROFILS_EXEMPTES.has(profil_id);
+    if (exempte) {
+      console.log(`[GUARD] profil ${profil_id} exempté — limites ignorées`);
+    }
+
+    const [rateLimit, budget] = await Promise.all([
+      verifierRateLimitJournalier(supabase, profil_id),
+      verifierBudgetJournalier(supabase),
+    ]);
+    console.log(`[GUARD] profil ${profil_id} : ${rateLimit.nbDuJour ?? '?'} plan(s) généré(s) aujourd'hui (max ${LIMITS.PLANS_JOUR_PAR_PROFIL})`);
+
+    if (!exempte && !rateLimit.autorise) {
+      console.warn(`[GUARD] Rate limit profil ${profil_id} : ${rateLimit.raison}`);
+      return new Response(
+        JSON.stringify(formaterErreurAPI(rateLimit.raison || 'Limite journalière atteinte', 'RATE_LIMIT')),
+        { status: 429, headers: CORS_HEADERS }
+      );
+    }
+    if (!exempte && !budget.sousLimite) {
+      console.error(`[GUARD] Budget journalier dépassé : $${budget.coutJour.toFixed(4)}`);
+      return new Response(
+        JSON.stringify(formaterErreurAPI('Service temporairement indisponible, réessayez demain', 'BUDGET_CAP')),
+        { status: 503, headers: CORS_HEADERS }
+      );
     }
 
     // ── RATE LIMITING : 10 générations/heure, re-génération immédiate possible ──
@@ -1017,29 +1021,41 @@ serve(async (req) => {
       genererConseilDuJour(contexte, profil_id)
     ]);
 
-    // Générer les 3 repas séquentiellement pour passer les noms précédents au LLM
-    // → évite que le LLM répète le même concept d'un repas à l'autre dans la même journée
-    const recettePetitDej = await genererRecetteAvecFallback(
-      supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej,
-      profil, contexte, historique, forceRegen,
-      [...ingDejeuner, ...ingDiner],
-      [],   // premier repas : aucun nom précédent
-      modeRepas
-    );
-    const recetteDejeuner = await genererRecetteAvecFallback(
-      supabase, 'dejeuner', styleDejeuner, ingDejeuner,
-      profil, contexte, historique, forceRegen,
-      [...ingPetitDej, ...ingDiner],
-      [recettePetitDej?.nom].filter(Boolean) as string[],
-      modeRepas
-    );
-    const recetteDiner = await genererRecetteAvecFallback(
-      supabase, 'diner', styleDiner, ingDiner,
-      profil, contexte, historique, forceRegen,
-      [...ingPetitDej, ...ingDejeuner],
-      [recettePetitDej?.nom, recetteDejeuner?.nom].filter(Boolean) as string[],
-      modeRepas
-    );
+    // Générer les 3 repas EN PARALLÈLE : l'anti-doublon de concept passe par un format de plat
+    // distinct par repas (choisi en niveau 2) au lieu des noms déjà générés.
+    // Un repas en échec (rejected) → null → fallback par défaut via la validation ci-dessous.
+    const formats = selectionnerFormatsPlats(modeRepas);
+    const [resPetitDej, resDejeuner, resDiner] = await Promise.allSettled([
+      genererRecetteAvecFallback(
+        supabase, 'petit-dejeuner', stylePetitDej, ingPetitDej,
+        profil, contexte, historique, forceRegen,
+        [...ingDejeuner, ...ingDiner],
+        formats.petitDej,
+        modeRepas
+      ),
+      genererRecetteAvecFallback(
+        supabase, 'dejeuner', styleDejeuner, ingDejeuner,
+        profil, contexte, historique, forceRegen,
+        [...ingPetitDej, ...ingDiner],
+        formats.dejeuner,
+        modeRepas
+      ),
+      genererRecetteAvecFallback(
+        supabase, 'diner', styleDiner, ingDiner,
+        profil, contexte, historique, forceRegen,
+        [...ingPetitDej, ...ingDejeuner],
+        formats.diner,
+        modeRepas
+      ),
+    ]);
+    [resPetitDej, resDejeuner, resDiner].forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`[NIVEAU 3] Repas ${['petit-dejeuner', 'dejeuner', 'diner'][i]} en échec (exception) → fallback :`, r.reason);
+      }
+    });
+    const recettePetitDej = resPetitDej.status === 'fulfilled' ? resPetitDej.value : null;
+    const recetteDejeuner = resDejeuner.status === 'fulfilled' ? resDejeuner.value : null;
+    const recetteDiner    = resDiner.status    === 'fulfilled' ? resDiner.value    : null;
 
     // ========================================================================
     // VALIDATION RECETTES — garantit que chaque repas est complet avant envoi

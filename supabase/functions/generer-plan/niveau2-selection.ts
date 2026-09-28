@@ -306,6 +306,35 @@ export function selectionnerStyleCulinaire(
 }
 
 // ============================================================================
+// FORMATS DE PLATS — un format distinct par repas (anti-doublon de concept)
+// Remplace le passage des noms déjà générés, ce qui permet de générer les 3 repas en parallèle.
+// ============================================================================
+
+const FORMATS_PETIT_DEJ = ['smoothie bowl', 'overnight oats', 'tartine sucrée', 'bol de fruits et granola', 'porridge express'];
+const FORMATS_CHAUD     = ['bowl complet', 'soupe repas', 'sauté au wok', 'gratin', 'salade composée tiède', 'wrap garni', 'curry ou mijoté', 'poêlée', 'papillote'];
+const FORMATS_FROID     = ['salade composée', 'poke bowl', 'wrap froid', 'tartare ou carpaccio', 'rouleaux de printemps', 'assiette de mezzés', 'sandwich garni', 'gaspacho complet'];
+
+export function selectionnerFormatsPlats(
+  modeRepas: 'chaud' | 'froid' = 'chaud'
+): { petitDej: string; dejeuner: string; diner: string } {
+  const pioche = (liste: string[], n: number) => {
+    const a = [...liste];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.slice(0, n);
+  };
+  const petitDejFormats = modeRepas === 'froid'
+    ? FORMATS_PETIT_DEJ.filter(f => f !== 'porridge express')
+    : FORMATS_PETIT_DEJ;
+  const [petitDej] = pioche(petitDejFormats, 1);
+  const [dejeuner, diner] = pioche(modeRepas === 'froid' ? FORMATS_FROID : FORMATS_CHAUD, 2);
+  console.log(`[NIVEAU 2] Formats de plats — Petit-dej: ${petitDej} | Déjeuner: ${dejeuner} | Dîner: ${diner}`);
+  return { petitDej, dejeuner, diner };
+}
+
+// ============================================================================
 // SÉLECTION RECETTES
 // ============================================================================
 

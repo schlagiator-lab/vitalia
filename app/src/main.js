@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var semaineData = JSON.parse(semaineSession)
       if (semaineData && semaineData.semaine) {
         st.semainePlanData = semaineData
-        afficherSemaine(semaineData)
+        afficherSemaine(semaineData, { sansRegen: true })
       }
     } catch(e) { localStorage.removeItem('vitalia_semaine_session') }
   }
