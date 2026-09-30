@@ -310,7 +310,9 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
   var recette = st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][mealKey]
   if (!recette) { stepsDiv.innerHTML = ''; if (btn) btn.style.display = ''; return }
 
-  if (!st.profil_id || st.profil_id === 'new') {
+  // Même source qu'à l'init (main.js) : st, puis URL, puis localStorage
+  var profilId = st.profil_id || new URLSearchParams(window.location.search).get('profil_id') || localStorage.getItem('vitalia_profil_id')
+  if (!profilId || profilId === 'new') {
     stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
     afficherToast('Termine ton profil pour voir les étapes 🙂')
     return
@@ -318,12 +320,14 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
 
   var typeRepas = { petit_dejeuner:'petit-dejeuner', dejeuner:'dejeuner', diner:'diner', pause:'collation' }[mealKey] || mealKey
 
+  console.log('[ETAPES] profil_id envoyé : ' + profilId + (st.profil_id ? '' : ' (st.profil_id vide → fallback URL/localStorage)'))
+
   try {
     var resp = await authFetch(SUPABASE_URL + '/functions/v1/generer-recette-details', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + st.authToken },
       body: JSON.stringify({
-        profil_id:    st.profil_id,   // obligatoire : contrôle sécurité niveau 1 côté serveur
+        profil_id:    profilId,   // obligatoire : contrôle sécurité niveau 1 côté serveur
         recette_nom:  recette.nom || recette.titre,
         ingredients:  recette.ingredients || [],
         type_repas:   typeRepas,
