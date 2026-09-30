@@ -310,6 +310,12 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
   var recette = st.semainePlanData && st.semainePlanData.semaine && st.semainePlanData.semaine[jour] && st.semainePlanData.semaine[jour][mealKey]
   if (!recette) { stepsDiv.innerHTML = ''; if (btn) btn.style.display = ''; return }
 
+  if (!st.profil_id || st.profil_id === 'new') {
+    stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
+    afficherToast('Termine ton profil pour voir les étapes 🙂')
+    return
+  }
+
   var typeRepas = { petit_dejeuner:'petit-dejeuner', dejeuner:'dejeuner', diner:'diner', pause:'collation' }[mealKey] || mealKey
 
   try {
@@ -348,10 +354,13 @@ export async function chargerEtapesRecette(jour, mealKey, id) {
       stepsDiv.innerHTML = html
     } else {
       stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
-      if (typeof data.error === 'string') afficherToast(data.error)
+      if (data.code) console.warn('[ETAPES] Refus serveur (' + resp.status + ') : ' + data.code)
+      afficherToast((typeof data.error === 'string' ? data.error : data.error && data.error.message) || 'Impossible de charger les étapes, réessaie dans un instant')
     }
   } catch(e) {
     stepsDiv.innerHTML = ''; if (btn) { btn.style.display = ''; btn.textContent = '⚠️ Réessayer les étapes' }
+    console.warn('[ETAPES] Erreur réseau/réponse : ' + (e && e.message))
+    afficherToast('Impossible de charger les étapes, réessaie dans un instant')
   }
 }
 
