@@ -8,7 +8,7 @@ export default defineConfig({
   publicDir: resolve(__dirname, '../public'),
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       injectRegister: 'script',
       workbox: {
         // Cache l'app shell + assets statiques
